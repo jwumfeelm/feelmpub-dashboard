@@ -811,9 +811,7 @@ function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }
       }
     });
 
-    // (구버전 pubCost 제거됨)
-    const b = mapped.find(x=>x.title===r['도서명 (공통이면 공백)']);
-          // 05_출고실적 → 당월 출고
+    // ── 03_출고실적 → 당월 출고
     const m = getM();
     const curYM = document.getElementById('monthPicker').value; // YYYY-MM
     ship.forEach(r => {
