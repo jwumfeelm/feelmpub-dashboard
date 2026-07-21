@@ -838,7 +838,6 @@ function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }
 
     if(mapped.length > 0) {
       BOOKS.splice(0, BOOKS.length, ...mapped);
-      STRATEGIC.splice(0, STRATEGIC.length, ...mapped.slice(0,6));
     }
   }
 
