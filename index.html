@@ -771,7 +771,7 @@ function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }
   }
 
   // ── 도서 목록 → BOOKS 갱신 ──
-  if (bookList.length > 0) {
+  if (bookList && bookList.length > 0) {
     const mapped = bookList.map((r, i) => ({
       id: i+1,
       title:       r['도서명']||'',
@@ -782,15 +782,16 @@ function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }
       supply:      0,
       unit:        0,
       cover:       ['#C9A227','#2D6A4A','#1E4D7B','#8B3A3A','#2A2A2A','#3A6A8A','#5A3A5A','#2F4F4F'][i%8],
-      field:       r['담당(IMC1/IMC2/GRO)']||r['담당']||'',
-      mkt:         r['마케터']||'',
+      field:       r['관리']||'',
+      mkt:         '',
       edit:        r['기획자']||'',
       isbn:        r['ISBN']||'',
       pubDate:     r['출간일']||'',
-      cumShipQty:  toNum(r['누적출고부수']),
-      cumShipAmt:  toNum(r['누적출고매출']),
-      cumSalesQty: toNum(r['누적판매부수']),
-      cumSalesPub: toNum(r['누적판매액']),
+      isStrategic: (r['전략도서 여부']||'').toString().toLowerCase()==='true',
+      cumShipQty:  toNum(r['과거출고부수']),
+      cumShipAmt:  toNum(r['과거출고매출']),
+      cumSalesQty: toNum(r['과거판매부수']),
+      cumSalesPub: toNum(r['과거판매액']),
       cumMktCost:  0, cumPubCost: 0, cumComCost: 0,
       mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0,
       stores:{kyobo:0,yes:0,aladin:0,naver:0,others:0},
