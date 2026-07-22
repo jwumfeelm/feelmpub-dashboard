@@ -719,6 +719,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
     // 03_마케팅비용 → 도서별 누적 마케팅비
     // ── 02_비용원장 → 도서별 누적 비용
     cost.forEach(r => {
+      if ((r['구분']||'').trim() !== '지급') return;
       const bookName = r['도서명'] || '';
       const b2 = mapped.find(x => x.title === bookName || x.code === bookName);
       const amt = toNum(r['비용']);
@@ -751,8 +752,8 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       b.stores.kyobo  += toNum(r['교보(부)']);
       b.stores.yes    += toNum(r['예스24(부)']);
       b.stores.aladin += toNum(r['알라딘(부)']);
-      b.stores.naver  += toNum(r['네이버(부)']);
-      b.stores.others += toNum(r['기타(부)']);
+      b.stores.naver  += toNum(r['영풍(부)']);
+      b.stores.others += 0;
     });
 
     if(mapped.length > 0) {
