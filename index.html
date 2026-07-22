@@ -72,8 +72,8 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .tab-div{width:1px;height:18px;background:var(--border);margin:0 6px;flex-shrink:0}
 
 /* PILL BAR */
-.pill-bar-wrap{background:var(--dark-bg);border-bottom:1px solid var(--dark-border)}
-.pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:160px;max-width:1600px;margin:0 auto}
+.pill-bar-wrap{background:var(--dark-bg);border-bottom:1px solid var(--dark-border);width:100%}
+.pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:160px;max-width:1600px;margin:0 auto;padding:0 0}
 .pill{display:flex;flex-direction:column;justify-content:space-between;padding:20px 32px;border-right:1px solid var(--dark-border);cursor:default;position:relative}
 .pill:last-child{border-right:none}
 .pill-lbl{font-size:13px;color:var(--accent);font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
@@ -84,7 +84,7 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pill-sub{font-size:14px;color:#888;text-align:right;margin-top:8px;letter-spacing:.01em}
 
 /* MAIN */
-main{flex:1;padding:18px 24px 80px;max-width:1600px;margin:0 auto;width:100%}
+main{flex:1;padding:18px 24px 80px;max-width:1600px;margin:0 auto;width:100%;box-sizing:border-box}
 .section{display:none}
 .section.active{display:block}
 .gap{margin-top:12px}
@@ -372,7 +372,7 @@ tr:hover td{background:var(--surface2)}
   <nav class="tabs-bar" id="tabsBar"></nav>
   <div class="pill-bar-wrap"><div class="pill-bar" id="pillBar"></div></div>
   <main>
-    <div style="background:var(--dark-bg);border-bottom:1px solid var(--dark-border)"><div id="trend-chart" style="max-width:1600px;margin:0 auto;padding:24px 32px 20px"></div></div>
+    <div style="background:var(--dark-bg);border-bottom:1px solid var(--dark-border)"><div id="trend-chart" style="max-width:1600px;margin:0 auto;padding:20px 24px 16px"></div></div>
     <div id="tab-summary"  class="section active"></div>
     <div id="tab-ship"     class="section"></div>
     <div id="tab-mkt"      class="section"></div>
@@ -922,7 +922,9 @@ function renderTrendChart(curM) {
   const maxAmt = Math.max(...M_TARGET, ...M_SHIP_SALES.filter((_,i)=>i<=curM), ...M_TOTAL_COST.filter((_,i)=>i<=curM), 1) * 1.1;
   const maxRet = Math.max(...retData.filter(v=>v!==null), 20);
 
-  const barW = cW / 12 * 0.38;
+  const slotW = cW / 12;
+  const barW = slotW * 0.3;
+  const gap = barW * 0.3;
   const xPos = i => PAD.l + (i + 0.5) / 12 * cW;
   const yAmt = v => PAD.t + cH - (v / maxAmt) * cH;
   const yRet = v => PAD.t + cH - (v / maxRet) * cH;
@@ -979,17 +981,17 @@ function renderTrendChart(curM) {
     <!-- 총비용 막대 (뒤) -->
     <g id="tc-cost-bars">
       ${costData.map((v,i) => v !== null ? `
-        <rect x="${xPos(i)-barW*1.6}" y="${yAmt(v)}" width="${barW*1.6}" height="${PAD.t+cH-yAmt(v)}"
-          fill="url(#costBarGrad)" rx="2" opacity=".7"/>
+        <rect x="${xPos(i)-barW-gap/2}" y="${yAmt(v)}" width="${barW}" height="${PAD.t+cH-yAmt(v)}"
+          fill="url(#costBarGrad)" rx="2" opacity=".8"/>
       ` : '').join('')}
     </g>
 
     <!-- 달성매출 막대 (앞) -->
     <g id="tc-ship-bars">
       ${shipData.map((v,i) => v !== null ? `
-        <rect x="${xPos(i)+barW*0}" y="${yAmt(v)}" width="${barW*1.6}" height="${PAD.t+cH-yAmt(v)}"
+        <rect x="${xPos(i)+gap/2}" y="${yAmt(v)}" width="${barW}" height="${PAD.t+cH-yAmt(v)}"
           fill="url(#shipBarGrad)" rx="2"
-          style="${v >= targetData[i] ? '' : 'filter:brightness(.8)'}"/>
+          style="${v >= targetData[i] ? '' : 'filter:brightness(.75)'}"/>
       ` : '').join('')}
     </g>
 
