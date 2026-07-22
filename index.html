@@ -163,9 +163,9 @@ tr:hover td{background:var(--surface2)}
 .prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
 
 /* NOTICE */
-.notice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.notice{border-radius:10px;padding:14px 14px;font-size:12px;line-height:1.5;border:none;border-top:3px solid;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-weight:500}
-.notice .notice-icon{font-size:18px}
+.notice-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;height:100%}
+.notice{border-radius:10px;padding:20px 18px;font-size:13px;line-height:1.6;border:none;border-top:3px solid;display:flex;flex-direction:column;align-items:flex-start;gap:10px;font-weight:500;height:100%;box-sizing:border-box}
+.notice .notice-icon{font-size:22px}
 .notice.warn{background:var(--warn-dim);border-top-color:var(--warn);color:var(--warn)}
 .notice.bad{background:var(--bad-dim);border-top-color:var(--bad);color:var(--bad)}
 .notice.good{background:var(--good-dim);border-top-color:var(--good);color:var(--good)}
@@ -960,9 +960,9 @@ function renderSummary(){
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
       </div>
-      <div class="card">
+      <div class="card" style="display:flex;flex-direction:column">
         <div class="card-title">주요 이슈 · 액션</div>
-        <div class="notice-grid">${issues.map(i=>`<div class="notice ${i.type}"><span class="notice-icon">${i.icon}</span><span>${i.text}</span></div>`).join('')}</div>
+        <div class="notice-grid" style="flex:1">${issues.map(i=>`<div class="notice ${i.type}"><span class="notice-icon">${i.icon}</span><span>${i.text}</span></div>`).join('')}</div>
       </div>
     </div>
 
