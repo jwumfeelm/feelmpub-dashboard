@@ -965,26 +965,24 @@ function renderSummary(){
       <div class="card">
         <div class="card-title">월 출고 도서 TOP 10 <small>부수 기준</small></div>
         <table>
-          <tr><th>#</th><th>도서</th><th class="right">출고 부수</th><th class="right">출고액</th><th>담당</th></tr>
+          <tr><th>#</th><th>도서</th><th class="right">출고 부수</th><th class="right">출고액</th></tr>
           ${mShipRank.map((r,i)=>`<tr>
             <td style="color:var(--ink3);font-weight:800">${i+1}</td>
             <td><b>${esc(r.title)}</b><br><span style="font-size:11px;color:var(--ink3)">${esc(r.author)}</span></td>
             <td class="right">${r.qty.toLocaleString()}부</td>
             <td class="right">${won(r.amt)}</td>
-            <td><span class="badge neutral">${r.field}</span></td>
           </tr>`).join('')}
         </table>
       </div>
       <div class="card">
         <div class="card-title">월 판매 도서 TOP 10 <small>SCM 기준</small></div>
         <table>
-          <tr><th>#</th><th>도서</th><th class="right">판매 부수</th><th class="right">판매액</th><th>담당</th></tr>
+          <tr><th>#</th><th>도서</th><th class="right">판매 부수</th><th class="right">판매액</th></tr>
           ${mSalesRank.map((r,i)=>`<tr>
             <td style="color:var(--ink3);font-weight:800">${i+1}</td>
             <td><b>${esc(r.title)}</b><br><span style="font-size:11px;color:var(--ink3)">${esc(r.author)}</span></td>
             <td class="right">${r.qty.toLocaleString()}부</td>
             <td class="right">${won(r.amt)}</td>
-            <td><span class="badge neutral">${r.field}</span></td>
           </tr>`).join('')}
         </table>
       </div>
@@ -1084,7 +1082,6 @@ function renderShip(){
           ${thS('ship','mReturnAmt','반품액','right')}
           ${thS('ship','netAmt','순매출','right')}
           ${thS('ship','retPct','반품률','right')}
-          <th>담당</th>
         </tr>
         ${sorted.map(b=>`<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
           <td><b>${esc(b.title)}</b><br><span style="font-size:11px;color:var(--ink3)">${esc(b.author)}</span></td>
@@ -1094,7 +1091,6 @@ function renderShip(){
           <td class="right">${won(b.mReturnAmt)}</td>
           <td class="right"><b>${won(b.netAmt)}</b></td>
           <td class="right"><span class="badge ${b.retPct>=15?'bad':b.retPct>=10?'warn':'good'}">${b.retPct}%</span></td>
-          <td><span class="badge neutral">${b.field}</span></td>
         </tr>`).join('')}
         <tr style="background:var(--surface2);font-weight:900">
           <td><b>합계</b></td>
@@ -1178,8 +1174,7 @@ function renderMkt(){
           ${thS('mkt','cumMktCost','누적 마케팅비','right')}
           ${thS('mkt','roi','ROI','right')}
           ${thS('mkt','cpa','구매유치비','right')}
-          <th>마케터</th>
-          <th>담당</th>
+
         </tr>
         ${sorted.map(b=>`<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
           <td><b>${esc(b.title)}</b><br><span style="font-size:11px;color:var(--ink3)">${esc(b.author)}</span></td>
@@ -1188,8 +1183,7 @@ function renderMkt(){
           <td class="right">${won(b.cumMktCost)}</td>
           <td class="right"><b style="color:${b.roi>=150?'var(--good)':b.roi>=100?'var(--warn)':'var(--bad)'}">${b.roi}%</b></td>
           <td class="right"><span style="color:${b.cpa<8000?'var(--good)':b.cpa<12000?'var(--warn)':'var(--bad)'}">${b.cpa.toLocaleString()}원</span></td>
-          <td style="font-size:11px;color:var(--ink3)">${esc(b.mkt)}</td>
-          <td><span class="badge neutral">${b.field}</span></td>
+
         </tr>`).join('')}
       </table>
     </div>`;
@@ -1364,7 +1358,7 @@ function renderBooks(){
         <tr>
           ${thS('books','title','도서명')}
           <th>정가</th><th>분야</th><th>저자</th>
-          ${thS('books','field','담당')}
+
           ${thS('books','cumShipQty','누적 출고부수','right')}
           ${thS('books','cumShipAmt','누적 출고매출','right')}
           ${thS('books','cumSalesQty','누적 판매부수','right')}
