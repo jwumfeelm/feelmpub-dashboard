@@ -1391,10 +1391,143 @@ function renderBooks(){
    7. 데이터 연동
 ───────────────────────────────────── */
 /* ─────────────────────────────────────
-   BOOK MARKETING DATA (샘플)
+   BOOK MARKETING DATA
 ───────────────────────────────────── */
-// 도서별 마케팅 데이터 — 헤지호그 캠페인 탭에서 직접 관리
-const MKT_BOOKS = [];
+const MKT_BOOKS = [
+  { code:"생존지능", name:"생존 지능", pubDate:"2026-07-15", price:17800, goal:{rank:"종합 10위",qty:50000,revenue:890000000}, phase:3 },
+  { code:"다정한사람이이긴다(개정판)", name:"다정한 사람이 이긴다", pubDate:"2026-06-10", price:16800, goal:{rank:"분야 1위",qty:30000,revenue:504000000}, phase:2 },
+  { code:"불안한날에니체를읽는다", name:"불안한 날에 니체를 읽는다", pubDate:"2026-05-20", price:16000, goal:{rank:"종합 20위",qty:20000,revenue:320000000}, phase:2 },
+];
+
+// 도서별 마케팅 액션 (레인별)
+const MKT_LANES = ["서점광고","메타광고","구글광고","제휴·유튜브","인스타그램","블로그","이벤트"];
+const LANE_COLORS = {
+  "서점광고":   {bg:"#FDE200",text:"#1A1600",border:"#B8A800"},
+  "메타광고":   {bg:"#EEF2FF",text:"#3730A3",border:"#818CF8"},
+  "구글광고":   {bg:"#FEF3C7",text:"#92400E",border:"#F59E0B"},
+  "제휴·유튜브":{bg:"#FDF2F8",text:"#831843",border:"#EC4899"},
+  "인스타그램": {bg:"#F0FDF4",text:"#14532D",border:"#22C55E"},
+  "블로그":     {bg:"#F0F9FF",text:"#0C4A6E",border:"#38BDF8"},
+  "이벤트":     {bg:"#FFF7ED",text:"#7C2D12",border:"#F97316"},
+};
+
+// 도서별 마케팅 액션 데이터
+// type: "main"=일반칩, "expandable"=드롭다운 가능, "sub"=하위 소재(접힘)
+const MKT_ACTIONS = {
+  "생존지능": [
+    // 예약판매 구간 (7/5~7/14)
+    {date:"2026-07-05",lane:"서점광고",   label:"교보 모바일팝업", detail:"7/5~7/20 교보문고 모바일팝업",    cost:5500000, days:16},
+    {date:"2026-07-08",lane:"구글광고",   label:"구글 검색광고",   detail:"SEO 키워드 검색광고 집행",        cost:1000000, days:7},
+    {date:"2026-07-09",lane:"블로그",     label:"블로그 시딩 1차", detail:"블로그 리뷰어 5명 발송",          cost:0,       days:3},
+    // ── 메타광고: 하나의 통합 칩 (드롭다운으로 소재 펼침) ──
+    {date:"2026-07-08", lane:"메타광고", label:"메타광고 전체 캠페인", detail:"예약판매~3주차 전체 소재 운영",
+     cost:9270000, days:35, type:"expandable",
+     materials:[
+       {id:"ma1", phase:"예약판매", label:"소재 A — 짧은 카피",    type:"image", cost:200000, days:"7/8~7/11",
+        img:"https://picsum.photos/seed/meta1/400/500", desc:"15초 릴스 소재. 핵심 카피: '당신은 결국 무엇이든 해내는 사람'"},
+       {id:"ma2", phase:"예약판매", label:"소재 B — 저자 인터뷰",   type:"image", cost:180000, days:"7/8~7/12",
+        img:"https://picsum.photos/seed/meta2/400/500", desc:"짐콜린스 저자 인터뷰 클립 편집본"},
+       {id:"ma3", phase:"예약판매", label:"소재 C — 독자 후기",     type:"image", cost:120000, days:"7/10~7/14",
+        img:"https://picsum.photos/seed/meta3/400/500", desc:"베타리더 후기 기반 소셜 프루프 소재"},
+       {id:"ma4", phase:"1주차",   label:"소재 D — 순위 발표",     type:"image", cost:400000, days:"7/15~7/17",
+        img:"https://picsum.photos/seed/meta4/400/500", desc:"베스트셀러 종합 순위 달성 소재"},
+       {id:"ma5", phase:"1주차",   label:"소재 E — 저자 권위",     type:"image", cost:350000, days:"7/15~7/17",
+        img:"https://picsum.photos/seed/meta5/400/500", desc:"짐콜린스 34년 연구 데이터 강조"},
+       {id:"ma6", phase:"1주차",   label:"소재 F — 독자 리뷰",     type:"image", cost:300000, days:"7/18~7/21",
+        img:"https://picsum.photos/seed/meta6/400/500", desc:"출간 후 실독자 반응 큐레이션"},
+       {id:"ma7", phase:"1주차",   label:"소재 G — 미키 클립",     type:"image", cost:280000, days:"7/18~7/21",
+        img:"https://picsum.photos/seed/meta7/400/500", desc:"미키피디아 영상 클립 소재"},
+       {id:"ma8", phase:"2주차",   label:"소재 H — 1만부 돌파",    type:"image", cost:300000, days:"7/22~7/26",
+        img:"https://picsum.photos/seed/meta8/400/500", desc:"출간 1주 만에 1만부 돌파 인증 소재"},
+       {id:"ma9", phase:"2주차",   label:"소재 I — 서평 모음",     type:"image", cost:280000, days:"7/22~7/25",
+        img:"https://picsum.photos/seed/meta9/400/500", desc:"온라인 서평 큐레이션 카드뉴스"},
+       {id:"ma10",phase:"2주차",   label:"소재 J — 신사임당 클립", type:"image", cost:260000, days:"7/24~7/28",
+        img:"https://picsum.photos/seed/meta10/400/500",desc:"신사임당 브랜디드 클립 소재"},
+       {id:"ma11",phase:"3주차",   label:"소재 K — 3주 판매",      type:"image", cost:500000, days:"7/29~8/4",
+        img:"https://picsum.photos/seed/meta11/400/500",desc:"누적 3만부 성과 소재"},
+       {id:"ma12",phase:"3주차",   label:"소재 L — 채부심 클립",   type:"image", cost:400000, days:"7/29~8/4",
+        img:"https://picsum.photos/seed/meta12/400/500",desc:"채부심 브랜디드 클립 소재"},
+       {id:"ma13",phase:"4주차",   label:"소재 M — 한달 기념",     type:"image", cost:450000, days:"8/5~8/11",
+        img:"https://picsum.photos/seed/meta13/400/500",desc:"출간 한달 기념 누적 성과 소재"},
+     ]},
+    // ── 서점광고 ──
+    {date:"2026-07-05", lane:"서점광고", label:"교보 모바일팝업", detail:"7/5~7/20 교보문고 모바일 팝업", cost:5500000, days:16,
+     materials:[{id:"s1",label:"교보 팝업 이미지",type:"image",img:"https://picsum.photos/seed/kyobo1/600/400",desc:"교보문고 앱 메인 팝업 배너 (600×400)"}]},
+    {date:"2026-07-15", lane:"서점광고", label:"교보 강남 매대",  detail:"강남점 오프라인 매대 광고",     cost:2750000, days:17,
+     materials:[{id:"s2",label:"매대 배치 사진",type:"image",img:"https://picsum.photos/seed/kyobo2/600/400",desc:"교보문고 강남점 정면대 배치"}]},
+    {date:"2026-07-20", lane:"서점광고", label:"예스24 HOT",      detail:"지금인기있어요 HOT 구좌",       cost:1650000, days:7,
+     materials:[{id:"s3",label:"예스24 HOT 배너",type:"image",img:"https://picsum.photos/seed/yes1/600/400",desc:"예스24 지금인기있어요 구좌"}]},
+    {date:"2026-07-20", lane:"서점광고", label:"알라딘 팝업",     detail:"알라딘 모바일 팝업",            cost:3300000, days:7,
+     materials:[{id:"s4",label:"알라딘 팝업 이미지",type:"image",img:"https://picsum.photos/seed/aladin1/600/400",desc:"알라딘 앱 모바일 팝업"}]},
+    // ── 구글광고 ──
+    {date:"2026-07-08", lane:"구글광고", label:"구글 검색광고", detail:"SEO 키워드 검색광고 집행", cost:1000000, days:7,
+     materials:[{id:"g1",label:"검색광고 키워드",type:"text",desc:"짐콜린스 / 자기계발서추천 / 인생책 / 헤지호그 / 생존지능"}]},
+    // ── 제휴·유튜브 ──
+    {date:"2026-07-15", lane:"제휴·유튜브", label:"하와이대저택",     detail:"브랜디드 콘텐츠", cost:6600000, days:1,
+     materials:[{id:"y1",label:"하와이대저택 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 95만 자기계발 채널. 브랜디드 롱폼"}]},
+    {date:"2026-07-17", lane:"제휴·유튜브", label:"미키피디아",       detail:"줌인터뷰 브랜디드",cost:16500000,days:1,
+     materials:[{id:"y2",label:"미키피디아 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 35만 자기계발 채널. 저자 줌인터뷰 형식"}]},
+    {date:"2026-07-19", lane:"제휴·유튜브", label:"신사임당",         detail:"브랜디드 콘텐츠", cost:3300000, days:1,
+     materials:[{id:"y3",label:"신사임당 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 206만 자기계발/경제 채널"}]},
+    {date:"2026-07-21", lane:"제휴·유튜브", label:"삼프로TV",         detail:"PPL 클로징 멘트", cost:3300000, days:1,
+     materials:[{id:"y4",label:"삼프로TV 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 266만 경제 채널. 클로징 PPL"}]},
+    {date:"2026-07-23", lane:"제휴·유튜브", label:"피치",             detail:"브랜디드 콘텐츠", cost:4400000, days:1,
+     materials:[{id:"y5",label:"피치 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 64만 경제 채널"}]},
+    {date:"2026-07-25", lane:"제휴·유튜브", label:"한창수 마음정비소", detail:"브랜디드 콘텐츠", cost:2200000, days:1,
+     materials:[{id:"y6",label:"한창수 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 8만 심리 채널"}]},
+    {date:"2026-07-29", lane:"제휴·유튜브", label:"채부심",           detail:"브랜디드 콘텐츠", cost:2750000, days:1,
+     materials:[{id:"y7",label:"채부심 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 20만 경제 채널"}]},
+    // ── 인스타그램 ──
+    {date:"2026-07-15", lane:"인스타그램", label:"뚱이야 IS",  detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i1",label:"뚱이야 포스트",type:"image",img:"https://picsum.photos/seed/insta1/500/500",desc:"팔로워 22만 라이프스타일 계정"}]},
+    {date:"2026-07-16", lane:"인스타그램", label:"북러비 IS",  detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i2",label:"북러비 포스트",type:"image",img:"https://picsum.photos/seed/insta2/500/500",desc:"팔로워 8만 독서 계정"}]},
+    {date:"2026-07-18", lane:"인스타그램", label:"Hsi IS",     detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i3",label:"Hsi 포스트",  type:"image",img:"https://picsum.photos/seed/insta3/500/500",desc:"팔로워 15만 자기계발 계정"}]},
+    {date:"2026-07-26", lane:"인스타그램", label:"찌니 IS",    detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i4",label:"찌니 포스트",type:"image",img:"https://picsum.photos/seed/insta4/500/500",desc:"팔로워 6만 독서 계정"}]},
+    // ── 블로그 ──
+    {date:"2026-07-09", lane:"블로그", label:"블로그 시딩 1차", detail:"블로그 리뷰어 5명", cost:0, days:3, materials:[{id:"b1",label:"블로그 리뷰 목록",type:"text",desc:"네이버 블로그 5명 시딩 (책리뷰어A, 독서노트B, 자기계발C, 인생책D, 북스타그램E)"}]},
+    {date:"2026-07-24", lane:"블로그", label:"블로그 시딩 2차", detail:"추가 블로거 8명",   cost:0, days:3, materials:[{id:"b2",label:"블로그 리뷰 목록",type:"text",desc:"네이버 블로그 8명 추가 시딩"}]},
+    // ── 이벤트 ──
+    {date:"2026-07-22", lane:"이벤트", label:"교보 저자 사인회",  detail:"교보 강남점 저자 사인회",  cost:200000, days:1, materials:[{id:"e1",label:"사인회 현장",type:"image",img:"https://picsum.photos/seed/event1/600/400",desc:"2026.7.22 교보문고 강남점 저자 사인회. 참석 150명"}]},
+    {date:"2026-07-28", lane:"이벤트", label:"온라인 독자이벤트", detail:"SNS 독자 이벤트",           cost:0,      days:3, materials:[{id:"e2",label:"이벤트 배너",type:"image",img:"https://picsum.photos/seed/event2/600/400",desc:"인스타그램 독자 이벤트. 책 사진 인증 시 사인본 증정"}]},
+  ],
+};
+
+// 판매 데이터 (서점별 일별)
+const MKT_SALES = {
+  "생존지능": {
+    stores: ["교보","예스24","영풍","알라딘"],
+    colors: ["#9A7A00","#1E6832","#1A4A7A","#901818"],
+    data: [
+      {date:"2026-07-05",교보:1,  예스24:0,  영풍:0,알라딘:0},
+      {date:"2026-07-06",교보:4,  예스24:1,  영풍:0,알라딘:1},
+      {date:"2026-07-07",교보:7,  예스24:2,  영풍:0,알라딘:2},
+      {date:"2026-07-08",교보:12, 예스24:4,  영풍:0,알라딘:3},
+      {date:"2026-07-09",교보:18, 예스24:6,  영풍:0,알라딘:4},
+      {date:"2026-07-10",교보:24, 예스24:8,  영풍:0,알라딘:6},
+      {date:"2026-07-11",교보:31, 예스24:11, 영풍:0,알라딘:8},
+      {date:"2026-07-12",교보:28, 예스24:9,  영풍:0,알라딘:7},
+      {date:"2026-07-13",교보:22, 예스24:7,  영풍:0,알라딘:5},
+      {date:"2026-07-14",교보:19, 예스24:6,  영풍:0,알라딘:4},
+      {date:"2026-07-15",교보:346,예스24:155,영풍:0,알라딘:146},
+      {date:"2026-07-16",교보:292,예스24:128,영풍:0,알라딘:121},
+      {date:"2026-07-17",교보:248,예스24:109,영풍:0,알라딘:98},
+      {date:"2026-07-18",교보:214,예스24:96, 영풍:0,알라딘:84},
+      {date:"2026-07-19",교보:198,예스24:88, 영풍:0,알라딘:76},
+      {date:"2026-07-20",교보:182,예스24:81, 영풍:0,알라딘:69},
+      {date:"2026-07-21",교보:168,예스24:74, 영풍:0,알라딘:63},
+      {date:"2026-07-22",교보:152,예스24:68, 영풍:0,알라딘:57},
+      {date:"2026-07-23",교보:144,예스24:64, 영풍:0,알라딘:54},
+      {date:"2026-07-24",교보:138,예스24:61, 영풍:0,알라딘:51},
+      {date:"2026-07-25",교보:131,예스24:58, 영풍:0,알라딘:48},
+      {date:"2026-07-26",교보:124,예스24:55, 영풍:0,알라딘:45},
+      {date:"2026-07-27",교보:118,예스24:52, 영풍:0,알라딘:43},
+      {date:"2026-07-28",교보:162,예스24:72, 영풍:0,알라딘:60},
+      {date:"2026-07-29",교보:148,예스24:66, 영풍:0,알라딘:55},
+      {date:"2026-07-30",교보:186,예스24:83, 영풍:0,알라딘:68},
+    ]
+  }
+};
+
+let calBook = MKT_BOOKS.length > 0 ? MKT_BOOKS[0].code : "";
 
 // 도서별 마케팅 액션 (레인별)
 const MKT_LANES = ["서점광고","메타광고","구글광고","제휴·유튜브","인스타그램","블로그","이벤트"];
