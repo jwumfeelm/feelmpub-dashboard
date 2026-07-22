@@ -1480,9 +1480,7 @@ function renderCalendar() {
   }
 
   // 총 비용
-  const totalCost     = actions.reduce((s,a)=>s+(a.cost||0),0);
-  const confirmedCost = actions.filter(a=>a.status==='confirmed').reduce((s,a)=>s+(a.cost||0),0);
-  const plannedCost   = totalCost - confirmedCost;
+  const totalCost = actions.reduce((s,a)=>s+a.cost,0);
   const paidActions = actions.filter(a=>a.cost>0);
   const totalActions = actions.length;
 
@@ -1503,75 +1501,7 @@ function renderCalendar() {
       <select onchange="calBook=this.value;renderCalendar()" style="border:1px solid var(--border2);background:var(--surface);color:var(--ink);border-radius:var(--r3);padding:7px 12px;font-family:var(--sans);font-size:13px;font-weight:700;outline:none;cursor:pointer;flex:1;max-width:360px">
         ${MKT_BOOKS.map(b=>`<option value="${b.code}" ${b.code===calBook?'selected':''}>${b.name}</option>`).join('')}
       </select>
-
-    </div>
-
-    <!-- 마케팅 계획서 상단 카드 -->
-    <div class="card gap2" style="margin-bottom:14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">
-
-        <!-- 왼쪽: 도서 기본 정보 -->
-        <div style="padding:16px 18px;border-right:1px solid var(--border)">
-          <div class="sec-label" style="margin:0 0 10px">도서 기본</div>
-          <div style="display:flex;flex-direction:column;gap:7px">
-            ${[
-              ['저자', book.author||'—'],
-              ['분야', book.genre||'—'],
-              ['출판사', book.publisher||'—'],
-              ['정가', book.price?book.price.toLocaleString()+'원':'—'],
-              ['출간일', book.pubDate||'—'],
-              ['배본부수', book.supplyQty?book.supplyQty.toLocaleString()+'부':'—'],
-            ].map(([k,v])=>`
-              <div style="display:flex;align-items:baseline;gap:8px">
-                <span style="font-size:10px;font-weight:700;color:var(--ink3);width:52px;flex-shrink:0">${k}</span>
-                <span style="font-size:12px;font-weight:600;color:var(--ink)">${v}</span>
-              </div>`).join('')}
-          </div>
-        </div>
-
-        <!-- 가운데: 타깃 + 카피 -->
-        <div style="padding:16px 18px;border-right:1px solid var(--border)">
-          <div style="margin-bottom:14px">
-            <div class="sec-label" style="margin:0 0 8px">타깃</div>
-            ${book.target ? `
-              <div style="margin-bottom:6px">
-                <div style="font-size:9px;font-weight:800;color:var(--accent-text);background:var(--accent);border-radius:3px;padding:2px 6px;display:inline-block;margin-bottom:4px">코어</div>
-                <div style="font-size:11px;color:var(--ink);line-height:1.5">${book.target.core}</div>
-              </div>
-              <div>
-                <div style="font-size:9px;font-weight:800;color:var(--ink2);background:var(--surface3);border-radius:3px;padding:2px 6px;display:inline-block;margin-bottom:4px">서브</div>
-                <div style="font-size:11px;color:var(--ink2);line-height:1.5">${book.target.sub}</div>
-              </div>` : '<div style="font-size:12px;color:var(--ink3)">—</div>'}
-          </div>
-          <div>
-            <div class="sec-label" style="margin:0 0 8px">카피</div>
-            ${book.copy ? `
-              <div style="font-size:14px;font-weight:900;color:var(--ink);margin-bottom:5px;line-height:1.4">"${book.copy.main}"</div>
-              <div style="font-size:11px;color:var(--ink2);line-height:1.5">${book.copy.sub}</div>` : '<div style="font-size:12px;color:var(--ink3)">—</div>'}
-          </div>
-        </div>
-
-        <!-- 오른쪽: 핵심 마케팅 비히클 + 메모 -->
-        <div style="padding:16px 18px">
-          <div style="margin-bottom:14px">
-            <div class="sec-label" style="margin:0 0 8px">핵심 마케팅 비히클</div>
-            ${book.vehicles && book.vehicles.length ? `
-              <div style="display:flex;flex-direction:column;gap:5px">
-                ${book.vehicles.map((v,i)=>`
-                  <div style="display:flex;gap:7px;align-items:flex-start">
-                    <span style="font-size:9px;font-weight:900;color:var(--accent-text);background:var(--accent);border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</span>
-                    <span style="font-size:11px;color:var(--ink);line-height:1.4">${v}</span>
-                  </div>`).join('')}
-              </div>` : '<div style="font-size:12px;color:var(--ink3)">—</div>'}
-          </div>
-          ${book.memo ? `
-          <div style="background:var(--surface2);border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 4px 4px 0">
-            <div style="font-size:9px;font-weight:800;color:var(--ink3);margin-bottom:4px">담당 메모</div>
-            <div style="font-size:11px;color:var(--ink2);line-height:1.5">${book.memo}</div>
-          </div>` : ''}
-        </div>
-
-      </div>
+      <span style="font-size:11px;color:var(--ink3)">출간일 ${book.pubDate} · 정가 ${book.price.toLocaleString()}원</span>
     </div>
 
     <!-- 상단 KPI -->
@@ -1592,31 +1522,14 @@ function renderCalendar() {
         <div class="kpi-sub">목표 대비 ${goalPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${goalPct}%"></div></div></div>
       </div>
       <div class="kpi">
-        <div class="kpi-lbl">마케팅비 (확정)</div>
-        <div class="kpi-val">${won(confirmedCost)}</div>
-        <div class="kpi-sub" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-          <span style="font-size:10px;color:var(--ink3)">총계획</span>
-          <span style="font-size:11px;font-weight:700;color:var(--warn)">${won(totalCost)}</span>
-        </div>
+        <div class="kpi-lbl">총 마케팅비</div>
+        <div class="kpi-val">${won(totalCost)}</div>
+        <div class="kpi-sub">${paidActions.length}건 유상 집행</div>
       </div>
       <div class="kpi">
-        <div class="kpi-lbl">ROAS</div>
-        ${(()=>{
-          const roas = totalCost > 0 ? Math.round((currentSales * book.price) / totalCost * 100) : 0;
-          const roasColor = roas >= 500 ? 'var(--good)' : roas >= 300 ? 'var(--info)' : roas >= 154 ? 'var(--warn)' : 'var(--bad)';
-          const roasLabel = roas >= 500 ? '우수' : roas >= 300 ? '양호' : roas >= 154 ? '주의' : '경고';
-          return `<div class="kpi-val" style="color:${roasColor}">${roas.toLocaleString()}%</div>
-          <div class="kpi-sub">
-            <span style="font-weight:800;color:${roasColor}">${roasLabel}</span>
-            <div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(roas/10,100)}%;background:${roasColor}"></div></div>
-            <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
-              <span style="font-size:8px;color:var(--good);font-weight:700">●500%+ 우수</span>
-              <span style="font-size:8px;color:var(--info);font-weight:700">●300% 양호</span>
-              <span style="font-size:8px;color:var(--warn);font-weight:700">●154% 주의</span>
-              <span style="font-size:8px;color:var(--bad);font-weight:700">●~154% 경고</span>
-            </div>
-          </div>`;
-        })()}
+        <div class="kpi-lbl">총 액션 수</div>
+        <div class="kpi-val">${totalActions}건</div>
+        <div class="kpi-sub">${MKT_LANES.filter(l=>actions.some(a=>a.lane===l)).length}개 채널</div>
       </div>
     </div>
 
@@ -1663,13 +1576,13 @@ function renderCalendar() {
 
       <!-- 액션 목록 -->
       <div class="card">
-        <div class="card-title">액션 목록 <small>${totalActions}건</small> <small style="color:var(--ink3);font-weight:400">· 클릭하면 상세 보기</small></div>
+        <div class="card-title">액션 목록 <small>${totalActions}건</small></div>
         <div style="max-height:280px;overflow-y:auto">
           <table>
             <tr><th>날짜</th><th>채널</th><th>내용</th><th class="right">비용</th></tr>
-            ${actions.sort((a,b)=>a.date.localeCompare(b.date)).map((a,idx)=>{
+            ${actions.sort((a,b)=>a.date.localeCompare(b.date)).map(a=>{
               const c=LANE_COLORS[a.lane]||{bg:"#eee",text:"#555"};
-              return `<tr style="cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''" onclick="openDetailPanel(window.__mktActions[${idx}], (LANE_COLORS||{})[window.__mktActions[${idx}].lane]||{bg:'#eee',text:'#555',border:'#ccc'})">
+              return `<tr>
                 <td style="font-size:11px;color:var(--ink3);white-space:nowrap">${a.date.slice(5)}</td>
                 <td><span class="badge" style="background:${c.bg};color:${c.text};font-size:9px">${a.lane}</span></td>
                 <td style="font-size:12px">${esc(a.label)}</td>
@@ -1680,10 +1593,452 @@ function renderCalendar() {
         </div>
       </div>
     </div>`;
-  // 액션 목록을 전역으로 노출 (테이블 onclick에서 접근)
-  window.__mktActions = actions.sort((a,b)=>a.date.localeCompare(b.date));
   // innerHTML 세팅 후 타임라인 DOM 직접 렌더
   renderTimeline(dates, pubDate, today, actions, sales);
+}
+
+function renderTimeline(dates, pubDate, today, actions, sales) {
+  var CELL_W = 34;
+  var LBL_W  = 120;
+  var STORES_TL = ["교보","예스24","영풍","알라딘"];
+  if(!window.tlExpanded) window.tlExpanded = {};
+
+  var salesByDate = {};
+  if (sales) {
+    sales.data.forEach(function(row) {
+      var total = STORES_TL.reduce(function(s,st){ return s+(row[st]||0); }, 0);
+      salesByDate[row.date] = Object.assign({total:total}, row);
+    });
+  }
+
+  var MO_BG   = ["rgba(26,82,138,.08)","rgba(101,40,170,.07)","rgba(30,122,56,.07)","rgba(0,150,130,.07)","rgba(26,82,138,.09)","rgba(101,40,170,.08)","rgba(176,32,32,.08)","rgba(220,120,0,.07)","rgba(0,150,200,.07)","rgba(180,60,120,.07)","rgba(80,160,80,.07)","rgba(100,100,180,.07)"];
+  var MO_TEXT = ["#1A528A","#65287A","#1E7A38","#00785A","#1A528A","#65287A","#901818","#8A4A00","#00628A","#782050","#306830","#3A3878"];
+
+  function wkBg(d){
+    var diff=Math.floor((d-pubDate)/86400000);
+    if(diff<0) return 'rgba(154,98,16,.05)';
+    return Math.floor(diff/7)%2===0?'transparent':'rgba(0,0,0,.025)';
+  }
+
+  var wrap=document.getElementById('tl-wrap');
+  if(!wrap) return;
+  var savedScroll=wrap.scrollLeft||0;
+  wrap.innerHTML='';
+  wrap.style.cssText='overflow-x:auto;padding-bottom:8px;';
+  var totalW=dates.length*CELL_W;
+
+  // ── DOM 행 생성 헬퍼 ──
+  function makeRow(h, lblHTML, lblStyle, noBg){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;min-height:'+h+'px;';
+    var lbl=document.createElement('div');
+    lbl.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;display:flex;align-items:center;padding:0 8px 0 10px;box-sizing:border-box;overflow:hidden;'+(lblStyle||'');
+    lbl.innerHTML=lblHTML||'';
+    row.appendChild(lbl);
+    var bar=document.createElement('div');
+    bar.style.cssText='width:'+totalW+'px;flex-shrink:0;position:relative;min-height:'+h+'px;';
+    if(!noBg) dates.forEach(function(d,idx){
+      var bg=document.createElement('div');
+      bg.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;top:0;bottom:0;background:'+wkBg(d)+';';
+      bar.appendChild(bg);
+    });
+    row.appendChild(bar);
+    wrap.appendChild(row);
+    return {lbl:lbl,bar:bar,row:row};
+  }
+
+  function makeSectionHeader(text){
+    var div=document.createElement('div');
+    div.style.cssText='display:flex;height:20px;';
+    var l=document.createElement('div');
+    l.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:var(--surface3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;padding-left:10px;';
+    l.innerHTML='<span style="font-size:9px;font-weight:800;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;">'+text+'</span>';
+    div.appendChild(l);
+    var r=document.createElement('div');
+    r.style.cssText='width:'+totalW+'px;background:var(--surface3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);';
+    div.appendChild(r);
+    wrap.appendChild(div);
+  }
+
+  function makeDivider(){
+    var div=document.createElement('div');div.style.cssText='display:flex;height:1px;';
+    var l=document.createElement('div');l.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:var(--border);';div.appendChild(l);
+    var r=document.createElement('div');r.style.cssText='width:'+totalW+'px;background:var(--border);';div.appendChild(r);
+    wrap.appendChild(div);
+  }
+
+  // ── 칩의 날짜 범위 계산 ──
+  function getChipRange(a){
+    var sDate=new Date(a.date),eDate=new Date(a.date);
+    eDate.setDate(eDate.getDate()+(a.days||1)-1);
+    var sIdx=dates.findIndex(function(d){return d.toDateString()===sDate.toDateString();});
+    var eIdx=dates.findIndex(function(d){return d.toDateString()===eDate.toDateString();});
+    if(sIdx<0) return null;
+    if(eIdx<0) eIdx=dates.length-1;
+    return {sIdx:sIdx, eIdx:eIdx};
+  }
+
+  // ── 겹침 방지: 액션 목록을 여러 줄(트랙)로 배분 ──
+  function assignTracks(acts){
+    var tracks=[]; // tracks[i] = 마지막 eIdx
+    var result=acts.map(function(a){
+      var range=getChipRange(a);
+      if(!range) return {a:a,track:0,range:null};
+      // 비어있는 트랙 찾기
+      var placed=false;
+      for(var t=0;t<tracks.length;t++){
+        if(tracks[t]<range.sIdx){ // 겹치지 않음
+          tracks[t]=range.eIdx;
+          return {a:a,track:t,range:range};
+        }
+      }
+      // 새 트랙
+      tracks.push(range.eIdx);
+      return {a:a,track:tracks.length-1,range:range};
+    });
+    return {items:result, trackCount:Math.max(tracks.length,1)};
+  }
+
+  // ── 칩 DOM 생성 ──
+  function makeChip(bar, a, chipH, rowH, trackH, trackIdx, c, isExpandable){
+    var range=getChipRange(a);
+    if(!range) return;
+    var spanCells=range.eIdx-range.sIdx+1, spanW=spanCells*CELL_W;
+    var chipTop=trackIdx*trackH+Math.round((trackH-chipH)/2);
+
+    var chip=document.createElement('div');
+    chip.style.cssText=[
+      'position:absolute',
+      'left:'+(range.sIdx*CELL_W+1)+'px',
+      'width:'+(spanW-2)+'px',
+      'height:'+chipH+'px',
+      'top:'+chipTop+'px',
+      'background:'+c.bg,
+      'border:1.5px solid '+c.border,
+      'border-radius:4px',
+      'display:flex','align-items:center',
+      'overflow:hidden','box-sizing:border-box','z-index:2','cursor:pointer',
+    ].join(';');
+    chip.title=a.label+' — '+a.detail+(a.cost?' ('+won(a.cost)+')':'');
+
+    var fs=spanCells===1?Math.max(6,Math.min(8,Math.floor((spanW-28)/5))):8;
+    var txt=document.createElement('span');
+    txt.style.cssText='padding:0 5px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
+    txt.textContent=a.label;
+    chip.appendChild(txt);
+
+    if(isExpandable){
+      var arrow=document.createElement('span');
+      arrow.style.cssText='font-size:10px;color:'+c.text+';padding:0 7px 0 2px;flex-shrink:0;transition:transform .2s;user-select:none;font-weight:900;';
+      arrow.textContent=window.tlExpanded[a.date+a.lane]?'▲':'▼';
+      chip.appendChild(arrow);
+      chip.addEventListener('click',function(e){
+        e.stopPropagation();
+        window.tlExpanded[a.date+a.lane]=!window.tlExpanded[a.date+a.lane];
+        renderTimeline(dates,pubDate,today,actions,sales);
+        setTimeout(function(){wrap.scrollLeft=savedScroll;},10);
+      });
+    } else {
+      chip.addEventListener('click',function(e){
+        e.stopPropagation();
+        openDetailPanel(a,c);
+      });
+    }
+    bar.appendChild(chip);
+  }
+
+  // ── 레인 행 추가 (멀티트랙) ──
+  function addLaneRow(lane, acts, c){
+    var TRACK_H=26, CHIP_H=20;
+    var assigned=assignTracks(acts);
+    var numTracks=assigned.trackCount;
+    var rowH=numTracks*TRACK_H;
+
+    var r=makeRow(rowH,
+      '<span style="font-size:9px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block">'+lane+'</span>',
+      'border-left:3px solid '+c.border+';align-items:flex-start;padding-top:4px;');
+
+    assigned.items.forEach(function(item){
+      if(!item.range) return;
+      var isExp=item.a.type==='expandable';
+      makeChip(r.bar,item.a,CHIP_H,rowH,TRACK_H,item.track,c,isExp);
+    });
+    return r;
+  }
+
+  // ── 날짜 파싱 (7/8 → Date) ──
+  function parseMonthDay(str){
+    var parts=str.trim().replace('일','').split('/');
+    return new Date(2026, parseInt(parts[0])-1, parseInt(parts[1]));
+  }
+
+  // ── 소재 드롭다운 행 삽입 (wrap에 직접, 특정 행 뒤에) ──
+  function insertExpandedRows(afterRow, a, c){
+    if(!a.materials||!a.materials.length) return;
+    var phases={},phOrder=[];
+    a.materials.forEach(function(m){
+      var ph=m.phase||'기타';
+      if(!phases[ph]){phases[ph]=[];phOrder.push(ph);}
+      phases[ph].push(m);
+    });
+
+    // afterRow.row 다음에 삽입
+    var anchor=afterRow.row.nextSibling;
+
+    phOrder.forEach(function(ph){
+      // 페이즈 헤더
+      var phDiv=document.createElement('div');
+      phDiv.style.cssText='display:flex;height:16px;';
+      var phL=document.createElement('div');
+      phL.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:rgba(99,102,241,.06);border-left:3px solid '+c.border+';padding-left:14px;display:flex;align-items:center;box-sizing:border-box;';
+      phL.innerHTML='<span style="font-size:8px;font-weight:800;color:#6366F1">'+ph+'</span>';
+      phDiv.appendChild(phL);
+      var phR=document.createElement('div');
+      phR.style.cssText='width:'+totalW+'px;background:rgba(99,102,241,.04);border-top:1px dashed rgba(99,102,241,.2);';
+      phDiv.appendChild(phR);
+      wrap.insertBefore(phDiv,anchor);
+
+      // 소재 칩 행 (겹침 방지)
+      var mActs=phases[ph].map(function(m){
+        if(!m.days) return null;
+        var parts=m.days.split('~');
+        var sDt=parseMonthDay(parts[0]),eDt=parseMonthDay(parts[parts.length-1]);
+        var sIdx2=dates.findIndex(function(d){return d.toDateString()===sDt.toDateString();});
+        var eIdx2=dates.findIndex(function(d){return d.toDateString()===eDt.toDateString();});
+        if(sIdx2<0) return null;
+        if(eIdx2<0) eIdx2=sIdx2;
+        return {m:m, sIdx:sIdx2, eIdx:eIdx2};
+      }).filter(Boolean);
+
+      // 트랙 배분
+      var mTracks=[];
+      var mAssigned=mActs.map(function(item){
+        for(var t=0;t<mTracks.length;t++){
+          if(mTracks[t]<item.sIdx){mTracks[t]=item.eIdx;return{item:item,track:t};}
+        }
+        mTracks.push(item.eIdx);
+        return{item:item,track:mTracks.length-1};
+      });
+      var numMTracks=Math.max(mTracks.length,1);
+      var MTRACK_H=18,MCHIP_H=13;
+      var mRowH=numMTracks*MTRACK_H;
+
+      var subDiv=document.createElement('div');
+      subDiv.style.cssText='display:flex;min-height:'+mRowH+'px;';
+      var subL=document.createElement('div');
+      subL.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:rgba(99,102,241,.03);border-left:3px solid '+c.border+';padding-left:18px;display:flex;align-items:flex-start;padding-top:3px;box-sizing:border-box;';
+      subL.innerHTML='<span style="font-size:7px;font-weight:500;color:var(--ink3)">소재</span>';
+      subDiv.appendChild(subL);
+      var subR=document.createElement('div');
+      subR.style.cssText='width:'+totalW+'px;position:relative;min-height:'+mRowH+'px;background:rgba(99,102,241,.03);';
+      dates.forEach(function(d2,idx2){
+        var bg2=document.createElement('div');
+        bg2.style.cssText='position:absolute;left:'+(idx2*CELL_W)+'px;width:'+CELL_W+'px;top:0;bottom:0;background:'+wkBg(d2)+';';
+        subR.appendChild(bg2);
+      });
+
+      mAssigned.forEach(function(ma){
+        var item=ma.item,m=item.m,t=ma.track;
+        var spanCells=item.eIdx-item.sIdx+1,spanW=spanCells*CELL_W;
+        var chipTop=t*MTRACK_H+Math.round((MTRACK_H-MCHIP_H)/2);
+        var subChip=document.createElement('div');
+        subChip.style.cssText=[
+          'position:absolute','left:'+(item.sIdx*CELL_W+1)+'px','width:'+(spanW-2)+'px',
+          'height:'+MCHIP_H+'px','top:'+chipTop+'px',
+          'background:rgba(99,102,241,.12)',
+          'border:1px dashed rgba(99,102,241,.5)','border-radius:2px',
+          'display:flex','align-items:center','overflow:hidden','z-index:2','cursor:pointer',
+        ].join(';');
+        subChip.title=m.label+' ('+m.days+')';
+        var stxt=document.createElement('span');
+        stxt.style.cssText='padding:0 4px;font-size:7px;font-weight:600;color:#6366F1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(spanW-6)+'px;display:block;';
+        stxt.textContent=m.label;
+        subChip.appendChild(stxt);
+        subChip.addEventListener('click',function(e){
+          e.stopPropagation();
+          openDetailPanel(Object.assign({},a,{label:m.label,detail:m.desc||'',cost:m.cost,date:m.days}),c,m);
+        });
+        subR.appendChild(subChip);
+      });
+
+      subDiv.appendChild(subR);
+      wrap.insertBefore(subDiv,anchor);
+    });
+  }
+
+  // ══ 헤더 행들 ══
+  var moR=makeRow(16,'','border:none;background:transparent;',true);
+  var i=0;
+  while(i<dates.length){
+    var d=dates[i],mIdx=d.getMonth(),span=1;
+    while(i+span<dates.length&&dates[i+span].getMonth()===mIdx)span++;
+    var mc=document.createElement('div');
+    mc.style.cssText='position:absolute;left:'+(i*CELL_W)+'px;width:'+(span*CELL_W)+'px;height:16px;top:0;background:'+MO_BG[mIdx]+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:'+MO_TEXT[mIdx]+';border-left:1px solid rgba(0,0,0,.08);box-sizing:border-box;';
+    mc.textContent=(mIdx+1)+'월';
+    moR.bar.appendChild(mc);i+=span;
+  }
+  var wkR=makeRow(13,'','border:none;background:transparent;',true);
+  i=0;
+  while(i<dates.length){
+    var d=dates[i],diff=Math.floor((d-pubDate)/86400000),isPre=diff<0,wkId=Math.floor(diff/7),span=1;
+    if(isPre){while(i+span<dates.length&&Math.floor((dates[i+span]-pubDate)/86400000)<0)span++;}
+    else{while(i+span<dates.length){var dd2=Math.floor((dates[i+span]-pubDate)/86400000);if(dd2<0||Math.floor(dd2/7)!==wkId)break;span++;}}
+    diff=Math.floor((d-pubDate)/86400000);
+    var wc=document.createElement('div');
+    wc.style.cssText='position:absolute;left:'+(i*CELL_W)+'px;width:'+(span*CELL_W)+'px;height:13px;top:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:'+(isPre?'#9A6210':'#AAAAAA')+';white-space:nowrap;overflow:hidden;background:'+wkBg(d)+';';
+    wc.textContent=isPre?'예약판매':(Math.floor(diff/7)+1)+'주차';
+    wkR.bar.appendChild(wc);i+=span;
+  }
+  var dtR=makeRow(17,'','border:none;background:transparent;');
+  dates.forEach(function(d,idx){
+    var isPub2=d.toDateString()===pubDate.toDateString(),isT=d.toDateString()===today.toDateString();
+    var cell=document.createElement('div');
+    cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:17px;top:0;display:flex;align-items:center;justify-content:center;z-index:1;';
+    var num=document.createElement('div');
+    if(isPub2)num.style.cssText='background:var(--accent);color:var(--accent-text);border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;';
+    else num.style.cssText='font-size:10px;font-weight:'+(isT?800:400)+';color:'+(isT?'var(--bad)':'#BBBBBB')+';';
+    num.textContent=d.getDate();
+    cell.appendChild(num);dtR.bar.appendChild(cell);
+  });
+  var DOWS=["일","월","화","수","목","금","토"];
+  var dowR=makeRow(13,'','border:none;background:transparent;');
+  dates.forEach(function(d,idx){
+    var col=d.getDay()===0?'#D0504A':d.getDay()===6?'#6090C0':'#CCCCCC';
+    var cell=document.createElement('div');
+    cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:13px;top:0;text-align:center;font-size:8px;font-weight:'+(d.getDay()===0||d.getDay()===6?600:400)+';color:'+col+';line-height:13px;z-index:1;';
+    cell.textContent=DOWS[d.getDay()];dowR.bar.appendChild(cell);
+  });
+
+  // ══ 판매량 ══
+  makeSectionHeader('판매량');
+  var totR=makeRow(18,'<span style="font-size:10px;font-weight:700;color:var(--ink2)">총판매</span>','background:var(--surface2);border-left:2px solid var(--border2);');
+  var totBg=document.createElement('div');totBg.style.cssText='position:absolute;left:0;top:0;width:'+totalW+'px;height:100%;background:var(--surface2);';
+  totR.bar.insertBefore(totBg,totR.bar.firstChild);
+  dates.forEach(function(d,idx){
+    var ds=d.toISOString().slice(0,10),dd=salesByDate[ds],val=dd?dd.total:0;
+    if(!val)return;
+    var cell=document.createElement('div');
+    cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:18px;top:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--ink);z-index:1;';
+    cell.textContent=val;totR.bar.appendChild(cell);
+  });
+  STORES_TL.forEach(function(st){
+    var stR=makeRow(16,'<span style="font-size:9px;font-weight:500;color:var(--ink3);padding-left:6px">'+st+'</span>','background:var(--surface2);border-left:2px solid var(--border2);');
+    var stBg=document.createElement('div');stBg.style.cssText='position:absolute;left:0;top:0;width:'+totalW+'px;height:100%;background:var(--surface2);';
+    stR.bar.insertBefore(stBg,stR.bar.firstChild);
+    dates.forEach(function(d,idx){
+      var ds=d.toISOString().slice(0,10),dd=salesByDate[ds],val=dd?(dd[st]||0):0;
+      if(!val)return;
+      var cell=document.createElement('div');
+      cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:16px;top:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:400;color:var(--ink2);z-index:1;';
+      cell.textContent=val;stR.bar.appendChild(cell);
+    });
+  });
+
+  // ══ 마케팅 액션 ══
+  makeSectionHeader('마케팅 액션');
+  var laneGroups={},laneOrder=[];
+  actions.forEach(function(a){
+    if(a.label&&a.label.startsWith('└'))return;
+    if(!laneGroups[a.lane]){laneGroups[a.lane]=[];laneOrder.push(a.lane);}
+    laneGroups[a.lane].push(a);
+  });
+
+  laneOrder.forEach(function(lane,laneIdx){
+    var acts=laneGroups[lane];
+    var c=LANE_COLORS[lane]||{bg:'#F5F5F3',text:'#555552',border:'#D0D0CA'};
+    if(laneIdx>0) makeDivider();
+
+    var laneRow=addLaneRow(lane,acts,c);
+
+    // 드롭다운 확장 행 삽입 (해당 레인 행 바로 다음)
+    acts.forEach(function(a){
+      if(a.type!=='expandable') return;
+      if(!window.tlExpanded[a.date+a.lane]) return;
+      insertExpandedRows(laneRow,a,c);
+    });
+  });
+
+  // 스크롤 복원 / 초기화
+  if(savedScroll>0){
+    wrap.scrollLeft=savedScroll;
+  } else {
+    setTimeout(function(){
+      var preStart=new Date(pubDate);preStart.setDate(preStart.getDate()-10);
+      var scrollIdx=dates.findIndex(function(d){return d.toDateString()===preStart.toDateString();});
+      if(scrollIdx>=0) wrap.scrollLeft=Math.max(0,scrollIdx*CELL_W-4);
+    },50);
+  }
+}
+
+function parseMonthDay(str){
+  var parts=str.trim().replace('일','').split('/');
+  return new Date(2026, parseInt(parts[0])-1, parseInt(parts[1]));
+}
+
+function openDetailPanel(a, c, material){
+  // 표시할 소재 목록
+  var mats = material ? [material] : (a.materials && a.materials.length ? a.materials : null);
+
+  // 패널 컨테이너: tab-calendar 마지막에 추가 or 기존 패널 재사용
+  var panel = document.getElementById('mkt-detail-panel');
+  if(!panel){
+    panel = document.createElement('div');
+    panel.id = 'mkt-detail-panel';
+    panel.style.cssText = 'margin-top:14px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);';
+    document.getElementById('tab-calendar').appendChild(panel);
+  }
+
+  var closeBtn = '<button onclick="document.getElementById(\'mkt-detail-panel\').remove()" style="border:none;background:var(--surface3);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink2)">×</button>';
+
+  var matsHTML = '';
+  if(mats && mats.length){
+    matsHTML = '<div style="display:flex;gap:12px;padding:0 20px 20px;overflow-x:auto;flex-wrap:nowrap;">'
+      + mats.map(function(m){
+          if(m.type==='youtube'){
+            return '<div style="flex-shrink:0;width:280px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
+              +'<a href="'+m.url+'" target="_blank" style="display:block;position:relative;text-decoration:none">'
+              +'<img src="'+m.thumb+'" style="width:100%;height:160px;object-fit:cover;display:block;background:#111">'
+              +'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
+              +'<div style="width:48px;height:48px;background:rgba(255,0,0,.85);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff">▶</div>'
+              +'</div></a>'
+              +'<div style="padding:10px 12px"><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
+              +'<div style="font-size:11px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
+              +(m.cost?'<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-top:6px">집행 비용: '+won(m.cost)+'</div>':'')
+              +'</div></div>';
+          } else if(m.type==='image'){
+            return '<div style="flex-shrink:0;width:200px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
+              +'<img src="'+m.img+'" style="width:100%;height:200px;object-fit:cover;display:block;background:var(--surface3)">'
+              +'<div style="padding:10px 12px">'
+              +'<div style="font-size:11px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
+              +'<div style="font-size:10px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
+              +(m.days?'<div style="font-size:10px;color:var(--ink3);margin-top:4px">기간: '+m.days+'</div>':'')
+              +(m.cost?'<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-top:4px">'+won(m.cost)+'</div>':'')
+              +'</div></div>';
+          } else {
+            return '<div style="flex-shrink:0;min-width:240px;max-width:320px;background:var(--surface2);border-radius:var(--r2);padding:14px;border:1px solid var(--border)">'
+              +'<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">'+m.label+'</div>'
+              +'<div style="font-size:12px;color:var(--ink2);line-height:1.7">'+m.desc+'</div>'
+              +'</div>';
+          }
+        }).join('')
+      +'</div>';
+  }
+
+  panel.innerHTML =
+    '<div style="padding:16px 20px '+(mats?'8px':'20px')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+    +'<div style="min-width:0">'
+    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:3px">'+a.lane+' · '+a.date+(a.days&&a.days>1?' ('+a.days+'일)':'')+'</div>'
+    +'<div style="font-size:16px;font-weight:900;color:var(--ink);margin-bottom:4px">'+a.label+'</div>'
+    +'<div style="font-size:12px;color:var(--ink3)">'+a.detail+(a.cost&&a.cost>0?' · '+won(a.cost):'')+'</div>'
+    +'</div>'+closeBtn+'</div></div>'
+    + matsHTML;
+
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function renderCalendarEmpty(){
+  document.getElementById('tab-calendar').innerHTML=`<div class="card gap"><div class="empty-row">마케팅 데이터가 없습니다</div></div>`;
 }
 
 function renderTimeline(dates, pubDate, today, actions, sales) {
