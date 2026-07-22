@@ -434,7 +434,7 @@ const STORES_OFF = ["영풍","반디","기타서점"];
 const STORES_ETC = ["쿠팡","네이버","자사"];
 const ALL_STORES = [...STORES_ON,...STORES_OFF,...STORES_ETC];
 
-const ANNUAL_TARGET = 0;
+let ANNUAL_TARGET = 0;
 // 월별 실적 — 시트 연동 전 초기값 전부 0
 const M_SHIP_SALES  = Array(12).fill(0); // 출고매출
 const M_RETURN      = Array(12).fill(0); // 반품액
@@ -606,7 +606,8 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [monthly, cost, ship, scm, channel, summary, bookList] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, channel, summary, bookList] = await Promise.all([
+      fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
       fetchSheet(CFG.gids.ship),      // 03_출고실적
@@ -616,7 +617,7 @@ async function loadSheets() {
       fetchSheet(CFG.gids.bookList),  // 도서 목록
     ]);
 
-    applySheetData({ monthly, cost, ship, scm, channel, summary, bookList });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, summary, bookList });
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -640,10 +641,24 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, summary, bookList }) {
+  // ── 00_설정 → ANNUAL_TARGET, CFG.pw 갱신 ──
+  const yr = new Date().getFullYear();
+  if (setting && setting.length > 0) {
+    const rowTarget = setting.find(r => r['항목']==='연간 매출 목표 (원)');
+    if (rowTarget) {
+      const val = toNum(rowTarget[String(yr)] || 0);
+      if (val > 0) ANNUAL_TARGET = val;
+    }
+    const rowPw = setting.find(r => r['항목']==='대시보드 비밀번호');
+    if (rowPw) {
+      const pw = (rowPw['2025'] || '').trim();
+      if (pw) CFG.pw = pw;
+    }
+  }
+
   // ── 01_월별실적 → M_SHIP_SALES 등 갱신 ──
   // 구조: 항목 | 연도 | 1월~12월
-  const yr = new Date().getFullYear();
   const getMonthly = (label, year=yr) => {
     const row = monthly.find(r => r['항목']===label && String(r['연도'])===String(year));
     if (!row) return Array(12).fill(0);
@@ -746,9 +761,17 @@ function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }
     }
   }
 
-  // ── 07_채널실적 → CHANNELS 갱신 ──
+  // ── 07_채널실적 → CHANNELS 갱신 (당월 기준) ──
   if (channel.length > 0) {
-    const mapped = channel.map(r => ({
+    const curYM = document.getElementById('monthPicker').value.slice(0,7);
+    const colors = ['#FDE200','#2D6A4A','#9A6210','#B02020','#1A528A'];
+    const curRows = channel.filter(r => r['연도·월'] && String(r['연도·월']).startsWith(curYM));
+    const useRows = curRows.length > 0 ? curRows : (() => {
+      const byName = {};
+      channel.filter(r=>r['채널명']).forEach(r => { byName[r['채널명']] = r; });
+      return Object.values(byName);
+    })();
+    const mapped = useRows.map((r,i) => ({
       name:      r['채널명']||'',
       platform:  r['플랫폼']||'',
       reach:     toNum(r['도달수']),
@@ -758,7 +781,7 @@ function applySheetData({ monthly, cost, ship, scm, channel, summary, bookList }
       uploads:   toNum(r['업로드수']),
       shares:    toNum(r['공유수']),
       revenue:   toNum(r['광고수익(원)']),
-      color:     ['#FDE200','#2D6A4A','#9A6210','#B02020','#1A528A'][channel.indexOf(r)%5],
+      color:     colors[i%5],
     })).filter(c=>c.name);
     if(mapped.length > 0) CHANNELS.splice(0, CHANNELS.length, ...mapped);
   }
