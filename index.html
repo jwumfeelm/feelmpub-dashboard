@@ -916,12 +916,12 @@ function renderSummary(){
     {type:mProfit>=0?'good':'bad',   icon:mProfit>=0?'●':'▼',    text:`당월 예상 손익 ${mProfit>=0?'+':''}${won(mProfit)} — 비용 ${won(mCost)} / 순매출 ${won(mNet)}`},
     {type:'info',                    icon:'📦',                  text:`재고 소진 주의: 당신은결국 260부 남음 (14일 소진 예상)`},
   ];
-  // 도서별 누적 매출 비중 (상위 10개)
+  // 도서별 누적 출고 부수 비중 (상위 10개)
   const topBooks = [...BOOKS]
-    .filter(b => b.cumShipAmt > 0)
-    .sort((a,b) => b.cumShipAmt - a.cumShipAmt)
+    .filter(b => b.cumShipQty > 0)
+    .sort((a,b) => b.cumShipQty - a.cumShipQty)
     .slice(0, 10);
-  const totalCumAmt = topBooks.reduce((s,b) => s + b.cumShipAmt, 0);
+  const totalCumQty = topBooks.reduce((s,b) => s + b.cumShipQty, 0);
   const colors10 = ['#FDE200','#2D6A4A','#1A528A','#9A6210','#8B3A3A','#5A3A5A','#2F4F4F','#3A6A8A','#6A3A2A','#9A9A96'];
 
   document.getElementById('tab-summary').innerHTML=`
@@ -939,13 +939,13 @@ function renderSummary(){
     <div class="sec-label gap2">월별 실적 분석</div>
     <div class="g2">
       <div class="card">
-        <div class="card-title">도서별 누적 매출 비중 <small>출고 기준 상위 10개</small></div>
+        <div class="card-title">도서별 누적 출고 비중 <small>부수 기준 상위 10개</small></div>
         ${topBooks.length ? topBooks.map((b,i) => {
-          const pct2 = totalCumAmt ? Math.round(b.cumShipAmt/totalCumAmt*1000)/10 : 0;
+          const pct2 = totalCumQty ? Math.round(b.cumShipQty/totalCumQty*1000)/10 : 0;
           return `<div style="margin-bottom:6px">
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px">
               <span style="color:var(--ink1);font-weight:600">${esc(b.title)}</span>
-              <span style="color:var(--ink3)">${won(b.cumShipAmt)} · ${pct2}%</span>
+              <span style="color:var(--ink3)">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
             </div>
             <div style="background:var(--ink5);border-radius:3px;height:8px">
               <div style="background:${colors10[i]};width:${pct2}%;height:8px;border-radius:3px;transition:width .3s"></div>
