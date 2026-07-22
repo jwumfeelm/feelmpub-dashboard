@@ -780,7 +780,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, summary, b
       fanGain:   toNum(r['팔로워순증']),
       uploads:   toNum(r['업로드수']),
       shares:    toNum(r['공유수']),
-      revenue:   toNum(r['광고수익(원)']),
+      revenue:   toNum(r['수익 합'] || r['광고수익(원)'] || 0),
       color:     colors[i%5],
     })).filter(c=>c.name);
     if(mapped.length > 0) CHANNELS.splice(0, CHANNELS.length, ...mapped);
