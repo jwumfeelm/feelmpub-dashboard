@@ -730,18 +730,20 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       }
     });
 
-    // ── 03_출고실적 → 당월 출고 + 누적 집계
+    // ── 03_출고실적 → 당월 출고 + 기준월까지 누적 집계
     const m = getM();
     const curYM = document.getElementById('monthPicker').value; // YYYY-MM
     ship.forEach(r => {
       const b = mapped.find(x=>x.title===r['도서명']);
       if(!b) return;
-      // 누적 집계 (전체 기간)
-      b.cumShipQty += toNum(r['출고부수']);
-      b.cumShipAmt += toNum(r['출고매출(원)']);
-      b.cumSalesQty += toNum(r['반품부수']); // 반품 제외 순부수는 별도 계산
+      const ym = r['연도·월'] || '';
+      // 2025년 이후 기준월 이하 누적 집계 (2024년 이전은 도서목록 과거데이터로 관리)
+      if(ym && ym >= '2025-01' && ym <= curYM) {
+        b.cumShipQty += toNum(r['출고부수']);
+        b.cumShipAmt += toNum(r['출고매출(원)']);
+      }
       // 당월 집계
-      if(!r['연도·월'] || !r['연도·월'].startsWith(curYM.slice(0,7))) return;
+      if(!ym || !ym.startsWith(curYM.slice(0,7))) return;
       b.mShipQty   += toNum(r['출고부수']);
       b.mShipAmt   += toNum(r['출고매출(원)']);
       b.mReturn    += toNum(r['반품부수']);
