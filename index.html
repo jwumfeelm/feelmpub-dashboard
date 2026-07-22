@@ -163,14 +163,13 @@ tr:hover td{background:var(--surface2)}
 .prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
 
 /* NOTICE */
-.notice{border-radius:0;padding:14px 16px;font-size:13px;line-height:1.6;margin-bottom:1px;border:none;border-left:3px solid;display:flex;align-items:center;gap:10px;font-weight:500}
-.notice:first-child{border-radius:6px 6px 0 0}
-.notice:last-child{border-radius:0 0 6px 6px;margin-bottom:0}
-.notice:only-child{border-radius:6px}
-.notice.warn{background:var(--warn-dim);border-left-color:var(--warn);color:var(--warn)}
-.notice.bad{background:var(--bad-dim);border-left-color:var(--bad);color:var(--bad)}
-.notice.good{background:var(--good-dim);border-left-color:var(--good);color:var(--good)}
-.notice.info{background:var(--info-dim);border-left-color:var(--info);color:var(--info)}
+.notice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.notice{border-radius:10px;padding:14px 14px;font-size:12px;line-height:1.5;border:none;border-top:3px solid;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-weight:500}
+.notice .notice-icon{font-size:18px}
+.notice.warn{background:var(--warn-dim);border-top-color:var(--warn);color:var(--warn)}
+.notice.bad{background:var(--bad-dim);border-top-color:var(--bad);color:var(--bad)}
+.notice.good{background:var(--good-dim);border-top-color:var(--good);color:var(--good)}
+.notice.info{background:var(--info-dim);border-top-color:var(--info);color:var(--info)}
 
 /* TOOLBAR */
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2)}
@@ -961,9 +960,9 @@ function renderSummary(){
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
       </div>
-      <div class="card" style="align-self:start">
+      <div class="card">
         <div class="card-title">주요 이슈 · 액션</div>
-        ${issues.map(i=>`<div class="notice ${i.type}"><span>${i.icon}</span><span>${i.text}</span></div>`).join('')}
+        <div class="notice-grid">${issues.map(i=>`<div class="notice ${i.type}"><span class="notice-icon">${i.icon}</span><span>${i.text}</span></div>`).join('')}</div>
       </div>
     </div>
 
