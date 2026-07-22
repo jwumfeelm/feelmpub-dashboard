@@ -613,11 +613,10 @@ async function loadSheets() {
       fetchSheet(CFG.gids.ship),      // 03_출고실적
       fetchSheet(CFG.gids.scm),       // 04_마케팅실적
       fetchSheet(CFG.gids.channel),   // 05_채널실적
-      fetchSheet(CFG.gids.summary),   // 06_집계(자동)
       fetchSheet(CFG.gids.bookList),  // 도서 목록
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, summary, bookList });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList });
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -641,7 +640,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, summary, bookList }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
