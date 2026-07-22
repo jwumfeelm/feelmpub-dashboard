@@ -961,7 +961,7 @@ function renderSummary(){
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
       </div>
-      <div class="card">
+      <div class="card" style="align-self:start">
         <div class="card-title">주요 이슈 · 액션</div>
         ${issues.map(i=>`<div class="notice ${i.type}"><span>${i.icon}</span><span>${i.text}</span></div>`).join('')}
       </div>
