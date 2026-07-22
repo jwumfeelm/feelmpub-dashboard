@@ -72,15 +72,15 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .tab-div{width:1px;height:18px;background:var(--border);margin:0 6px;flex-shrink:0}
 
 /* PILL BAR */
-.pill-bar{background:var(--dark-bg);border-bottom:1px solid var(--dark-border);padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:130px}
+.pill-bar{background:var(--dark-bg);border-bottom:1px solid var(--dark-border);padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:160px}
 .pill{display:flex;flex-direction:column;justify-content:space-between;padding:20px 32px;border-right:1px solid var(--dark-border);cursor:default;position:relative}
 .pill:last-child{border-right:none}
-.pill-lbl{font-size:11px;color:var(--accent);font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
-.pill-val{font-size:64px;font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1;text-align:right;margin-top:auto}
+.pill-lbl{font-size:13px;color:var(--accent);font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+.pill-val{font-size:72px;font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1;text-align:right;margin-top:auto}
 .pill-val.up{color:var(--accent)}
 .pill-val.ok{color:#4ADE80}
 .pill-val.dn{color:#FF6B6B}
-.pill-sub{font-size:13px;color:#888;text-align:right;margin-top:6px;letter-spacing:.01em}
+.pill-sub{font-size:14px;color:#888;text-align:right;margin-top:8px;letter-spacing:.01em}
 
 /* MAIN */
 main{flex:1;padding:18px 24px 80px;max-width:1600px;margin:0 auto;width:100%}
@@ -364,6 +364,7 @@ tr:hover td{background:var(--surface2)}
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">샘플 데이터</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" value="2026-06" onchange="onMonthChange()"></div>
+        <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--dark-border);color:#aaa;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px" title="전체화면">⛶ 전체화면</button>
       </div>
     </div>
   </header>
@@ -968,15 +969,123 @@ function renderTrendChart(curM) {
       ${i===curM ? `<line x1="${xPos(i)}" x2="${xPos(i)}" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="#ffffff18" stroke-width="1" stroke-dasharray="3,3"/>` : ''}
     `).join('')}
 
-    <path d="${line(shipData, yAmt)} V${PAD.t+cH} H${PAD.l} Z" fill="url(#shipGrad)"/>
-    <path d="${line(targetData, yAmt)}" fill="none" stroke="#FDE200" stroke-width="1.5" stroke-dasharray="5,3" opacity=".7"/>
-    <path d="${line(shipData, yAmt)}" fill="none" stroke="#4ADE80" stroke-width="2"/>
-    <path d="${line(costData, yAmt)}" fill="none" stroke="#60A5FA" stroke-width="1.5" opacity=".8"/>
-    <path d="${line(retData, yRet)}" fill="none" stroke="#F87171" stroke-width="1.5" stroke-dasharray="4,2" opacity=".7"/>
+    <path id="tc-ship-fill" d="${line(shipData, yAmt)} V${PAD.t+cH} H${PAD.l} Z" fill="url(#shipGrad)" opacity="0"/>
+    <path id="tc-target" d="${line(targetData, yAmt)}" fill="none" stroke="#FDE200" stroke-width="1.5" opacity="0"/>
+    <path id="tc-ship" d="${line(shipData, yAmt)}" fill="none" stroke="#4ADE80" stroke-width="2"/>
+    <path id="tc-cost" d="${line(costData, yAmt)}" fill="none" stroke="#60A5FA" stroke-width="1.5" opacity="0"/>
+    <path id="tc-ret" d="${line(retData, yRet)}" fill="none" stroke="#F87171" stroke-width="1.5" opacity="0"/>
+    <g id="tc-dots" opacity="0">${dots(shipData, yAmt, '#4ADE80')}${dots(retData, yRet, '#F87171')}</g>
 
-    ${dots(shipData, yAmt, '#4ADE80')}
-    ${dots(retData, yRet, '#F87171')}
+    <!-- 호버 인터랙션 레이어 -->
+    <line id="tc-hover-line" x1="0" x2="0" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="#ffffff30" stroke-width="1" stroke-dasharray="3,3" opacity="0"/>
+    <g id="tc-tooltip" opacity="0">
+      <rect id="tc-tt-bg" rx="6" ry="6" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+      <text id="tc-tt-mo" fill="#aaa" font-size="10" font-weight="700"/>
+      <text id="tc-tt-ship" fill="#4ADE80" font-size="11"/>
+      <text id="tc-tt-target" fill="#FDE200" font-size="11"/>
+      <text id="tc-tt-cost" fill="#60A5FA" font-size="11"/>
+      <text id="tc-tt-ret" fill="#F87171" font-size="11"/>
+    </g>
+
+    <!-- 투명 호버 영역 -->
+    <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="transparent" id="tc-hover-area"/>
   </svg>`;
+
+  // 호버 이벤트
+  const svg = el.querySelector('svg');
+  const hoverArea = el.querySelector('#tc-hover-area');
+  const hLine = el.querySelector('#tc-hover-line');
+  const tooltip = el.querySelector('#tc-tooltip');
+
+  const svgData = { W, H, PAD, cW, cH, months: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+    shipData, targetData, costData, retData, xPos, fmtAmt };
+
+  hoverArea.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const relX = mx - PAD.l;
+    const idx = Math.round(relX / cW * 11);
+    if (idx < 0 || idx > 11) return;
+
+    const cx = xPos(idx);
+    hLine.setAttribute('x1', cx); hLine.setAttribute('x2', cx);
+    hLine.style.opacity = '1';
+
+    const mo  = svgData.months[idx];
+    const sv  = shipData[idx];
+    const tv  = targetData[idx];
+    const cv  = costData[idx];
+    const rv  = retData[idx];
+
+    const lines = [
+      ['tc-tt-mo',     mo,                           '#aaa'],
+      ['tc-tt-ship',   sv  != null ? '달성 ' + fmtAmt(sv)   : null, '#4ADE80'],
+      ['tc-tt-target', tv  != null ? '목표 ' + fmtAmt(tv)   : null, '#FDE200'],
+      ['tc-tt-cost',   cv  != null ? '비용 ' + fmtAmt(cv)   : null, '#60A5FA'],
+      ['tc-tt-ret',    rv  != null ? '반품 ' + rv + '%'      : null, '#F87171'],
+    ].filter(l => l[1] !== null);
+
+    const ttW = 130, lineH = 16, ttPad = 10;
+    const ttH = lines.length * lineH + ttPad * 2;
+    let ttX = cx + 12;
+    let ttY = PAD.t;
+    if (ttX + ttW > W - PAD.r) ttX = cx - ttW - 12;
+
+    const bg = el.querySelector('#tc-tt-bg');
+    bg.setAttribute('x', ttX); bg.setAttribute('y', ttY);
+    bg.setAttribute('width', ttW); bg.setAttribute('height', ttH);
+
+    lines.forEach(([id, txt, fill], i) => {
+      const t = el.querySelector('#' + id);
+      if (t) {
+        t.setAttribute('x', ttX + ttPad);
+        t.setAttribute('y', ttY + ttPad + 11 + i * lineH);
+        t.setAttribute('fill', fill);
+        t.textContent = txt;
+      }
+    });
+
+    tooltip.style.opacity = '1';
+  });
+
+  hoverArea.addEventListener('mouseleave', () => {
+    hLine.style.opacity = '0';
+    tooltip.style.opacity = '0';
+  });
+
+  if (el._animated) {
+    document.querySelectorAll('#tc-ship-fill,#tc-target,#tc-cost,#tc-ret,#tc-dots').forEach(e=>{if(e)e.style.opacity=e.id==='tc-ship-fill'?'1':e.id==='tc-target'?'.7':e.id==='tc-cost'?'.8':e.id==='tc-ret'?'.7':'1'});
+    animateLine(document.getElementById('tc-ship'));
+    return;
+  }
+  animateLine(document.getElementById('tc-ship'));
+}
+
+function animateLine(path, onDone) {
+  if (!path) return;
+  const len = path.getTotalLength();
+  path.style.strokeDasharray = len;
+  path.style.strokeDashoffset = len;
+  path.style.transition = 'none';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      path.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)';
+      path.style.strokeDashoffset = '0';
+      path.addEventListener('transitionend', () => {
+        const el = document.getElementById('trend-chart');
+        if (el) el._animated = true;
+        const show = (id, op, delay) => setTimeout(() => {
+          const e = document.getElementById(id);
+          if (e) { e.style.transition = 'opacity .5s'; e.style.opacity = op; }
+        }, delay);
+        show('tc-ship-fill', '1', 0);
+        show('tc-target', '.7', 100);
+        show('tc-cost', '.8', 200);
+        show('tc-ret', '.7', 300);
+        show('tc-dots', '1', 400);
+      }, {once:true});
+    });
+  });
 }
 
 function renderSummary(){
@@ -2882,6 +2991,26 @@ function closeDrawer(){
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('drawer').classList.remove('open');
 }
+
+function toggleFullscreen() {
+  const btn = document.getElementById('fsBtn');
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().then(() => {
+      btn.innerHTML = '✕ 전체화면 종료';
+      const el = document.getElementById('trend-chart');
+      if (el) el._animated = false;
+      renderPills();
+    });
+  } else {
+    document.exitFullscreen().then(() => {
+      btn.innerHTML = '⛶ 전체화면';
+    });
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fsBtn');
+  if (btn) btn.innerHTML = document.fullscreenElement ? '✕ 전체화면 종료' : '⛶ 전체화면';
+});
 </script>
 </body>
 </html>
