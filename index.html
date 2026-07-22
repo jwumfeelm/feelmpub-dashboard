@@ -606,7 +606,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, channel, summary, bookList] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, channel, bookList] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
