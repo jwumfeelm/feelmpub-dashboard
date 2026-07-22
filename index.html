@@ -942,13 +942,17 @@ function renderSummary(){
         <div class="card-title">도서별 누적 출고 비중 <small>부수 기준 상위 10개</small></div>
         ${topBooks.length ? topBooks.map((b,i) => {
           const pct2 = totalCumQty ? Math.round(b.cumShipQty/totalCumQty*1000)/10 : 0;
-          return `<div style="margin-bottom:6px">
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px">
-              <span style="color:var(--ink1);font-weight:600">${esc(b.title)}</span>
-              <span style="color:var(--ink3)">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
+          const maxPct = totalCumQty ? Math.round(topBooks[0].cumShipQty/totalCumQty*1000)/10 : 1;
+          const barW = Math.round(pct2/maxPct*100);
+          const isBest = i===0;
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:600;color:var(--ink1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.title)}</span>
+              ${isBest ? `<span style="font-size:10px;font-weight:700;background:#FDE200;color:#1A1600;padding:2px 7px;border-radius:10px;letter-spacing:.5px">BEST</span>` : ''}
+              <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
             </div>
-            <div style="background:var(--ink5);border-radius:3px;height:8px">
-              <div style="background:${colors10[i]};width:${pct2}%;height:8px;border-radius:3px;transition:width .3s"></div>
+            <div style="background:var(--ink5);border-radius:4px;height:10px;overflow:hidden">
+              <div style="background:${colors10[i]};width:${barW}%;height:10px;border-radius:4px;transition:width .4s ease"></div>
             </div>
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
