@@ -73,7 +73,7 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 
 /* PILL BAR */
 .pill-bar-wrap{background:var(--dark-bg);border-bottom:1px solid var(--dark-border);width:100%}
-.pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:160px;max-width:1600px;margin:0 auto;padding:0 0}
+.pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:160px}
 .pill{display:flex;flex-direction:column;justify-content:space-between;padding:20px 32px;border-right:1px solid var(--dark-border);cursor:default;position:relative}
 .pill:last-child{border-right:none}
 .pill-lbl{font-size:13px;color:var(--accent);font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
@@ -84,7 +84,7 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pill-sub{font-size:14px;color:#888;text-align:right;margin-top:8px;letter-spacing:.01em}
 
 /* MAIN */
-main{flex:1;padding:18px 24px 80px;max-width:1600px;margin:0 auto;width:100%;box-sizing:border-box}
+main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
 .section{display:none}
 .section.active{display:block}
 .gap{margin-top:12px}
@@ -372,7 +372,7 @@ tr:hover td{background:var(--surface2)}
   <nav class="tabs-bar" id="tabsBar"></nav>
   <div class="pill-bar-wrap"><div class="pill-bar" id="pillBar"></div></div>
   <main>
-    <div style="background:var(--dark-bg);border-bottom:1px solid var(--dark-border)"><div id="trend-chart" style="max-width:1600px;margin:0 auto;padding:20px 24px 16px"></div></div>
+    <div style="background:var(--dark-bg);border-bottom:1px solid var(--dark-border)"><div id="trend-chart" style="padding:20px 24px 16px"></div></div>
     <div id="tab-summary"  class="section active"></div>
     <div id="tab-ship"     class="section"></div>
     <div id="tab-mkt"      class="section"></div>
