@@ -164,12 +164,16 @@ tr:hover td{background:var(--surface2)}
 
 /* NOTICE */
 .notice-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;height:100%}
-.notice{border-radius:10px;padding:20px 18px;font-size:13px;line-height:1.6;border:none;border-top:3px solid;display:flex;flex-direction:column;align-items:flex-start;gap:10px;font-weight:500;height:100%;box-sizing:border-box}
-.notice .notice-icon{font-size:22px}
-.notice.warn{background:var(--warn-dim);border-top-color:var(--warn);color:var(--warn)}
-.notice.bad{background:var(--bad-dim);border-top-color:var(--bad);color:var(--bad)}
-.notice.good{background:var(--good-dim);border-top-color:var(--good);color:var(--good)}
-.notice.info{background:var(--info-dim);border-top-color:var(--info);color:var(--info)}
+.notice{border-radius:10px;padding:22px 20px;font-size:16px;line-height:1.55;border:none;border-top:4px solid;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;font-weight:600;height:100%;box-sizing:border-box}
+.notice .notice-icon{font-size:28px}
+.notice.warn{background:#fff;border-top-color:#E5E7EB;color:var(--ink1)}
+.notice.bad{background:#fff;border-top-color:#E5E7EB;color:var(--ink1)}
+.notice.good{background:#fff;border-top-color:#E5E7EB;color:var(--ink1)}
+.notice.info{background:#fff;border-top-color:#E5E7EB;color:var(--ink1)}
+.notice .notice-icon{color:var(--ink3)}
+.notice .hi-warn{color:var(--warn);font-weight:700}
+.notice .hi-good{color:var(--good);font-weight:700}
+.notice .hi-bad{color:var(--bad);font-weight:700}
 
 /* TOOLBAR */
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2)}
@@ -1140,14 +1144,14 @@ function renderSummary(){
     .sort((a,b) => b.cumShipQty - a.cumShipQty)
     .slice(0, 10);
   const totalCumQty = topBooks.reduce((s,b) => s + b.cumShipQty, 0);
-  const colors10 = ['#FDE200','#2D6A4A','#1A528A','#9A6210','#8B3A3A','#5A3A5A','#2F4F4F','#3A6A8A','#6A3A2A','#9A9A96'];
+  const colors10 = Array(10).fill('#CBD5E1'); // 단일 컬러 통일
 
   document.getElementById('tab-summary').innerHTML=`
     <!-- 상단 KPI 6개 -->
     <div class="g6 gap">
       <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val ${achPct>=100?'good':'warn'}">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val ${retPct>=15?'bad':'warn'}">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mCost)}</div><div class="kpi-sub">마케팅+출판+공통</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${mProfit>=0?'good':'bad'}">${mProfit>=0?'+':''}${won(mProfit)}</div><div class="kpi-sub">순매출 − 총 비용</div></div>
@@ -1170,14 +1174,18 @@ function renderSummary(){
               <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
             </div>
             <div style="background:var(--ink5);border-radius:4px;height:10px;overflow:hidden">
-              <div style="background:${colors10[i]};width:${barW}%;height:10px;border-radius:4px;transition:width .4s ease"></div>
+              <div style="background:${isBest?'#1E293B':colors10[i]};width:${barW}%;height:10px;border-radius:4px;transition:width .4s ease"></div>
             </div>
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
       </div>
       <div class="card" style="display:flex;flex-direction:column">
         <div class="card-title">주요 이슈 · 액션</div>
-        <div class="notice-grid" style="flex:1">${issues.map(i=>`<div class="notice ${i.type}"><span class="notice-icon">${i.icon}</span><span>${i.text}</span></div>`).join('')}</div>
+        <div class="notice-grid" style="flex:1">${issues.map(i=>{
+          const hiClass = i.type==='good'?'hi-good':i.type==='bad'?'hi-bad':'hi-warn';
+          const txt = i.text.replace(/([0-9]+\.?[0-9]*[억만원%부]+)/g, `<span class="${hiClass}">$1</span>`);
+          return `<div class="notice ${i.type}"><span class="notice-icon">${i.icon}</span><span>${txt}</span></div>`;
+        }).join('')}</div>
       </div>
     </div>
 
@@ -1188,24 +1196,24 @@ function renderSummary(){
         <div class="card-title">월 출고 도서 TOP 10 <small>부수 기준</small></div>
         <table>
           <tr><th>#</th><th>도서</th><th class="right">출고 부수</th><th class="right">출고액</th></tr>
-          ${mShipRank.map((r,i)=>`<tr>
-            <td style="color:var(--ink3);font-weight:800">${i+1}</td>
+          ${(()=>{const medalBg=['#FFFBEB','#F8FAFC','#FFF7F0'];const medalNum=['#B45309','#64748B','#92400E'];return mShipRank.map((r,i)=>`<tr style="${i<3?`background:${medalBg[i]}`:''}">
+            <td style="color:${i<3?medalNum[i]:'var(--ink3)'};font-weight:800;font-size:${i<3?14:12}px">${i+1}</td>
             <td><b>${esc(r.title)}</b><br><span style="font-size:11px;color:var(--ink3)">${esc(r.author)}</span></td>
             <td class="right">${r.qty.toLocaleString()}부</td>
             <td class="right">${won(r.amt)}</td>
-          </tr>`).join('')}
+          </tr>`).join('')})()}
         </table>
       </div>
       <div class="card">
         <div class="card-title">월 판매 도서 TOP 10 <small>SCM 기준</small></div>
         <table>
           <tr><th>#</th><th>도서</th><th class="right">판매 부수</th><th class="right">판매액</th></tr>
-          ${mSalesRank.map((r,i)=>`<tr>
-            <td style="color:var(--ink3);font-weight:800">${i+1}</td>
+          ${(()=>{const medalBg=['#FFFBEB','#F8FAFC','#FFF7F0'];const medalNum=['#B45309','#64748B','#92400E'];return mSalesRank.map((r,i)=>`<tr style="${i<3?`background:${medalBg[i]}`:''}">
+            <td style="color:${i<3?medalNum[i]:'var(--ink3)'};font-weight:800;font-size:${i<3?14:12}px">${i+1}</td>
             <td><b>${esc(r.title)}</b><br><span style="font-size:11px;color:var(--ink3)">${esc(r.author)}</span></td>
             <td class="right">${r.qty.toLocaleString()}부</td>
             <td class="right">${won(r.amt)}</td>
-          </tr>`).join('')}
+          </tr>`).join('')})()}
         </table>
       </div>
     </div>
