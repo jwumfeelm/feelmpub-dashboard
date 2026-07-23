@@ -1140,8 +1140,8 @@ function renderSummary(){
     const scm=b.stores?Object.values(b.stores).reduce((a,v)=>a+v,0):b.mShipQty;
     return {title:b.title,author:b.author,qty:scm,amt:scm*b.supply,field:b.field};
   }).sort((a,b)=>b.qty-a.qty).slice(0,10);
-  // 관리 신간 (최근 12개월 출간)
-  const newBooks=BOOKS.filter(b=>new Date(b.pubDate)>new Date(Date.now()-365*86400000));
+  // 관리 신간 (전략도서 여부 = TRUE인 도서)
+  const newBooks=BOOKS.filter(b=>b.isStrategic);
   // 이슈
   const issues=[
     {type:achPct>=100?'good':'warn', val:`${achPct}%`,    label:'목표 달성률', sub:`목표 ${won(mTarget)} / 실적 ${won(mShip)}`},
@@ -1233,7 +1233,7 @@ function renderSummary(){
     <!-- 하단: 관리 신간 실적 -->
     <div class="sec-label gap2">관리 신간 실적 지표</div>
     <div class="card">
-      <div class="card-title">관리 신간 현황 <small>최근 12개월 출간 도서</small></div>
+      <div class="card-title">관리 신간 현황 <small>전략도서 기준</small></div>
       <table>
         <tr><th>도서명</th><th>출간일</th><th class="right">누적 매출</th><th class="right">누적 판매</th><th class="right">누적 비용</th><th class="right">ROI</th><th class="right">손익</th><th>상태</th></tr>
         ${newBooks.length ? newBooks.map(b=>{
