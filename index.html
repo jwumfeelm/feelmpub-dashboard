@@ -885,12 +885,18 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
           byNameRevenue[r['채널명']] = r;
         }
       });
+      // 링크가 있는 행 별도 관리
+      const byNameLink = {};
+      channel.filter(r=>r['채널명'] && r['링크']).forEach(r => {
+        byNameLink[r['채널명']] = r['링크'];
+      });
       // 수익 있는 행 우선, 없으면 마지막 행
       return Object.keys(byName).map(k => ({
         ...byName[k],
         '수익 합': byNameRevenue[k]?.['수익 합'] || byName[k]['수익 합'],
         '광고수익(원)': byNameRevenue[k]?.['광고수익(원)'] || byName[k]['광고수익(원)'],
         '보너스수익(원)': byNameRevenue[k]?.['보너스수익(원)'] || byName[k]['보너스수익(원)'],
+        '링크': byNameLink[k] || byName[k]['링크'] || '',
       }));
     })();
     const mapped = useRows.map((r,i) => ({
