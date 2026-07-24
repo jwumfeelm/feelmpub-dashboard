@@ -468,9 +468,9 @@ const M_BREAKDOWN = [];
 
 // SCM 판매 — 시트 연동 전 초기값 0
 const M_SCM = [];
-const SCM_STORES = ["교보","예스24","알라딘","네이버","기타"];
-const SCM_COLS   = ["kyobo","yes","aladin","naver","others"];
-const SCM_COLORS = ["#FDE200","#2D6A4A","#1A528A","#8B3A3A","#9A9A96"];
+const SCM_STORES = ["교보","예스","알라딘","영풍","쿠팡","북센","도소매","기타"];
+const SCM_COLS   = ["kyobo","yes","aladin","youngpoong","coupang","booksun","dosomae","others"];
+const SCM_COLORS = ["#FDE200","#2D6A4A","#1A528A","#8B3A3A","#E67E22","#9B59B6","#2980B9","#9A9A96"];
 
 // 도서 데이터 — 시트(도서 목록 RAW)에서 동적으로 채워짐
 const BOOKS = [];
@@ -693,10 +693,34 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
   const newPub    = getMonthly('출판팀 비용');
   const newCom    = getMonthly('인건비');
   const newTarget = getMonthly('월 목표 매출');
+  // 서점별 출고 부수 (01_월별실적에서)
+  const newKyobo      = getMonthly('교보문고');
+  const newYes        = getMonthly('예스24');
+  const newAladin     = getMonthly('알라딘');
+  const newYoungpoong = getMonthly('영풍');
+  const newCoupang    = getMonthly('쿠팡');
+  const newBooksun    = getMonthly('북센');
+  const newDosomae    = getMonthly('도소매(자유서적 포함)');
+  const newOthers     = getMonthly('기타(현매)');
 
   // 목표 매출은 출고 매출과 무관하게 항상 반영
   if (newTarget.some(v=>v>0)) {
     M_TARGET.splice(0, 12, ...newTarget);
+  }
+
+  // 서점별 월별 출고 부수 → M_SCM 갱신
+  const storeMonthly = MONTHS.map((_,i) => ({
+    kyobo:      newKyobo[i]||0,
+    yes:        newYes[i]||0,
+    aladin:     newAladin[i]||0,
+    youngpoong: newYoungpoong[i]||0,
+    coupang:    newCoupang[i]||0,
+    booksun:    newBooksun[i]||0,
+    dosomae:    newDosomae[i]||0,
+    others:     newOthers[i]||0,
+  }));
+  if (storeMonthly.some(d=>Object.values(d).some(v=>v>0))) {
+    M_SCM.splice(0, 12, ...storeMonthly);
   }
 
   // 데이터가 있으면 전역 변수 교체
@@ -1302,17 +1326,19 @@ function renderShip(){
         ${barChart(MONTHS.slice(0,m+1).map((mo,i)=>({l:mo,v:M_SHIP_SALES[i],lv:M_SHIP_SALES[i]?won(M_SHIP_SALES[i]):'',tip:`${mo} ${won(M_SHIP_SALES[i])}`})),{colorFn:()=>'b-y'})}
       </div>
       <div class="card">
-        <div class="card-title">서점별 출고 비중 <small>당월 SCM 부수 기준</small></div>
+        <div class="card-title">서점별 출고 비중 <small>당월 출고 부수 기준</small></div>
         ${stackedBarChart(
           [{label:MONTHS[m], vals:SCM_COLS.map(k=>M_SCM[m]?.[k]||0)}],
           SCM_STORES.map((s,i)=>({label:s,color:SCM_COLORS[i]}))
         )}
         <div style="margin-top:12px">
-        ${SCM_STORES.map((s,i)=>{
-          const v=M_SCM[m]?.[SCM_COLS[i]]||0;
+        ${(()=>{
           const tot=SCM_COLS.reduce((a,k)=>a+(M_SCM[m]?.[k]||0),0);
-          return progBar(s,v,tot,SCM_COLORS[i]);
-        }).join('')}
+          return SCM_STORES.map((s,i)=>{
+            const v=M_SCM[m]?.[SCM_COLS[i]]||0;
+            return progBar(s+' ('+v.toLocaleString()+'부)',v,tot,SCM_COLORS[i]);
+          }).join('');
+        })()}
         </div>
       </div>
     </div>
