@@ -682,7 +682,7 @@ async function loadMktSheets() {
         book.subCopies    = subCopies;
         book.vehicle      = info['핵심 비히클'] || '';
         book.memo         = info['담당 메모'] || '';
-        book.goal = {
+        book.goal = book.goal || {}; book.goal = {
           rank:    info['3개월 목표 순위'] || '',
           qty:     parseFloat(String(info['3개월 목표 부수']||'0').replace(/,/g,'')) || 0,
           revenue: 0,
@@ -2226,8 +2226,8 @@ function renderCalendar() {
       </div>
       <div class="kpi">
         <div class="kpi-lbl">3개월 목표</div>
-        <div class="kpi-val">${(book.goal.qty/10000).toFixed(0)}만부</div>
-        <div class="kpi-sub">목표 순위 ${book.goal.rank}</div>
+        <div class="kpi-val">${book.goal&&book.goal.qty?(book.goal.qty/10000).toFixed(0)+'만부':'미설정'}</div>
+        <div class="kpi-sub">목표 순위 ${book.goal&&book.goal.rank||'-'}</div>
       </div>
       <div class="kpi">
         <div class="kpi-lbl">현재 판매</div>
