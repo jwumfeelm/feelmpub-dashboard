@@ -416,11 +416,12 @@ const CFG = {
   gids: {
     setting:  "1920999916",   // 00_설정
     monthly:  "539841653",    // 01_월별실적
-    cost:     "1829246221",   // 02_비용원장 (마케팅+출판 통합)
+    cost:     "1829246221",   // 02_비용원장
     ship:     "397749757",    // 03_출고실적
     scm:      "1165138078",   // 04_마케팅실적
     channel:  "419118457",    // 05_채널실적
     bookList: "927629470",    // 도서 목록
+    weekSales:"105549750",    // 판매량_주차별
   }
 };
 
@@ -474,6 +475,8 @@ const SCM_COLORS = ["#FDE200","#2D6A4A","#1A528A","#8B3A3A","#E67E22","#9B59B6",
 
 // 도서 데이터 — 시트(도서 목록 RAW)에서 동적으로 채워짐
 const BOOKS = [];
+// 주차별 판매 데이터
+const WEEK_SALES = {}; // {도서명: [{week, qty}]}
 
 // 비용 원장 — 시트(02_비용원장)에서 동적으로 채워짐
 const EXPENSES = [];
@@ -629,7 +632,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, channel, bookList] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
@@ -637,9 +640,10 @@ async function loadSheets() {
       fetchSheet(CFG.gids.scm),       // 04_마케팅실적
       fetchSheet(CFG.gids.channel),   // 05_채널실적
       fetchSheet(CFG.gids.bookList),  // 도서 목록
+      fetchSheet(CFG.gids.weekSales), // 판매량_주차별
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales });
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -663,7 +667,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -846,6 +850,19 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
     if(mapped.length > 0) {
       BOOKS.splice(0, BOOKS.length, ...mapped);
     }
+  }
+
+  // ── 판매량_주차별 → WEEK_SALES 갱신 ──
+  if (weekSales && weekSales.length > 0) {
+    Object.keys(WEEK_SALES).forEach(k => delete WEEK_SALES[k]);
+    weekSales.forEach(r => {
+      const title = r['도서명'] || '';
+      const week  = r['연도·주차'] || '';
+      const qty   = toNum(r['판매부수']);
+      if (!title || !week) return;
+      if (!WEEK_SALES[title]) WEEK_SALES[title] = [];
+      WEEK_SALES[title].push({week, qty});
+    });
   }
 
   // ── 07_채널실적 → CHANNELS 갱신 (당월 기준) ──
@@ -1487,7 +1504,7 @@ function renderMkt(){
     <!-- 누적 KPI -->
     <div class="sec-label gap">누적 실적</div>
     <div class="g3">
-      <div class="kpi"><div class="kpi-lbl">누적 판매 부수</div><div class="kpi-val">${cumScmQty.toLocaleString()}</div><div class="kpi-sub">SCM 기준</div></div>
+      <div class="kpi"><div class="kpi-lbl">누적 판매 부수</div><div class="kpi-val">${cumScmQty.toLocaleString()}<span style="font-size:16px;font-weight:400">부</span></div><div class="kpi-sub">SCM 기준</div></div>
       <div class="kpi"><div class="kpi-lbl">누적 마케팅 비용</div><div class="kpi-val">${won(cumMkt)}</div><div class="kpi-sub">${m+1}개월 합산</div></div>
       <div class="kpi"><div class="kpi-lbl">누적 ROI</div><div class="kpi-val ${cumRoi>=150?'good':cumRoi>=100?'warn':'bad'}">${cumRoi}%</div><div class="kpi-sub">순매출 ÷ 마케팅비</div></div>
     </div>
@@ -1495,7 +1512,7 @@ function renderMkt(){
     <!-- 당월 KPI -->
     <div class="sec-label gap2">당월 실적</div>
     <div class="g4">
-      <div class="kpi"><div class="kpi-lbl">월 판매 부수</div><div class="kpi-val">${mScmQty.toLocaleString()}</div><div class="kpi-sub">SCM 집계</div></div>
+      <div class="kpi"><div class="kpi-lbl">월 판매 부수</div><div class="kpi-val">${mScmQty.toLocaleString()}<span style="font-size:16px;font-weight:400">부</span></div><div class="kpi-sub">SCM 집계</div></div>
       <div class="kpi"><div class="kpi-lbl">월 마케팅 비용</div><div class="kpi-val">${won(mMkt)}</div><div class="kpi-sub">${MONTHS[m]} 집행</div></div>
       <div class="kpi"><div class="kpi-lbl">월 ROI</div><div class="kpi-val ${mRoi>=150?'good':mRoi>=100?'warn':'bad'}">${mRoi}%</div><div class="kpi-sub">순매출 ÷ 마케팅비</div></div>
       <div class="kpi"><div class="kpi-lbl">구매유치비 (평균)</div><div class="kpi-val ${mCpa<8000?'good':mCpa<12000?'warn':'bad'}">${mCpa.toLocaleString()}원</div><div class="kpi-sub">마케팅비 ÷ SCM</div></div>
@@ -1509,30 +1526,78 @@ function renderMkt(){
     </div>
 
     <!-- 하단: 도서별 마케팅 상세 -->
-    <div class="sec-label gap2">도서별 마케팅 실적</div>
-    <div class="card">
-      <div class="card-title">전체 도서 마케팅 지표 <small>컬럼 클릭 시 정렬</small></div>
-      <table>
-        <tr>
-          ${thS('mkt','title','도서명')}
-          ${thS('mkt','cumSalesQty','누적 판매 부수','right')}
-          ${thS('mkt','cumSalesPub','누적 판매액','right')}
-          ${thS('mkt','cumMktCost','누적 마케팅비','right')}
-          ${thS('mkt','roi','ROI','right')}
-          ${thS('mkt','cpa','구매유치비','right')}
-
-        </tr>
-        ${sorted.map(b=>`<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
-          <td><b>${esc(b.title)}</b></td>
-          <td class="right">${b.cumSalesQty.toLocaleString()}부</td>
-          <td class="right">${won(b.cumSalesPub)}</td>
-          <td class="right">${won(b.cumMktCost)}</td>
-          <td class="right"><b style="color:${b.roi>=150?'var(--good)':b.roi>=100?'var(--warn)':'var(--bad)'}">${b.roi}%</b></td>
-          <td class="right"><span style="color:${b.cpa<8000?'var(--good)':b.cpa<12000?'var(--warn)':'var(--bad)'}">${b.cpa.toLocaleString()}원</span></td>
-
-        </tr>`).join('')}
-      </table>
+    <div class="sec-label gap2">전략도서 주차별 실판매 추이</div>
+    <div class="card" id="weekly-chart-card">
+      <div class="card-title">출간 후 주차별 판매 부수 <small>전략도서 기준 · 출간일부터</small></div>
+      ${renderWeeklyChart()}
     </div>`;
+}
+
+/* ─────────────────────────────────────
+   WEEKLY SALES CHART
+───────────────────────────────────── */
+function renderWeeklyChart() {
+  const strategic = BOOKS.filter(b => b.isStrategic && WEEK_SALES[b.title]);
+  if (!strategic.length) return '<div style="color:var(--ink3);padding:20px 0;text-align:center">전략도서 주차별 데이터 없음</div>';
+
+  const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+
+  const chartData = strategic.map((b, ci) => {
+    const weeks = (WEEK_SALES[b.title] || [])
+      .sort((a, c) => a.week.localeCompare(c.week))
+      .map((d, i) => ({ x: i+1, y: d.qty, week: d.week }));
+    return { title: b.title, weeks, color: colors[ci % colors.length] };
+  }).filter(d => d.weeks.length > 0);
+
+  if (!chartData.length) return '<div style="color:var(--ink3);padding:20px 0;text-align:center">데이터 없음</div>';
+
+  const maxWeeks = Math.max(...chartData.map(d => d.weeks.length), 1);
+  const maxQty   = Math.max(...chartData.flatMap(d => d.weeks.map(w => w.y)), 1);
+
+  const W = 900, H = 300;
+  const PAD = {t:24, r:24, b:40, l:64};
+  const cW = W - PAD.l - PAD.r;
+  const cH = H - PAD.t - PAD.b;
+
+  const xPos = i => PAD.l + (i / Math.max(maxWeeks-1,1)) * cW;
+  const yPos = v => PAD.t + cH - (v / maxQty) * cH;
+
+  const fmtN = v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v;
+
+  const yTicks = 4;
+  const gridLines = Array.from({length:yTicks+1},(_,i) => {
+    const v = Math.round(maxQty * i / yTicks);
+    return `<line x1="${PAD.l}" x2="${PAD.l+cW}" y1="${yPos(v)}" y2="${yPos(v)}" stroke="#0000001A" stroke-width="1"/>
+    <text x="${PAD.l-8}" y="${yPos(v)+4}" fill="#94A3B8" font-size="11" text-anchor="end">${fmtN(v)}</text>`;
+  }).join('');
+
+  const xCount = Math.min(maxWeeks, 20);
+  const xLabels = Array.from({length:xCount},(_,i) => {
+    const xi = Math.round(i * (maxWeeks-1) / Math.max(xCount-1,1));
+    return `<text x="${xPos(xi)}" y="${PAD.t+cH+18}" fill="#94A3B8" font-size="10" text-anchor="middle">${xi+1}주</text>`;
+  }).join('');
+
+  const lines = chartData.map(d => {
+    if (!d.weeks.length) return '';
+    const pts = d.weeks.map((w,i) => `${xPos(i)},${yPos(w.y)}`).join('L');
+    const dots = d.weeks.map((w,i) => `<circle cx="${xPos(i)}" cy="${yPos(w.y)}" r="3.5" fill="${d.color}" stroke="#fff" stroke-width="1.5"/>`).join('');
+    return `<path d="M${pts}" fill="none" stroke="${d.color}" stroke-width="2.5"/>${dots}`;
+  }).join('');
+
+  const legend = chartData.map(d =>
+    `<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)">
+      <span style="display:inline-block;width:18px;height:3px;background:${d.color};border-radius:2px"></span>
+      ${esc(d.title)}
+    </span>`
+  ).join('');
+
+  return `
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:18px">${legend}</div>
+    <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="overflow:visible">
+      ${gridLines}
+      ${xLabels}
+      ${lines}
+    </svg>`;
 }
 
 /* ─────────────────────────────────────
