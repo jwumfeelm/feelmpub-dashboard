@@ -920,6 +920,8 @@ function renderTabs(){
 }
 function setTab(id){
   activeTab=id;
+  const trendEl = document.getElementById('trend-chart');
+  if(trendEl) trendEl.style.display = id==='channel' ? 'none' : '';
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   renderTabs(); renderActive();
