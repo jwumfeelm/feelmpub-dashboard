@@ -1537,6 +1537,7 @@ function renderMkt(){
       <div class="card-title">출간 후 주차별 판매 부수 <small>전략도서 기준 · 출간일부터</small></div>
       ${renderWeeklyChart()}
     </div>`;
+  setTimeout(initWeeklyChartHover, 100);
 }
 
 /* ─────────────────────────────────────
@@ -1618,37 +1619,33 @@ function renderWeeklyChart() {
         <div id="${ttId}" style="display:none;position:absolute;top:10px;background:#1E293B;color:#fff;font-size:12px;padding:6px 10px;border-radius:6px;pointer-events:none;white-space:nowrap"></div>
       </div>
     </div>`;
-  }).join('') + `<script>
-  (function(){
-    ${strategic.map((b,bi) => {
-      const weeks = (WEEK_SALES[b.title]||[]).sort((a,c)=>a.week.localeCompare(c.week));
-      const n = weeks.length;
-      const W=800,PAD_L=56,PAD_R=20,cW=W-PAD_L-PAD_R;
-      return `(function(){
-        const svg=document.getElementById('wchart-${bi}');
-        const tt=document.getElementById('wtt-${bi}');
-        const hl=document.getElementById('whl-${bi}');
-        if(!svg||!tt||!hl) return;
-        const wdata=${JSON.stringify(weeks)};
-        const n=${n};
-        svg.addEventListener('mousemove',function(e){
-          const r=svg.getBoundingClientRect();
-          const mx=(e.clientX-r.left)*(${W}/r.width)-${PAD_L};
-          const idx=Math.min(n-1,Math.max(0,Math.round(mx/${n>1?`(${cW}/(n-1))`:'1'})));
-          if(idx<0||idx>=n) return;
-          const xp=${PAD_L}+(n>1?idx/(n-1)*${cW}:${cW/2});
-          hl.setAttribute('x1',xp); hl.setAttribute('x2',xp); hl.style.opacity='1';
-          tt.style.display='block';
-          tt.style.left=(xp*(r.width/${W})+10)+'px';
-          tt.textContent=wdata[idx].week+' | '+wdata[idx].qty.toLocaleString()+'부';
-        });
-        svg.addEventListener('mouseleave',function(){
-          hl.style.opacity='0'; tt.style.display='none';
-        });
-      })();`;
-    }).join('')}
-  })();
-  </script>`;
+  }).join('');
+}
+
+function initWeeklyChartHover() {
+  const strategic = BOOKS.filter(b => b.isStrategic && WEEK_SALES[b.title]);
+  strategic.forEach((b, bi) => {
+    const weeks = (WEEK_SALES[b.title]||[]).sort((a,c)=>a.week.localeCompare(c.week));
+    const n = weeks.length;
+    const W=800, PAD_L=56, PAD_R=20, cW=W-PAD_L-PAD_R;
+    const svg = document.getElementById('wchart-'+bi);
+    const tt  = document.getElementById('wtt-'+bi);
+    const hl  = document.getElementById('whl-'+bi);
+    if(!svg||!tt||!hl||!n) return;
+    svg.addEventListener('mousemove', function(e){
+      const r = svg.getBoundingClientRect();
+      const mx = (e.clientX-r.left)*(W/r.width)-PAD_L;
+      const idx = Math.min(n-1, Math.max(0, Math.round(mx / (n>1 ? cW/(n-1) : 1))));
+      const xp = PAD_L + (n>1 ? idx/(n-1)*cW : cW/2);
+      hl.setAttribute('x1',xp); hl.setAttribute('x2',xp); hl.style.opacity='1';
+      tt.style.display='block';
+      tt.style.left=(xp*(r.width/W)+10)+'px';
+      tt.textContent=weeks[idx].week+' | '+weeks[idx].qty.toLocaleString()+'부';
+    });
+    svg.addEventListener('mouseleave', function(){
+      hl.style.opacity='0'; tt.style.display='none';
+    });
+  });
 }
 
 /* ─────────────────────────────────────
