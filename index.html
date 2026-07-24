@@ -681,11 +681,11 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       const pw = (rowPw['2025'] || '').trim();
       if (pw) CFG.pw = pw;
     }
-    // 채널 링크 (헤더: 채널명 | 링크)
-    const linkRows = setting.filter(r => r['채널명'] && r['링크']);
+    // 채널 링크 (항목=채널명, 설명=링크)
+    const linkRows = setting.filter(r => r['항목'] && r['설명'] && r['설명'].startsWith('http'));
     if (linkRows.length > 0) {
       CFG.channelLinks = {};
-      linkRows.forEach(r => { CFG.channelLinks[r['채널명']] = r['링크']; });
+      linkRows.forEach(r => { CFG.channelLinks[r['항목']] = r['설명']; });
     }
   }
 
@@ -897,7 +897,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
         '수익 합': byNameRevenue[k]?.['수익 합'] || byName[k]['수익 합'],
         '광고수익(원)': byNameRevenue[k]?.['광고수익(원)'] || byName[k]['광고수익(원)'],
         '보너스수익(원)': byNameRevenue[k]?.['보너스수익(원)'] || byName[k]['보너스수익(원)'],
-        '링크': (CFG.channelLinks && CFG.channelLinks[k]) || '',
+        '링크': (CFG.channelLinks && (CFG.channelLinks[k] || Object.entries(CFG.channelLinks).find(([ck]) => k.includes(ck) || ck.includes(k))?.[1])) || '',
       }));
     })();
     const mapped = useRows.map((r,i) => ({
