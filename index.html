@@ -430,6 +430,7 @@ const CFG = {
       "생존지능":                    "1456985567",
       "다정한사람이이긴다(개정판)":   "1761152834",
       "불안한날에니체를읽는다":       "762563365",
+      "어떻게살아낼것인가":          "1408404639",
     }
   }
 };
@@ -655,19 +656,42 @@ async function loadMktSheets() {
       if (!gid) continue;
       try {
         const rows = await fetchMktSheet(gid);
-        // 도서 기본정보 파싱 (A열=항목, B열=값)
-        const getVal = key => {
-          const r = rows.find(r => r['저자'] === key || Object.values(r)[0] === key);
-          return r ? Object.values(r)[1] || '' : '';
-        };
-        book.pubDate  = book.pubDate  || getVal('출간일');
-        book.price    = book.price    || parseFloat(String(getVal('정가(원)')).replace(/,/g,'')) || 0;
-        book.goal     = book.goal     || {rank:'', qty:0, revenue:0};
+        // 도서 기본정보 파싱 (A열=항목명, B열=값)
+        const infoKeys = ['저자','분야','출간일','정가(원)','배본부수(부)','코어 타깃',
+          '메인 카피','핵심 비히클','담당 메모','3개월 목표 부수','3개월 목표 순위'];
+        const info = {};
+        const subTargets = [], subCopies = [];
 
-        // 마케팅 액션 파싱 (헤더: 날짜, 레인, 액션명, 기간(일), 비용(원), 비용 대분류, status...)
+        rows.forEach(r => {
+          const k = Object.values(r)[0] || '';
+          const v = Object.values(r)[1] || '';
+          if (!k) return;
+          if (k.startsWith('서브 타깃')) subTargets.push(v);
+          else if (k.startsWith('서브 카피')) subCopies.push(v);
+          else if (infoKeys.includes(k)) info[k] = v;
+        });
+
+        book.pubDate      = info['출간일'] || book.pubDate || '';
+        book.price        = parseFloat(String(info['정가(원)']||'0').replace(/,/g,'')) || book.price || 0;
+        book.author       = info['저자'] || '';
+        book.genre        = info['분야'] || '';
+        book.shipQtyPlan  = parseFloat(String(info['배본부수(부)']||'0').replace(/,/g,'')) || 0;
+        book.coreTarget   = info['코어 타깃'] || '';
+        book.subTargets   = subTargets;
+        book.mainCopy     = info['메인 카피'] || '';
+        book.subCopies    = subCopies;
+        book.vehicle      = info['핵심 비히클'] || '';
+        book.memo         = info['담당 메모'] || '';
+        book.goal = {
+          rank:    info['3개월 목표 순위'] || '',
+          qty:     parseFloat(String(info['3개월 목표 부수']||'0').replace(/,/g,'')) || 0,
+          revenue: 0,
+        };
+
+        // 마케팅 액션 파싱 (날짜 형식 YYYY-MM-DD 행만)
         const actions = rows.filter(r => {
           const d = r['날짜'] || '';
-          return d.match(/^\d{4}-\d{2}-\d{2}$/);
+          return /^\d{4}-\d{2}-\d{2}$/.test(d);
         }).map(r => ({
           date:   r['날짜'] || '',
           lane:   r['레인'] || '',
@@ -675,7 +699,7 @@ async function loadMktSheets() {
           days:   parseFloat(r['기간(일)']) || 1,
           cost:   parseFloat(String(r['비용(원)']||'0').replace(/,/g,'')) || 0,
           status: r['status'] || 'planned',
-          url:    r['소재 URL (구글드라이브)'] || '',
+          url:    r['소재 URL (구글드라이브)'] || r['소재 URL'] || '',
           detail: r['소재 설명'] || '',
           type:   'single',
         }));
@@ -2170,6 +2194,28 @@ function renderCalendar() {
       </select>
       <span style="font-size:11px;color:var(--ink3)">출간일 ${book.pubDate} · 정가 ${book.price.toLocaleString()}원</span>
     </div>
+
+    <!-- 도서 기본정보 -->
+    ${(book.author || book.coreTarget || book.mainCopy) ? `
+    <div class="card gap" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+            ${book.author ? `<span style="font-size:12px;color:var(--ink3)">저자 <b style="color:var(--ink1)">${esc(book.author)}</b></span>` : ''}
+            ${book.genre ? `<span style="font-size:12px;color:var(--ink3)">분야 <b style="color:var(--ink1)">${esc(book.genre)}</b></span>` : ''}
+            ${book.shipQtyPlan ? `<span style="font-size:12px;color:var(--ink3)">배본 <b style="color:var(--ink1)">${book.shipQtyPlan.toLocaleString()}부</b></span>` : ''}
+          </div>
+          ${book.mainCopy ? `<div style="font-size:13px;font-weight:700;color:var(--ink1);line-height:1.6;margin-bottom:8px">"${esc(book.mainCopy)}"</div>` : ''}
+          ${book.subCopies && book.subCopies.length ? book.subCopies.map(c=>`<div style="font-size:12px;color:var(--ink2);line-height:1.6;margin-bottom:4px">${esc(c)}</div>`).join('') : ''}
+        </div>
+        <div>
+          ${book.coreTarget ? `<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.06em;margin-bottom:4px">CORE TARGET</div><div style="font-size:12px;color:var(--ink2);line-height:1.5">${esc(book.coreTarget)}</div></div>` : ''}
+          ${book.subTargets && book.subTargets.length ? `<div><div style="font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">SUB TARGET</div>${book.subTargets.map(t=>`<div style="font-size:12px;color:var(--ink3);line-height:1.5;margin-bottom:3px">· ${esc(t)}</div>`).join('')}</div>` : ''}
+          ${book.vehicle ? `<div style="margin-top:10px"><div style="font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">핵심 비히클</div><div style="font-size:12px;color:var(--ink2)">${esc(book.vehicle)}</div></div>` : ''}
+          ${book.memo ? `<div style="margin-top:10px;padding:8px 12px;background:var(--warn-dim);border-radius:6px;font-size:12px;color:var(--warn)">📝 ${esc(book.memo)}</div>` : ''}
+        </div>
+      </div>
+    </div>` : ''}
 
     <!-- 상단 KPI -->
     <div class="g5 gap" style="margin-bottom:16px">
