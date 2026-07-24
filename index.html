@@ -379,7 +379,7 @@ tr:hover td{background:var(--surface2)}
 </div>
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">샘플 데이터</span></div>
-        <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" value="2026-06" onchange="onMonthChange()"></div>
+        <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
         <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--dark-border);color:#aaa;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px" title="전체화면">⛶ 전체화면</button>
       </div>
     </div>
@@ -524,7 +524,13 @@ const won = n => {
 const wonFull = n => (n<0?'-':'') + Math.abs(n).toLocaleString()+'원';
 const pct  = (a,b)=> b?Math.round(a/b*100):0;
 const esc  = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const getM = ()=>Number(document.getElementById('monthPicker').value.split('-')[1]||6)-1; // 0-indexed
+const getM = ()=>Number(document.getElementById('monthPicker').value.split('-')[1]||new Date().getMonth()+1)-1; // 0-indexed
+// 기준월 현재 월로 초기화
+(function(){
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('monthPicker').value = ym;
+})();
 
 function setSort(tblId,col){ toggleSort(tblId,col); }
 
