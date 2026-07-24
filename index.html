@@ -818,9 +818,14 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       cur3m.push(d.toISOString().slice(0,7));
     }
 
+    // SCM 도서명 매칭 맵 생성 (공백 제거 비교)
+    const scmTitleMap = {};
+    mapped.forEach(b => { scmTitleMap[b.title.replace(/\s/g,'')] = b; });
+
     scm.forEach(r => {
       const ym = r['연도·월'] || '';
-      const b = mapped.find(x=>x.title===r['도서명']);
+      const scmTitle = (r['도서명']||'').replace(/\s/g,'');
+      const b = mapped.find(x=>x.title===r['도서명']) || scmTitleMap[scmTitle];
       if(!b) return;
       // 당월 서점별 판매
       if(ym.startsWith(curYM.slice(0,7))) {
@@ -1416,26 +1421,26 @@ function renderShip(){
 
         return stockRows.map(b => `
           <div class="stock-card" data-status="${b.status}" onclick="openDrawer(${b.id})" style="cursor:pointer;border:1px solid ${b.status==='bad'?'rgba(176,32,32,.25)':b.status==='warn'?'rgba(154,98,16,.25)':'rgba(30,122,56,.15)'};border-radius:10px;padding:16px 18px;background:${b.status==='bad'?'var(--bad-dim)':b.status==='warn'?'var(--warn-dim)':'var(--good-dim)'}">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-              <div style="font-size:13px;font-weight:700;color:var(--ink1);line-height:1.4;flex:1;padding-right:8px">${esc(b.title)}</div>
-              <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;background:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};color:#fff">${b.statusLabel}</span>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+              <div style="font-size:13px;font-weight:700;color:var(--ink1);line-height:1.4;flex:1;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(b.title)}</div>
+              <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;background:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};color:#fff">${b.statusLabel}</span>
             </div>
-            <div style="display:flex;gap:16px;margin-bottom:10px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">현재 재고</div>
-                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.stock > 0 ? b.stock.toLocaleString() : '0'}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">물류 재고</div>
+                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${(b.stock > 0 ? b.stock : 0).toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:2px">부</span></div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">월평균 실판매</div>
-                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${Math.round((b.scm3m||0)/3).toLocaleString()}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">시중 재고</div>
+                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${b.marketStock.toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:2px">부</span></div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">시중 재고</div>
-                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.marketStock.toLocaleString()}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">월평균 실판매</div>
+                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${Math.round((b.scm3m||0)/3).toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:2px">부</span></div>
               </div>
-              <div style="margin-left:auto;text-align:right">
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">물류 소진 예상</div>
-                <div style="font-size:20px;font-weight:900;color:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};letter-spacing:-.02em">${b.daysLeft >= 999 ? '90일+' : b.daysLeft+'일'}</div>
+              <div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">물류 소진 예상</div>
+                <div style="font-size:22px;font-weight:900;color:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};letter-spacing:-.02em;line-height:1">${b.daysLeft >= 999 ? '90일+' : b.daysLeft+'일'}</div>
               </div>
             </div>
             <div style="background:rgba(0,0,0,.08);border-radius:4px;height:5px;overflow:hidden">
