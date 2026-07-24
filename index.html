@@ -1334,7 +1334,7 @@ function renderShip(){
         ${barChart(MONTHS.slice(0,m+1).map((mo,i)=>({l:mo,v:M_SHIP_SALES[i],lv:M_SHIP_SALES[i]?won(M_SHIP_SALES[i]):'',tip:`${mo} ${won(M_SHIP_SALES[i])}`})),{colorFn:()=>'b-y'})}
       </div>
       <div class="card">
-        <div class="card-title">서점별 출고 비중 <small>당월 출고 부수 기준</small></div>
+        <div class="card-title">서점별 출고 비중 <small>당월 출고액 기준</small></div>
         ${stackedBarChart(
           [{label:MONTHS[m], vals:SCM_COLS.map(k=>M_SCM[m]?.[k]||0)}],
           SCM_STORES.map((s,i)=>({label:s,color:SCM_COLORS[i]}))
@@ -1344,7 +1344,7 @@ function renderShip(){
           const tot=SCM_COLS.reduce((a,k)=>a+(M_SCM[m]?.[k]||0),0);
           return SCM_STORES.map((s,i)=>{
             const v=M_SCM[m]?.[SCM_COLS[i]]||0;
-            return progBar(s+' ('+v.toLocaleString()+'부)',v,tot,SCM_COLORS[i]);
+            return progBar(s+' ('+won(v)+')',v,tot,SCM_COLORS[i]);
           }).join('');
         })()}
         </div>
