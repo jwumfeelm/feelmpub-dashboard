@@ -878,8 +878,20 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     const curRows = channel.filter(r => r['연도·월'] && String(r['연도·월']).startsWith(curYM));
     const useRows = curRows.length > 0 ? curRows : (() => {
       const byName = {};
-      channel.filter(r=>r['채널명']).forEach(r => { byName[r['채널명']] = r; });
-      return Object.values(byName);
+      const byNameRevenue = {};
+      channel.filter(r=>r['채널명']).forEach(r => {
+        byName[r['채널명']] = r;
+        if(toNum(r['수익 합']) > 0 || toNum(r['광고수익(원)']) > 0) {
+          byNameRevenue[r['채널명']] = r;
+        }
+      });
+      // 수익 있는 행 우선, 없으면 마지막 행
+      return Object.keys(byName).map(k => ({
+        ...byName[k],
+        '수익 합': byNameRevenue[k]?.['수익 합'] || byName[k]['수익 합'],
+        '광고수익(원)': byNameRevenue[k]?.['광고수익(원)'] || byName[k]['광고수익(원)'],
+        '보너스수익(원)': byNameRevenue[k]?.['보너스수익(원)'] || byName[k]['보너스수익(원)'],
+      }));
     })();
     const mapped = useRows.map((r,i) => ({
       name:      r['채널명']||'',
@@ -891,6 +903,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       uploads:   toNum(r['업로드수']),
       shares:    toNum(r['공유수']),
       revenue:   toNum(r['수익 합'] || r['광고수익(원)'] || 0),
+      link:      r['링크'] || '',
       color:     colors[i%5],
     })).filter(c=>c.name);
     if(mapped.length > 0) CHANNELS.splice(0, CHANNELS.length, ...mapped);
@@ -1770,14 +1783,14 @@ function renderChannel(){
       <table>
         <tr><th>채널</th><th>플랫폼</th><th class="right">월 업로드</th><th class="right">월 도달</th><th class="right">공유수</th><th class="right">저장수</th><th class="right">팔로워</th><th class="right">팔로워 순증</th><th class="right">광고 수익</th></tr>
         ${CHANNELS.map(c=>`<tr>
-          <td><b style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${esc(c.name)}</b></td>
+          <td><b style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${esc(c.name)}${c.link?`<a href="${c.link}" target="_blank" style="color:var(--ink3);font-size:12px;font-weight:400;text-decoration:none;margin-left:2px" onclick="event.stopPropagation()">↗</a>`:''}</b></td>
           <td><span class="badge neutral">${c.platform}</span></td>
           <td class="right">${c.uploads}</td>
           <td class="right">${(c.reach/10000).toFixed(0)}만</td>
           <td class="right">${c.shares.toLocaleString()}</td>
           <td class="right">${c.saves.toLocaleString()}</td>
           <td class="right">${c.followers.toLocaleString()}</td>
-          <td class="right"><span style="color:var(--good)">+${c.fanGain.toLocaleString()}</span></td>
+          <td class="right"><span style="color:${c.fanGain>=0?'var(--good)':'var(--bad)'}">${c.fanGain>=0?'+':''}${c.fanGain.toLocaleString()}</span></td>
           <td class="right">${c.revenue?won(c.revenue):'—'}</td>
         </tr>`).join('')}
       </table>
