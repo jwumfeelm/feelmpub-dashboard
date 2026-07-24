@@ -798,12 +798,15 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       b.mReturnAmt += toNum(r['반품액(원)']);
     });
 
-    // 재고 — 03_출고실적 O열(재고) 기준 최신값
+    // 재고 — 03_출고실적 재고 컬럼 기준 (도서별 마지막 행 값)
+    const stockByTitle = {};
     ship.forEach(r => {
-      const b = mapped.find(x=>x.title===r['도서명']);
-      if(!b) return;
-      const stock = toNum(r['재고']);
-      if(stock !== 0 || r['재고'] !== '') b.stock = stock;
+      if(r['도서명'] && r['재고'] !== '' && r['재고'] !== undefined) {
+        stockByTitle[r['도서명']] = toNum(r['재고']);
+      }
+    });
+    mapped.forEach(b => {
+      if(stockByTitle[b.title] !== undefined) b.stock = stockByTitle[b.title];
     });
 
     // 06_마케팅실적(SCM) → 당월 서점별
@@ -1353,57 +1356,69 @@ function renderShip(){
 
     <!-- 하단: 재고 현황 -->
     <div class="sec-label gap2">도서별 재고 현황</div>
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <div class="card" id="stock-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>당월 평균 출고 기준</small></div>
         <div style="margin-left:auto;display:flex;gap:6px">
-          <button onclick="setStockFilter('all')" id="sf-all" class="badge good" style="cursor:pointer;border:none">전체</button>
-          <button onclick="setStockFilter('danger')" id="sf-danger" class="badge bad" style="cursor:pointer;border:none">위험 (&lt;30일)</button>
-          <button onclick="setStockFilter('warn')" id="sf-warn" class="badge warn" style="cursor:pointer;border:none">주의 (&lt;60일)</button>
-          <button onclick="setStockFilter('safe')" id="sf-safe" class="badge neutral" style="cursor:pointer;border:none">안전</button>
+          <button onclick="setStockFilter('all')" id="sf-all" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:#1E293B;color:#fff;border-color:#1E293B">전체</button>
+          <button onclick="setStockFilter('bad')" id="sf-bad" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--bad);border-color:var(--bad)">위험 &lt;30일</button>
+          <button onclick="setStockFilter('warn')" id="sf-warn" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--warn);border-color:var(--warn)">주의 &lt;60일</button>
+          <button onclick="setStockFilter('good')" id="sf-good" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--good);border-color:var(--good)">안전</button>
         </div>
       </div>
-      <table id="stock-table">
-        <tr>
-          ${thS('ship','title','도서명')}
-          ${thS('ship','stock','현재 재고','right')}
-          ${thS('ship','mShipQty','당월 출고','right')}
-          ${thS('ship','daysLeft','소진 예상','right')}
-          <th class="right">상태</th>
-        </tr>
-        ${(()=>{
-          const stockRows = [...BOOKS]
-            .filter(b => b.stock > 0 || b.mShipQty > 0)
-            .map(b => {
-              const dailyRate = b.mShipQty / 30;
-              const daysLeft = dailyRate > 0 ? Math.round(b.stock / dailyRate) : 999;
-              const status = daysLeft < 30 ? 'bad' : daysLeft < 60 ? 'warn' : 'good';
-              const statusLabel = daysLeft < 30 ? '위험' : daysLeft < 60 ? '주의' : '안전';
-              return {...b, daysLeft, status, statusLabel};
-            })
-            .sort((a,b) => a.daysLeft - b.daysLeft);
+      <div id="stock-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      ${(()=>{
+        const stockRows = [...BOOKS]
+          .filter(b => b.stock > 0 || b.mShipQty > 0)
+          .map(b => {
+            const dailyRate = b.mShipQty / 30;
+            const daysLeft = b.stock <= 0 ? 0 : dailyRate > 0 ? Math.round(b.stock / dailyRate) : 999;
+            const status = daysLeft === 0 ? 'bad' : daysLeft < 30 ? 'bad' : daysLeft < 60 ? 'warn' : 'good';
+            const statusLabel = daysLeft === 0 ? '재고없음' : daysLeft < 30 ? '위험' : daysLeft < 60 ? '주의' : '안전';
+            const barPct = daysLeft >= 999 ? 100 : Math.min(100, Math.round(daysLeft / 90 * 100));
+            const barColor = status === 'bad' ? 'var(--bad)' : status === 'warn' ? 'var(--warn)' : 'var(--good)';
+            return {...b, daysLeft, status, statusLabel, barPct, barColor};
+          })
+          .sort((a,b) => a.daysLeft - b.daysLeft);
 
-          window._stockRows = stockRows;
-          window.setStockFilter = (f) => {
-            const rows = document.querySelectorAll('#stock-table tr[data-status]');
-            rows.forEach(r => {
-              r.style.display = (f==='all' || r.dataset.status===f) ? '' : 'none';
-            });
-            ['all','danger','warn','safe'].forEach(id => {
-              document.getElementById('sf-'+id)?.classList.toggle('good', id===f && f==='all');
-            });
-          };
+        window.setStockFilter = (f) => {
+          document.querySelectorAll('#stock-grid .stock-card').forEach(el => {
+            el.style.display = (f==='all' || el.dataset.status===f) ? '' : 'none';
+          });
+          ['all','bad','warn','good'].forEach(id => {
+            const btn = document.getElementById('sf-'+id);
+            if(!btn) return;
+            if(id===f) { btn.style.background='#1E293B'; btn.style.color='#fff'; btn.style.borderColor='#1E293B'; }
+            else { btn.style.background='transparent'; btn.style.color=id==='bad'?'var(--bad)':id==='warn'?'var(--warn)':id==='good'?'var(--good)':'var(--ink1)'; btn.style.borderColor=id==='bad'?'var(--bad)':id==='warn'?'var(--warn)':id==='good'?'var(--good)':'var(--ink2)'; }
+          });
+        };
 
-          return stockRows.map(b => `
-            <tr onclick="openDrawer(${b.id})" style="cursor:pointer" data-status="${b.status}">
-              <td><b>${esc(b.title)}</b></td>
-              <td class="right">${b.stock > 0 ? b.stock.toLocaleString()+'부' : '<span style="color:var(--ink4)">-</span>'}</td>
-              <td class="right">${b.mShipQty > 0 ? b.mShipQty.toLocaleString()+'부' : '<span style="color:var(--ink4)">-</span>'}</td>
-              <td class="right"><b>${b.daysLeft < 999 ? b.daysLeft+'일' : '-'}</b></td>
-              <td class="right"><span class="badge ${b.status}">${b.statusLabel}</span></td>
-            </tr>`).join('');
-        })()}
-      </table>
+        return stockRows.map(b => `
+          <div class="stock-card" data-status="${b.status}" onclick="openDrawer(${b.id})" style="cursor:pointer;border:1px solid ${b.status==='bad'?'rgba(176,32,32,.25)':b.status==='warn'?'rgba(154,98,16,.25)':'rgba(30,122,56,.15)'};border-radius:10px;padding:16px 18px;background:${b.status==='bad'?'var(--bad-dim)':b.status==='warn'?'var(--warn-dim)':'var(--good-dim)'}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+              <div style="font-size:13px;font-weight:700;color:var(--ink1);line-height:1.4;flex:1;padding-right:8px">${esc(b.title)}</div>
+              <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;background:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};color:#fff">${b.statusLabel}</span>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:10px">
+              <div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">현재 재고</div>
+                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.stock > 0 ? b.stock.toLocaleString() : '0'}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">당월 출고</div>
+                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.mShipQty.toLocaleString()}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+              </div>
+              <div style="margin-left:auto;text-align:right">
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">소진 예상</div>
+                <div style="font-size:20px;font-weight:900;color:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};letter-spacing:-.02em">${b.daysLeft >= 999 ? '90일+' : b.daysLeft+'일'}</div>
+              </div>
+            </div>
+            <div style="background:rgba(0,0,0,.08);border-radius:4px;height:5px;overflow:hidden">
+              <div style="background:${b.barColor};width:${b.barPct}%;height:5px;border-radius:4px;transition:width .4s ease"></div>
+            </div>
+          </div>`).join('');
+      })()}
+      </div>
     </div>`;
 }
 
