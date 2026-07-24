@@ -681,11 +681,11 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       const pw = (rowPw['2025'] || '').trim();
       if (pw) CFG.pw = pw;
     }
-    // 채널 링크 (항목=채널명, 설명=링크)
-    const linkRows = setting.filter(r => r['항목'] && r['설명'] && r['설명'].startsWith('http'));
+    // 채널 링크 (H열=채널명, I열=링크)
+    const linkRows = setting.filter(r => r['채널명'] && r['링크']);
     if (linkRows.length > 0) {
       CFG.channelLinks = {};
-      linkRows.forEach(r => { CFG.channelLinks[r['항목']] = r['설명']; });
+      linkRows.forEach(r => { CFG.channelLinks[r['채널명']] = r['링크']; });
     }
   }
 
