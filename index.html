@@ -657,49 +657,50 @@ async function loadMktSheets() {
       try {
         const rows = await fetchMktSheet(gid);
         // 도서 기본정보 파싱 (A열=항목명, B열=값)
-        const infoKeys = ['저자','분야','출간일','정가(원)','배본부수(부)','코어 타깃',
-          '메인 카피','핵심 비히클','담당 메모','3개월 목표 부수','3개월 목표 순위'];
         const info = {};
         const subTargets = [], subCopies = [];
 
         rows.forEach(r => {
-          const k = Object.values(r)[0] || '';
-          const v = Object.values(r)[1] || '';
+          // 헤더가 '항목'|'값' 구조 또는 첫번째|두번째 컬럼 사용
+          const k = (r['항목'] || Object.values(r)[0] || '').trim();
+          const v = (r['값'] || Object.values(r)[1] || '').trim();
           if (!k) return;
-          if (k.startsWith('서브 타깃')) subTargets.push(v);
-          else if (k.startsWith('서브 카피')) subCopies.push(v);
-          else if (infoKeys.includes(k)) info[k] = v;
+          if (/^서브.?타깃/i.test(k)) { if(v) subTargets.push(v); }
+          else if (/^서브.?카피/i.test(k)) { if(v) subCopies.push(v); }
+          else info[k] = v;
         });
 
-        book.pubDate      = info['출간일'] || book.pubDate || '';
-        book.price        = parseFloat(String(info['정가(원)']||'0').replace(/,/g,'')) || book.price || 0;
-        book.author       = info['저자'] || '';
-        book.genre        = info['분야'] || '';
-        book.shipQtyPlan  = parseFloat(String(info['배본부수(부)']||'0').replace(/,/g,'')) || 0;
-        book.coreTarget   = info['코어 타깃'] || '';
+        const getInfo = (...keys) => { for(const k of keys){ if(info[k]) return info[k]; } return ''; };
+
+        book.pubDate      = getInfo('출간일') || book.pubDate || '';
+        book.price        = parseFloat(String(getInfo('정가(원)','정가')||'0').replace(/,/g,'')) || book.price || 0;
+        book.author       = getInfo('저자');
+        book.genre        = getInfo('분야','장르');
+        book.shipQtyPlan  = parseFloat(String(getInfo('배본부수(부)','배본부수')||'0').replace(/,/g,'')) || 0;
+        book.coreTarget   = getInfo('코어타깃','코어 타깃','Core타깃');
         book.subTargets   = subTargets;
-        book.mainCopy     = info['메인 카피'] || '';
+        book.mainCopy     = getInfo('메인카피','메인 카피','MAIN COPY');
         book.subCopies    = subCopies;
-        book.vehicle      = info['핵심 비히클'] || '';
-        book.memo         = info['담당 메모'] || '';
+        book.vehicle      = getInfo('핵심비히클','핵심 비히클','핵심비클');
+        book.memo         = getInfo('담당메모','담당 메모','메모');
         book.goal = book.goal || {}; book.goal = {
-          rank:    info['3개월 목표 순위'] || '',
-          qty:     parseFloat(String(info['3개월 목표 부수']||'0').replace(/,/g,'')) || 0,
+          rank:    getInfo('3개월목표순위','3개월 목표 순위','목표순위'),
+          qty:     parseFloat(String(getInfo('3개월목표부수','3개월 목표 부수','목표부수')||'0').replace(/,/g,'')) || 0,
           revenue: 0,
         };
 
         // 마케팅 액션 파싱 (날짜 형식 YYYY-MM-DD 행만)
         const actions = rows.filter(r => {
-          const d = r['날짜'] || '';
-          return /^\d{4}-\d{2}-\d{2}$/.test(d);
+          const d = r['날짜'] || Object.values(r)[0] || '';
+          return /^\d{4}-\d{2}-\d{2}$/.test(String(d).trim());
         }).map(r => ({
-          date:   r['날짜'] || '',
+          date:   (r['날짜'] || Object.values(r)[0] || '').trim(),
           lane:   r['레인'] || '',
           label:  r['액션명'] || '',
           days:   parseFloat(r['기간(일)']) || 1,
           cost:   parseFloat(String(r['비용(원)']||'0').replace(/,/g,'')) || 0,
-          status: r['status'] || 'planned',
-          url:    r['소재 URL (구글드라이브)'] || r['소재 URL'] || '',
+          status: (r['STATUS'] || r['status'] || 'planned').toLowerCase(),
+          url:    r['소재 URL(구글 드라이브)'] || r['소재 URL (구글드라이브)'] || r['소재 URL'] || '',
           detail: r['소재 설명'] || '',
           type:   'single',
         }));
