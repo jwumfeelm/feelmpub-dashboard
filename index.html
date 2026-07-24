@@ -872,7 +872,7 @@ function renderPills(){
   document.getElementById('pillBar').innerHTML=`
     <div class="pill"><div class="pill-lbl">연 누적 매출 (총)</div><div class="pill-val">${won(cumShip)}</div><div class="pill-sub">연목표 ${won(ANNUAL_TARGET)} 대비</div></div>
     <div class="pill"><div class="pill-lbl">연 매출 달성률</div><div class="pill-val ${achPct>=100?'ok':''}">${achPct}%</div><div class="pill-sub">${m+1}개월 누적</div></div>
-    <div class="pill"><div class="pill-lbl">연 누적 비용</div><div class="pill-val">${won(cumCost)}</div><div class="pill-sub">마케팅+출판+공통</div></div>
+    <div class="pill"><div class="pill-lbl">연 누적 비용</div><div class="pill-val">${won(cumCost)}</div><div class="pill-sub">마케팅+출판+인건비</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 손익</div><div class="pill-val ${cumProfit>=0?'ok':'dn'}">${cumProfit>=0?'+':''}${won(cumProfit)}</div><div class="pill-sub">순매출 기준</div></div>`;
   renderTrendChart(m);
 }
@@ -1170,7 +1170,7 @@ function renderSummary(){
       <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div></div>
       <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mCost)}</div><div class="kpi-sub">마케팅+출판+공통</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mCost)}</div><div class="kpi-sub">마케팅+출판+인건비</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${mProfit>=0?'good':'bad'}">${mProfit>=0?'+':''}${won(mProfit)}</div><div class="kpi-sub">순매출 − 총 비용</div></div>
     </div>
 
