@@ -855,8 +855,14 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
   // ── 판매량_주차별 → WEEK_SALES 갱신 ──
   if (weekSales && weekSales.length > 0) {
     Object.keys(WEEK_SALES).forEach(k => delete WEEK_SALES[k]);
+    // 전략도서 제목 → 공백제거 맵
+    const stratTitleMap = {};
+    BOOKS.filter(b => b.isStrategic).forEach(b => {
+      stratTitleMap[b.title.replace(/\s/g, '')] = b.title;
+    });
     weekSales.forEach(r => {
-      const title = r['도서명'] || '';
+      // D열 도서명(도서 목록 기준) 우선, 없으면 A열 ISBN 기준 매칭
+      const title = r['도서명'] || stratTitleMap[(r['ISBN']||'').replace(/\s/g,'')] || '';
       const week  = r['연도·주차'] || '';
       const qty   = toNum(r['판매부수']);
       if (!title || !week) return;
