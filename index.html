@@ -758,7 +758,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       cumSalesQty: toNum(r['과거판매부수']),
       cumSalesPub: toNum(r['과거판매액']),
       cumMktCost:  0, cumPubCost: 0, cumComCost: 0,
-      mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0,
+      mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0, stock:0,
       stores:{kyobo:0,yes:0,aladin:0,naver:0,others:0},
       mktBreak:{meta:0,google:0,tiktok:0,store:0,etc:0},
     })).filter(b=>b.title);
@@ -796,6 +796,14 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       b.mShipAmt   += toNum(r['출고매출(원)']);
       b.mReturn    += toNum(r['반품부수']);
       b.mReturnAmt += toNum(r['반품액(원)']);
+    });
+
+    // 재고 — 03_출고실적 O열(재고) 기준 최신값
+    ship.forEach(r => {
+      const b = mapped.find(x=>x.title===r['도서명']);
+      if(!b) return;
+      const stock = toNum(r['재고']);
+      if(stock !== 0 || r['재고'] !== '') b.stock = stock;
     });
 
     // 06_마케팅실적(SCM) → 당월 서점별
@@ -1343,39 +1351,58 @@ function renderShip(){
       </div>
     </div>
 
-    <!-- 하단: 전체 도서 월별 지표 -->
-    <div class="sec-label gap2">전체 도서 월별 지표</div>
+    <!-- 하단: 재고 현황 -->
+    <div class="sec-label gap2">도서별 재고 현황</div>
     <div class="card">
-      <div class="card-title">도서별 출고·반품 상세 <small>클릭 시 도서 상세 열기 · 컬럼 클릭 시 정렬</small></div>
-      <table>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>당월 평균 출고 기준</small></div>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button onclick="setStockFilter('all')" id="sf-all" class="badge good" style="cursor:pointer;border:none">전체</button>
+          <button onclick="setStockFilter('danger')" id="sf-danger" class="badge bad" style="cursor:pointer;border:none">위험 (&lt;30일)</button>
+          <button onclick="setStockFilter('warn')" id="sf-warn" class="badge warn" style="cursor:pointer;border:none">주의 (&lt;60일)</button>
+          <button onclick="setStockFilter('safe')" id="sf-safe" class="badge neutral" style="cursor:pointer;border:none">안전</button>
+        </div>
+      </div>
+      <table id="stock-table">
         <tr>
           ${thS('ship','title','도서명')}
-          ${thS('ship','mShipQty','출고 부수','right')}
-          ${thS('ship','mShipAmt','출고액','right')}
-          ${thS('ship','mReturn','반품 부수','right')}
-          ${thS('ship','mReturnAmt','반품액','right')}
-          ${thS('ship','netAmt','순매출','right')}
-          ${thS('ship','retPct','반품률','right')}
+          ${thS('ship','stock','현재 재고','right')}
+          ${thS('ship','mShipQty','당월 출고','right')}
+          ${thS('ship','daysLeft','소진 예상','right')}
+          <th class="right">상태</th>
         </tr>
-        ${sorted.map(b=>`<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
-          <td><b>${esc(b.title)}</b></td>
-          <td class="right">${b.mShipQty.toLocaleString()}부</td>
-          <td class="right">${won(b.mShipAmt)}</td>
-          <td class="right">${b.mReturn.toLocaleString()}부</td>
-          <td class="right">${won(b.mReturnAmt)}</td>
-          <td class="right"><b>${won(b.netAmt)}</b></td>
-          <td class="right"><span class="badge ${b.retPct>=15?'bad':b.retPct>=10?'warn':'good'}">${b.retPct}%</span></td>
-        </tr>`).join('')}
-        <tr style="background:var(--surface2);font-weight:900">
-          <td><b>합계</b></td>
-          <td class="right"><b>${mShipQty.toLocaleString()}부</b></td>
-          <td class="right"><b>${won(mShip)}</b></td>
-          <td class="right"><b>${mRetQty.toLocaleString()}부</b></td>
-          <td class="right"><b>${won(mRet)}</b></td>
-          <td class="right"><b>${won(mNet)}</b></td>
-          <td class="right"><b>${retPct}%</b></td>
-          <td></td>
-        </tr>
+        ${(()=>{
+          const stockRows = [...BOOKS]
+            .filter(b => b.stock > 0 || b.mShipQty > 0)
+            .map(b => {
+              const dailyRate = b.mShipQty / 30;
+              const daysLeft = dailyRate > 0 ? Math.round(b.stock / dailyRate) : 999;
+              const status = daysLeft < 30 ? 'bad' : daysLeft < 60 ? 'warn' : 'good';
+              const statusLabel = daysLeft < 30 ? '위험' : daysLeft < 60 ? '주의' : '안전';
+              return {...b, daysLeft, status, statusLabel};
+            })
+            .sort((a,b) => a.daysLeft - b.daysLeft);
+
+          window._stockRows = stockRows;
+          window.setStockFilter = (f) => {
+            const rows = document.querySelectorAll('#stock-table tr[data-status]');
+            rows.forEach(r => {
+              r.style.display = (f==='all' || r.dataset.status===f) ? '' : 'none';
+            });
+            ['all','danger','warn','safe'].forEach(id => {
+              document.getElementById('sf-'+id)?.classList.toggle('good', id===f && f==='all');
+            });
+          };
+
+          return stockRows.map(b => `
+            <tr onclick="openDrawer(${b.id})" style="cursor:pointer" data-status="${b.status}">
+              <td><b>${esc(b.title)}</b></td>
+              <td class="right">${b.stock > 0 ? b.stock.toLocaleString()+'부' : '<span style="color:var(--ink4)">-</span>'}</td>
+              <td class="right">${b.mShipQty > 0 ? b.mShipQty.toLocaleString()+'부' : '<span style="color:var(--ink4)">-</span>'}</td>
+              <td class="right"><b>${b.daysLeft < 999 ? b.daysLeft+'일' : '-'}</b></td>
+              <td class="right"><span class="badge ${b.status}">${b.statusLabel}</span></td>
+            </tr>`).join('');
+        })()}
       </table>
     </div>`;
 }
