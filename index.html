@@ -954,6 +954,8 @@ function renderPills(){
     <div class="pill"><div class="pill-lbl">연 매출 달성률</div><div class="pill-val ${achPct>=100?'ok':''}">${achPct}%</div><div class="pill-sub">${m+1}개월 누적</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 비용</div><div class="pill-val">${won(cumCost)}</div><div class="pill-sub">마케팅+출판+경상비</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 손익</div><div class="pill-val ${cumProfit>=0?'ok':'dn'}">${cumProfit>=0?'+':''}${won(cumProfit)}</div><div class="pill-sub">순매출 기준</div></div>`;
+  const trendEl = document.getElementById('trend-chart');
+  if(trendEl) trendEl.style.display = activeTab === 'channel' ? 'none' : '';
   renderTrendChart(m);
 }
 
