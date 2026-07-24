@@ -758,7 +758,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
       cumSalesQty: toNum(r['과거판매부수']),
       cumSalesPub: toNum(r['과거판매액']),
       cumMktCost:  0, cumPubCost: 0, cumComCost: 0,
-      mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0, stock:0,
+      mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0, stock:0, scm3m:0,
       stores:{kyobo:0,yes:0,aladin:0,naver:0,others:0},
       mktBreak:{meta:0,google:0,tiktok:0,store:0,etc:0},
     })).filter(b=>b.title);
@@ -810,15 +810,32 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
     });
 
     // 06_마케팅실적(SCM) → 당월 서점별
+    // 최근 3개월 YM 목록 계산
+    const cur3m = [];
+    for(let i=0; i<3; i++){
+      const d = new Date(curYM + '-01');
+      d.setMonth(d.getMonth() - i);
+      cur3m.push(d.toISOString().slice(0,7));
+    }
+
     scm.forEach(r => {
-      if(!r['연도·월'] || !r['연도·월'].startsWith(curYM.slice(0,7))) return;
+      const ym = r['연도·월'] || '';
       const b = mapped.find(x=>x.title===r['도서명']);
       if(!b) return;
-      b.stores.kyobo  += toNum(r['교보(부)']);
-      b.stores.yes    += toNum(r['예스24(부)']);
-      b.stores.aladin += toNum(r['알라딘(부)']);
-      b.stores.naver  += toNum(r['영풍(부)']);
-      b.stores.others += 0;
+      // 당월 서점별 판매
+      if(ym.startsWith(curYM.slice(0,7))) {
+        b.stores.kyobo  += toNum(r['교보(부)']);
+        b.stores.yes    += toNum(r['예스24(부)']);
+        b.stores.aladin += toNum(r['알라딘(부)']);
+        b.stores.naver  += toNum(r['영풍(부)']);
+        b.stores.others += 0;
+      }
+      // 최근 3개월 실판매 누적
+      if(cur3m.some(m => ym.startsWith(m))) {
+        b.scm3m = (b.scm3m || 0) + toNum(r['총판매(부)']);
+      }
+      // 누적 실판매 전체 기간 (시중재고 계산용 - 2026년 출간 도서는 과거데이터 없음)
+      b.cumSalesQty += toNum(r['총판매(부)']);
     });
 
     if(mapped.length > 0) {
@@ -1358,7 +1375,7 @@ function renderShip(){
     <div class="sec-label gap2">도서별 재고 현황</div>
     <div class="card" id="stock-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>2026년 출간 도서 · 당월 평균 출고 기준</small></div>
+        <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>2026년 출간 도서 · 최근 3개월 실판매 기준</small></div>
         <div style="margin-left:auto;display:flex;gap:6px">
           <button onclick="setStockFilter('all')" id="sf-all" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:#1E293B;color:#fff;border-color:#1E293B">전체</button>
           <button onclick="setStockFilter('bad')" id="sf-bad" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--bad);border-color:var(--bad)">위험 &lt;30일</button>
@@ -1374,13 +1391,14 @@ function renderShip(){
             return pub >= new Date('2026-01-01') && (b.stock > 0 || b.mShipQty > 0 || b.stock < 0);
           })
           .map(b => {
-            const dailyRate = b.mShipQty / 30;
+            const marketStock = Math.max(0, b.cumShipQty - b.cumSalesQty); // 시중재고 = 누적출고 - 누적실판매
+            const dailyRate = b.scm3m > 0 ? b.scm3m / 90 : b.mShipQty > 0 ? b.mShipQty / 30 : 0;
             const daysLeft = b.stock <= 0 ? 0 : dailyRate > 0 ? Math.round(b.stock / dailyRate) : 999;
             const status = daysLeft === 0 ? 'bad' : daysLeft < 30 ? 'bad' : daysLeft < 60 ? 'warn' : 'good';
             const statusLabel = daysLeft === 0 ? '재고없음' : daysLeft < 30 ? '위험' : daysLeft < 60 ? '주의' : '안전';
             const barPct = daysLeft >= 999 ? 100 : Math.min(100, Math.round(daysLeft / 90 * 100));
             const barColor = status === 'bad' ? 'var(--bad)' : status === 'warn' ? 'var(--warn)' : 'var(--good)';
-            return {...b, daysLeft, status, statusLabel, barPct, barColor};
+            return {...b, daysLeft, status, statusLabel, barPct, barColor, marketStock};
           })
           .sort((a,b) => a.daysLeft - b.daysLeft);
 
@@ -1408,11 +1426,15 @@ function renderShip(){
                 <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.stock > 0 ? b.stock.toLocaleString() : '0'}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">당월 출고</div>
-                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.mShipQty.toLocaleString()}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">월평균 실판매</div>
+                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${Math.round((b.scm3m||0)/3).toLocaleString()}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">시중 재고</div>
+                <div style="font-size:20px;font-weight:900;color:var(--ink1);letter-spacing:-.02em">${b.marketStock.toLocaleString()}<span style="font-size:12px;font-weight:400;margin-left:2px">부</span></div>
               </div>
               <div style="margin-left:auto;text-align:right">
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">소진 예상</div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:2px">물류 소진 예상</div>
                 <div style="font-size:20px;font-weight:900;color:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};letter-spacing:-.02em">${b.daysLeft >= 999 ? '90일+' : b.daysLeft+'일'}</div>
               </div>
             </div>
