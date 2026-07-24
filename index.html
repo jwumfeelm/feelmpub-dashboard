@@ -1358,7 +1358,7 @@ function renderShip(){
     <div class="sec-label gap2">도서별 재고 현황</div>
     <div class="card" id="stock-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>당월 평균 출고 기준</small></div>
+        <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>2026년 출간 도서 · 당월 평균 출고 기준</small></div>
         <div style="margin-left:auto;display:flex;gap:6px">
           <button onclick="setStockFilter('all')" id="sf-all" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:#1E293B;color:#fff;border-color:#1E293B">전체</button>
           <button onclick="setStockFilter('bad')" id="sf-bad" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--bad);border-color:var(--bad)">위험 &lt;30일</button>
@@ -1369,7 +1369,10 @@ function renderShip(){
       <div id="stock-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
       ${(()=>{
         const stockRows = [...BOOKS]
-          .filter(b => b.stock > 0 || b.mShipQty > 0)
+          .filter(b => {
+            const pub = new Date(b.pubDate);
+            return pub >= new Date('2026-01-01') && (b.stock > 0 || b.mShipQty > 0 || b.stock < 0);
+          })
           .map(b => {
             const dailyRate = b.mShipQty / 30;
             const daysLeft = b.stock <= 0 ? 0 : dailyRate > 0 ? Math.round(b.stock / dailyRate) : 999;
