@@ -422,6 +422,7 @@ const CFG = {
     channel:  "419118457",    // 05_채널실적
     bookList: "927629470",    // 도서 목록
     weekSales:"105549750",    // 판매량_주차별
+    daySales: "1033640825",    // 판매량_일별
   }
 };
 
@@ -477,6 +478,8 @@ const SCM_COLORS = ["#FDE200","#2D6A4A","#1A528A","#8B3A3A","#E67E22","#9B59B6",
 const BOOKS = [];
 // 주차별 판매 데이터
 const WEEK_SALES = {}; // {도서명: [{week, qty}]}
+// 일별 판매 데이터
+const DAY_SALES = {}; // {도서명: [{date, qty}]}
 
 // 비용 원장 — 시트(02_비용원장)에서 동적으로 채워짐
 const EXPENSES = [];
@@ -641,9 +644,10 @@ async function loadSheets() {
       fetchSheet(CFG.gids.channel),   // 05_채널실적
       fetchSheet(CFG.gids.bookList),  // 도서 목록
       fetchSheet(CFG.gids.weekSales), // 판매량_주차별
+      fetchSheet(CFG.gids.daySales),  // 판매량_일별
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales });
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -667,7 +671,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw, 채널링크 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -858,6 +862,23 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     }
   }
 
+  // ── 판매량_일별 → DAY_SALES 갱신 ──
+  if (daySales && daySales.length > 0) {
+    Object.keys(DAY_SALES).forEach(k => delete DAY_SALES[k]);
+    const stratTitleMapDay = {};
+    BOOKS.filter(b => b.isStrategic).forEach(b => {
+      stratTitleMapDay[b.title.replace(/\s/g, '')] = b.title;
+    });
+    daySales.forEach(r => {
+      const title = r['도서명'] || stratTitleMapDay[(r['ISBN']||'').toString().replace(/\s/g,'')] || '';
+      const date  = r['판매일'] || '';
+      const qty   = toNum(r['판매부수']);
+      if (!title || !date) return;
+      if (!DAY_SALES[title]) DAY_SALES[title] = [];
+      DAY_SALES[title].push({date, qty});
+    });
+  }
+
   // ── 판매량_주차별 → WEEK_SALES 갱신 ──
   if (weekSales && weekSales.length > 0) {
     Object.keys(WEEK_SALES).forEach(k => delete WEEK_SALES[k]);
@@ -941,7 +962,7 @@ function renderTabs(){
 function setTab(id){
   activeTab=id;
   const trendEl = document.getElementById('trend-chart');
-  if(trendEl) trendEl.style.display = id==='channel' ? 'none' : '';
+  if(trendEl) trendEl.style.display = (id==='channel' || id==='calendar') ? 'none' : '';
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   renderTabs(); renderActive();
