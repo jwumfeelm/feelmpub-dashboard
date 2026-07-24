@@ -681,11 +681,11 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList }
     return MONTHS.map(m => toNum(row[m]||0));
   };
 
-  const newShip   = getMonthly('출고 매출');
+  const newShip   = getMonthly('총 매출');
   const newReturn = getMonthly('반품액');
   const newMkt    = getMonthly('마케팅팀 비용');
   const newPub    = getMonthly('출판팀 비용');
-  const newCom    = getMonthly('공통 비용');
+  const newCom    = getMonthly('인건비');
   const newTarget = getMonthly('월 목표 매출');
 
   // 목표 매출은 출고 매출과 무관하게 항상 반영
@@ -864,7 +864,7 @@ function renderPills(){
   const cumProfit = M_PROFIT.slice(0,m+1).reduce((a,b)=>a+b,0);
   const achPct    = pct(cumShip, ANNUAL_TARGET);
   document.getElementById('pillBar').innerHTML=`
-    <div class="pill"><div class="pill-lbl">연 누적 매출 (출고)</div><div class="pill-val">${won(cumShip)}</div><div class="pill-sub">연목표 ${won(ANNUAL_TARGET)} 대비</div></div>
+    <div class="pill"><div class="pill-lbl">연 누적 매출 (총)</div><div class="pill-val">${won(cumShip)}</div><div class="pill-sub">연목표 ${won(ANNUAL_TARGET)} 대비</div></div>
     <div class="pill"><div class="pill-lbl">연 매출 달성률</div><div class="pill-val ${achPct>=100?'ok':''}">${achPct}%</div><div class="pill-sub">${m+1}개월 누적</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 비용</div><div class="pill-val">${won(cumCost)}</div><div class="pill-sub">마케팅+출판+공통</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 손익</div><div class="pill-val ${cumProfit>=0?'ok':'dn'}">${cumProfit>=0?'+':''}${won(cumProfit)}</div><div class="pill-sub">순매출 기준</div></div>`;
@@ -932,7 +932,7 @@ function renderTrendChart(curM) {
   const shipData   = M_SHIP_SALES.map((v,i) => i <= curM ? v : null);
   const targetData = M_TARGET;
   const costData   = M_TOTAL_COST.map((v,i) => i <= curM ? v : null);
-  const retData    = M_SHIP_SALES.map((v,i) => i <= curM && v > 0 ? Math.round(M_RETURN[i]/v*1000)/10 : null);
+  const retData    = M_SHIP_SALES.map((v,i) => i <= curM && v > 0 ? Math.round(M_RETURN[i]/v*1000)/10 : null); // M_SHIP_SALES = 총 매출
 
   const maxAmt = Math.max(...M_TARGET, ...M_SHIP_SALES.filter((_,i)=>i<=curM), 1) * 1.15;
   const maxRet = Math.max(...retData.filter(v=>v!==null), 15);
