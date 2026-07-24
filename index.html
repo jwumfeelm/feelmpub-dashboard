@@ -411,8 +411,6 @@ const CFG = {
   pw:             "feelm2026",
   sheetId:        "1gpKZRDD4qYWl2x3JzBCYROY2vG-OfABSNquuNU1EELc",
   autoRefreshMin: 5,
-  // 구글 시트 탭별 GID (시트 URL의 gid= 값)
-  // 구글 시트 열고 각 탭 클릭 후 URL 확인: ...#gid=XXXXXXX
   gids: {
     setting:  "1920999916",   // 00_설정
     monthly:  "539841653",    // 01_월별실적
@@ -422,7 +420,17 @@ const CFG = {
     channel:  "419118457",    // 05_채널실적
     bookList: "927629470",    // 도서 목록
     weekSales:"105549750",    // 판매량_주차별
-    daySales: "1033640825",    // 판매량_일별
+    daySales: "1033640825",   // 판매량_일별
+  },
+  // 마케팅 캠페인 별도 구글 시트
+  mktSheetId: "1SgFVN8aOV7TIz_9PsP3xncnU1HwvquY-i7gCq6XNOno",
+  mktGids: {
+    setting:  "648690654",    // 00_설정 (노출 관리)
+    books: {
+      "생존지능":                    "1456985567",
+      "다정한사람이이긴다(개정판)":   "1761152834",
+      "불안한날에니체를읽는다":       "762563365",
+    }
   }
 };
 
@@ -618,6 +626,76 @@ async function fetchSheet(gid) {
 /* ─────────────────────────────────────
    LOAD ALL SHEETS
 ───────────────────────────────────── */
+async function fetchMktSheet(gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${CFG.mktSheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  return parseCSV(await res.text());
+}
+
+async function loadMktSheets() {
+  try {
+    // 00_설정 (노출 관리)
+    const mktSetting = await fetchMktSheet(CFG.mktGids.setting);
+    const visibleBooks = mktSetting.filter(r => r['노출여부 (Y/N)'] === 'Y' || r['노출여부 (Y/N)'] === 'y');
+
+    if (!visibleBooks.length) return;
+
+    // MKT_BOOKS 갱신
+    const newMktBooks = visibleBooks.map(r => {
+      const code = r['도서코드 (탭명과 동일)'] || '';
+      const name = r['도서명 (표시명)'] || '';
+      const existing = MKT_BOOKS.find(b => b.code === code) || {};
+      return { ...existing, code, name };
+    });
+    MKT_BOOKS.splice(0, MKT_BOOKS.length, ...newMktBooks);
+
+    // 각 도서 탭에서 액션 데이터 읽기
+    for (const book of newMktBooks) {
+      const gid = CFG.mktGids.books[book.code];
+      if (!gid) continue;
+      try {
+        const rows = await fetchMktSheet(gid);
+        // 도서 기본정보 파싱 (A열=항목, B열=값)
+        const getVal = key => {
+          const r = rows.find(r => r['저자'] === key || Object.values(r)[0] === key);
+          return r ? Object.values(r)[1] || '' : '';
+        };
+        book.pubDate  = book.pubDate  || getVal('출간일');
+        book.price    = book.price    || parseFloat(String(getVal('정가(원)')).replace(/,/g,'')) || 0;
+        book.goal     = book.goal     || {rank:'', qty:0, revenue:0};
+
+        // 마케팅 액션 파싱 (헤더: 날짜, 레인, 액션명, 기간(일), 비용(원), 비용 대분류, status...)
+        const actions = rows.filter(r => {
+          const d = r['날짜'] || '';
+          return d.match(/^\d{4}-\d{2}-\d{2}$/);
+        }).map(r => ({
+          date:   r['날짜'] || '',
+          lane:   r['레인'] || '',
+          label:  r['액션명'] || '',
+          days:   parseFloat(r['기간(일)']) || 1,
+          cost:   parseFloat(String(r['비용(원)']||'0').replace(/,/g,'')) || 0,
+          status: r['status'] || 'planned',
+          url:    r['소재 URL (구글드라이브)'] || '',
+          detail: r['소재 설명'] || '',
+          type:   'single',
+        }));
+
+        MKT_ACTIONS[book.code] = actions;
+      } catch(e) {
+        console.warn('마케팅 시트 로드 실패:', book.code, e);
+      }
+    }
+
+    // calBook 초기화
+    if (MKT_BOOKS.length > 0 && !MKT_BOOKS.find(b => b.code === calBook)) {
+      calBook = MKT_BOOKS[0].code;
+    }
+
+  } catch(e) {
+    console.warn('마케팅 캠페인 시트 로드 실패:', e);
+  }
+}
+
 async function loadSheets() {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncTxt');
@@ -655,6 +733,11 @@ async function loadSheets() {
 
     renderPills();
     renderActive();
+
+    // 마케팅 캠페인 시트 비동기 로드
+    loadMktSheets().then(() => {
+      if (activeTab === 'calendar') renderCalendar();
+    });
 
   } catch(e) {
     dot.className = 'sync-dot error';
