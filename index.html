@@ -726,28 +726,38 @@ async function loadMktSheets() {
       if (!gid) continue;
       try {
         const grid = await fetchMktSheetGrid(gid);
-        const hdr  = grid[0] || [];
-        const rows = grid.slice(1).map(vals => {
-          const o = {};
-          hdr.forEach((h, i) => { o[h.trim()] = vals[i] || ''; });
-          return o;
+        const flat = v => String(v||'').replace(/\s/g,'');
+
+        // ── 시트 구조 자동 판별 ──
+        // 액션 표 헤더 행(날짜 + 레인/액션명)이 어디인지 찾는다
+        const actHdrIdx = grid.findIndex(r => {
+          const j = (r||[]).map(flat).join('|');
+          return j.includes('날짜') && (j.includes('레인') || j.includes('액션명'));
         });
-        // 도서 기본정보 파싱 (A열=항목명, B열=값)
+        // 기본정보가 가로로 놓인 행(저자 + 분야가 한 줄에)
+        const infoHdrIdx = grid.findIndex(r => {
+          const j = (r||[]).map(flat).join('|');
+          return j.includes('저자') && j.includes('분야');
+        });
+
         const info = {};
         const subTargets = [], subCopies = [];
+        const addInfo = (k, v) => {
+          const key = String(k||'').trim().replace(/\s+/g,' ');
+          const val = String(v||'').trim();
+          if (!key || !val) return;
+          if (/^Sub.?Target/i.test(key) || /^서브\s*타깃/.test(key)) subTargets.push(val);
+          else if (/^Sub.?Copy/i.test(key) || /^서브\s*카피/.test(key)) subCopies.push(val);
+          else if (!(key in info)) info[key] = val;
+        };
 
-        // 가로 구조: 1행=헤더, 2행=값
-        // rows[0]이 헤더-값 쌍으로 이미 파싱됨
-        if (rows.length > 0) {
-          const r = rows[0];
-          Object.keys(r).forEach(k => {
-            const v = (r[k] || '').trim();
-            const key = k.trim().replace(/\s+/g, ' ');
-            if (!key || !v) return;
-            if (/^Sub.?Target/i.test(key)) subTargets.push(v);
-            else if (/^Sub.?Copy/i.test(key)) subCopies.push(v);
-            else info[key] = v;
-          });
+        if (infoHdrIdx >= 0 && grid[infoHdrIdx+1]) {
+          // (A) 가로형 — 헤더 행 바로 아래가 값
+          grid[infoHdrIdx].forEach((h, i) => addInfo(h, grid[infoHdrIdx+1][i]));
+        } else {
+          // (B) 세로형 — A열 항목명 / B열 값. 액션 표 위쪽만 훑는다
+          const limit = actHdrIdx >= 0 ? actHdrIdx : grid.length;
+          for (let i = 0; i < limit; i++) addInfo((grid[i]||[])[0], (grid[i]||[])[1]);
         }
 
         const getInfo = (...keys) => { for(const k of keys){ if(info[k]) return info[k]; } return ''; };
@@ -769,27 +779,42 @@ async function loadMktSheets() {
           revenue: 0,
         };
 
-        // 마케팅 액션 파싱
-        // CSV 헤더가 기본정보 헤더로 고정되어 있어서 컬럼 인덱스로 파싱
-        // 액션 행: 첫 번째 값이 YYYY-MM-DD 형식인 행
-        // 기본정보가 1행(헤더)+1행(값) → rows[0]=기본정보값, rows[1~]=액션행들
-        // 액션 헤더 행(날짜|레인|...) 건너뛰고 실제 날짜 있는 행만
-        // grid[0]=헤더, grid[1]=기본정보 값 → grid[2~]가 액션 후보
-        const actions = grid.slice(2).filter(vals => {
-          const first = (vals[0] || '').trim();
-          // 4자리 연도 + 구분자가 있는 것만 날짜로 인정 ('6' 같은 값이 Date로 해석되는 것 방지)
+        // ── 마케팅 액션 파싱 ──
+        // 액션 표 헤더가 있으면 그 아래부터, 없으면 3행부터.
+        // 열 위치는 헤더 이름으로 찾고, 못 찾으면 기존 순서로 대체한다.
+        const actStart = actHdrIdx >= 0 ? actHdrIdx + 1 : 2;
+        const aHdr = actHdrIdx >= 0 ? (grid[actHdrIdx] || []).map(flat) : [];
+        const col = (names, fallback) => {
+          for (const n of names) {
+            const i = aHdr.findIndex(h => h && h.indexOf(flat(n)) >= 0);
+            if (i >= 0) return i;
+          }
+          return fallback;
+        };
+        const cDate = col(['날짜','일자'], 0);
+        const cLane = col(['레인','채널'], 1);
+        const cName = col(['액션명','액션'], 2);
+        const cDays = col(['기간'], 3);
+        const cCost = col(['비용(원)','비용'], 4);
+        const cStat = col(['status','상태'], 6);
+        const cUrl  = col(['소재URL','URL','링크'], 7);
+        const cDesc = col(['소재설명','설명','내용'], 8);
+
+        const actions = grid.slice(actStart).filter(vals => {
+          const first = (vals[cDate] || '').trim();
+          // 4자리 연도 + 구분자가 있는 것만 날짜로 인정
           if (!/^\d{4}[-./]/.test(first)) return false;
           return !!parseAnyDate(first);
         }).map(vals => {
           return {
-            date:   ymd(parseAnyDate(vals[0])),
-            lane:   (vals[1] || '').trim(),
-            label:  (vals[2] || '').trim(),
-            days:   parseFloat(vals[3]) || 1,
-            cost:   parseFloat(String(vals[4]||'0').replace(/,/g,'')) || 0,
-            status: (vals[6] || 'planned').toLowerCase(),
-            url:    (vals[7] || '').trim().replace(/[''"]/g, ''),
-            detail: (vals[8] || '').trim(),
+            date:   ymd(parseAnyDate(vals[cDate])),
+            lane:   (vals[cLane] || '').trim(),
+            label:  (vals[cName] || '').trim(),
+            days:   parseFloat(vals[cDays]) || 1,
+            cost:   parseFloat(String(vals[cCost]||'0').replace(/,/g,'')) || 0,
+            status: (vals[cStat] || 'planned').toLowerCase(),
+            url:    (vals[cUrl] || '').trim().replace(/['\u2018\u2019"]/g, ''),
+            detail: (vals[cDesc] || '').trim(),
             type:   'single',
           };
         });
@@ -2415,19 +2440,11 @@ function renderCalendar() {
 
     <!-- 일별 판매 라인차트 -->
     ${(()=>{
-      // calBook → 판매량_일별 도서명 매칭 (정규화 후 완전일치 → 부분일치)
-      const dayData = getDaySalesFor(calBook);
-      if (!dayData || !dayData.length) return '<div class="card gap" style="color:var(--ink3);padding:20px;text-align:center">일별 판매 데이터 없음</div>';
+      // 타임라인 판매량과 동일한 소스를 사용 (서점별 탭 우선 → 없으면 판매량_일별)
+      const sorted = dayTotalsFor(calBook);
+      if (!sorted.length) return '<div class="card gap" style="color:var(--ink3);padding:20px;text-align:center">일별 판매 데이터 없음</div>';
 
       const parseDate = s => parseAnyDate(s) || new Date(0);
-      // 같은 날짜 중복 행은 합산
-      const dayMap = {};
-      dayData.forEach(r => {
-        const k = ymd(parseAnyDate(r.date));
-        if (!k) return;
-        dayMap[k] = (dayMap[k] || 0) + (Number(r.qty) || 0);
-      });
-      const sorted = Object.keys(dayMap).sort().map(k => ({date: k, qty: dayMap[k]}));
       const maxQty = Math.max(...sorted.map(d => d.qty), 1);
       const n = sorted.length;
       // 도수에 비례해 충분한 가로폭 확보 (최소 60px/일)
@@ -2642,9 +2659,20 @@ function daySalesStoreFor(code){
   return null;
 }
 
-// 일별 판매 → {YYYY-MM-DD: 부수}
+// 일별 총판매 → {YYYY-MM-DD: 부수}
+// 두 시트가 갱신 시점이 달라 어긋나므로, 서점별 탭이 있으면 그것을 합산해 단일 기준으로 삼는다.
 function daySalesByDate(code){
-  var arr=getDaySalesFor(code), out={};
+  var out={};
+  var sm = daySalesStoreFor(code);
+  if (sm && Object.keys(sm).length){
+    Object.keys(sm).forEach(function(k){
+      var row=sm[k], t=0;
+      Object.keys(row).forEach(function(st){ t += (Number(row[st])||0); });
+      out[k]=t;
+    });
+    return out;
+  }
+  var arr=getDaySalesFor(code);
   if(!arr) return out;
   arr.forEach(function(r){
     var d=parseAnyDate(r.date), k=ymd(d);
@@ -2652,6 +2680,12 @@ function daySalesByDate(code){
     out[k]=(out[k]||0)+(Number(r.qty)||0);
   });
   return out;
+}
+
+// 차트용 — 날짜 오름차순 [{date, qty}]
+function dayTotalsFor(code){
+  var m=daySalesByDate(code);
+  return Object.keys(m).sort().map(function(k){ return {date:k, qty:m[k]}; });
 }
 
 function driveImgUrl(url) {
@@ -2684,17 +2718,9 @@ function driveImgFallback(el, url) {
 }
 
 function initDayChartHover() {
-  const dayData = getDaySalesFor(calBook);
-  if (!dayData || !dayData.length) return;
-
-  // 차트와 동일한 방식으로 날짜별 합산 후 정렬 (툴팁 인덱스 일치)
-  const dayMapH = {};
-  dayData.forEach(r => {
-    const k = ymd(parseAnyDate(r.date));
-    if (!k) return;
-    dayMapH[k] = (dayMapH[k] || 0) + (Number(r.qty) || 0);
-  });
-  const sorted = Object.keys(dayMapH).sort().map(k => ({date: k, qty: dayMapH[k]}));
+  // 차트와 완전히 동일한 배열이어야 툴팁 인덱스가 맞는다
+  const sorted = dayTotalsFor(calBook);
+  if (!sorted.length) return;
   const n = sorted.length;
   const W = 1200, PAD_L = 48, PAD_R = 16, cW = W - PAD_L - PAD_R;
 
