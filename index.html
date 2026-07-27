@@ -20,7 +20,7 @@
   --bad:#B02B45;  --bad-dim:#FCEDF0;
   --info:#5A6572; --info-dim:#EDF0F4;
   --dark-bg:#0D1116; --dark-surf:#161B22; --dark-border:#242C36;
-  --r:8px; --r2:6px; --r3:4px; --r4:3px;
+  --r:8px; --r2:6px; --r3:4px; --r4:3px; --r5:2px; --rp:999px;
   /* 그림자는 얕고 좁게 — 번짐 대신 경계선으로 구분 */
   --sh-sm:0 1px 1px rgba(13,17,22,.04);
   --sh-md:0 1px 2px rgba(13,17,22,.06),0 4px 12px rgba(13,17,22,.05);
@@ -55,16 +55,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 /* LOCK */
 #lock{position:fixed;inset:0;z-index:999;background:var(--dark-bg);display:flex;align-items:center;justify-content:center}
 #lock.hidden{display:none}
-.lk-wrap{display:flex;flex-direction:column;align-items:center;gap:28px}
-.lk-logo{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:#fff;letter-spacing:.1em;text-transform:uppercase}
-.lk-logo-dot{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px}
-.lk-card{background:var(--dark-surf);border:1px solid var(--dark-border);border-radius:20px;padding:44px 48px;width:400px;display:flex;flex-direction:column;gap:16px;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.lk-wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
+.lk-logo{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#fff;letter-spacing:.1em;text-transform:uppercase}
+.lk-logo-dot{width:28px;height:28px;background:var(--accent);border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:13px}
+.lk-card{background:var(--dark-surf);border:1px solid var(--dark-border);border-radius:var(--rp);padding:44px 48px;width:400px;display:flex;flex-direction:column;gap:16px;box-shadow:0 24px 80px rgba(0,0,0,.5)}
 .lk-title{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1.2}
 .lk-sub{font-size:12px;color:#5A6572;margin-top:-4px}
 .lk-inp{background:#0D1116;border:1.5px solid #242C36;border-radius:var(--r2);padding:13px 15px;font-size:15px;color:#fff;font-family:var(--sans);outline:none;transition:border-color .15s;letter-spacing:.06em}
 .lk-inp:focus{border-color:var(--accent)}
 .lk-inp::placeholder{color:#3A434F;letter-spacing:0}
-.lk-btn{background:var(--accent);border:none;border-radius:var(--r2);padding:14px;font-size:13px;font-weight:800;color:#0D1116;cursor:pointer;font-family:var(--sans)}
+.lk-btn{background:var(--accent);border:none;border-radius:var(--r2);padding:12px;font-size:13px;font-weight:800;color:#0D1116;cursor:pointer;font-family:var(--sans)}
 .lk-btn:hover{opacity:.88}
 .lk-err{font-size:12px;color:#D9647E;display:none;font-weight:600;text-align:center}
 
@@ -77,20 +77,20 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(241
 .hdr{display:flex;align-items:center;gap:16px;height:100%;padding:0 24px}
 .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:900;color:var(--ink);letter-spacing:-.02em}
 .brand-mark{display:flex;align-items:center;}
-.hdr-r{margin-left:auto;display:flex;align-items:center;gap:14px}
-.sync-st{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink3);font-weight:500}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:12px}
+.sync-st{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink3);font-weight:500}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--good);flex-shrink:0}
 .sync-dot.loading{background:var(--warn);animation:blink .8s linear infinite}
 .sync-dot.error{background:var(--bad)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.mpick{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
+.mpick{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
 .mpick input{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:5px 9px;color:var(--ink);font-family:var(--sans);font-size:12px;outline:none;cursor:pointer}
 .mpick input:focus{border-color:var(--accent)}
 
 /* TABS */
 .tabs-bar{position:sticky;top:var(--hdr-h);z-index:99;height:var(--tab-h);background:rgba(241,243,246,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;overflow-x:auto;gap:0}
 .tabs-bar::-webkit-scrollbar{display:none}
-.tab-btn{border:none;background:none;color:var(--ink3);padding:0 16px;height:44px;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:5px;
+.tab-btn{border:none;background:none;color:var(--ink3);padding:0 16px;height:44px;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:4px;
   transition:color var(--d-fast) linear,border-color var(--d-fast) linear}
 .tab-btn:hover{color:var(--ink)}
 .tab-btn:hover:not(.active){color:var(--ink)}
@@ -111,10 +111,10 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(241
 .pill-sub{font-size:12px;color:#7D8794;text-align:right;margin-top:8px;letter-spacing:.01em}
 
 /* 보안 고지 */
-.conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:3px;
+.conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:var(--r4);
   background:var(--accent-dim);border:1px solid var(--accent);color:var(--ink);
   font-size:9px;font-weight:800;letter-spacing:.08em;white-space:nowrap;flex-shrink:0}
-.conf-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:22px;padding:12px 2px 0;
+.conf-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:24px;padding:12px 2px 0;
   border-top:1px solid var(--border);font-size:11px;color:var(--ink3);line-height:1.6}
 .conf-note b{color:var(--ink2);font-weight:800}
 .conf-stamp{margin-left:auto;font-size:10px;color:var(--ink3);white-space:nowrap}
@@ -128,21 +128,21 @@ main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
 .section{display:none}
 .section.active{display:block}
 .gap{margin-top:12px}
-.gap2{margin-top:18px}
+.gap2{margin-top:16px}
 
 /* GRID */
 .g2{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
 .g2e{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 
 /* CARD */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--sh-sm);
   transition:border-color var(--d-fast) linear,box-shadow var(--d-mid) var(--ease),transform var(--d-mid) var(--ease)}
 .card:hover{border-color:var(--border2);box-shadow:var(--sh-md)}
-.card-title{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;letter-spacing:-.005em}
+.card-title{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px;letter-spacing:-.005em}
 .card-title small{font-size:11px;color:var(--ink3);font-weight:500;letter-spacing:0}
 
 /* KPI */
@@ -153,24 +153,24 @@ main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
   transform:scaleX(0);transform-origin:left;transition:transform var(--d-mid) var(--ease)}
 .kpi:hover{border-color:var(--border2);box-shadow:var(--sh-md);transform:translateY(-2px)}
 .kpi:hover::after{transform:scaleX(1)}
-.kpi-lbl{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
-.kpi-val{font-size:34px;font-weight:800;color:var(--ink);letter-spacing:-.045em;line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.kpi-lbl{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.kpi-val{font-size:34px;font-weight:800;color:var(--ink);letter-spacing:-.045em;line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums}
 .kpi-val.good{color:var(--good)}
 .kpi-val.bad{color:var(--bad)}
 .kpi-val.warn{color:var(--warn)}
 .kpi-sub{font-size:12px;color:var(--ink3);line-height:1.55}
-.kpi-bar-wrap{margin-top:10px;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
-.kpi-bar{height:100%;border-radius:2px;background:var(--accent);transition:width var(--d-slow) var(--ease)}
+.kpi-bar-wrap{margin-top:8px;height:4px;background:var(--surface3);border-radius:var(--r5);overflow:hidden}
+.kpi-bar{height:100%;border-radius:var(--r5);background:var(--accent);transition:width var(--d-slow) var(--ease)}
 
 /* BAR CHART */
-.chart-wrap{position:relative;height:200px;display:flex;align-items:flex-end;gap:5px;padding-bottom:26px;border-bottom:1px solid var(--border)}
-.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end}
+.chart-wrap{position:relative;height:200px;display:flex;align-items:flex-end;gap:4px;padding-bottom:26px;border-bottom:1px solid var(--border)}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
 .bar-rect{width:100%;border-radius:3px 3px 0 0;min-height:3px;cursor:default;position:relative;
   transition:height var(--d-slow) var(--ease),filter var(--d-fast) linear}
 .bar-rect:hover{filter:brightness(1.12)}
-.bar-rect:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:12px;padding:5px 10px;border-radius:5px;white-space:nowrap;pointer-events:none;z-index:10;box-shadow:var(--sh-md)}
+.bar-rect:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:12px;padding:5px 10px;border-radius:var(--r3);white-space:nowrap;pointer-events:none;z-index:10;box-shadow:var(--sh-md)}
 .bar-lbl{font-size:11px;color:var(--ink3);font-family:var(--sans);text-align:center;white-space:nowrap;overflow:hidden;max-width:100%}
-.bar-val{font-size:10px;color:var(--ink2);font-weight:700;font-family:var(--sans);margin-bottom:2px;white-space:nowrap}
+.bar-val{font-size:10px;color:var(--ink2);font-weight:700;font-family:var(--sans);margin-bottom:4px;white-space:nowrap}
 .b-y{background:var(--accent)}
 .b-g{background:var(--good)}
 .b-b{background:var(--info)}
@@ -190,7 +190,7 @@ tr:hover td{background:var(--surface2)}
 tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .right{text-align:right;font-variant-numeric:tabular-nums}
 .empty-row{padding:32px 10px;text-align:center;color:var(--ink3);font-size:13px;font-style:italic}
-.sort-icon{font-size:10px;color:var(--ink3);margin-left:3px}
+.sort-icon{font-size:10px;color:var(--ink3);margin-left:4px}
 .sort-icon.asc::after{content:'↑';color:var(--accent)}
 .sort-icon.desc::after{content:'↓';color:var(--accent)}
 .sort-icon:not(.asc):not(.desc)::after{content:'↕'}
@@ -207,19 +207,24 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 /* PROGRESS */
 .prog-item{margin-bottom:12px}
 .prog-item:last-child{margin-bottom:0}
-.prog-head{display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px}
+.prog-head{display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px}
 .prog-head b{color:var(--ink);font-weight:700}
 .prog-head span{color:var(--ink3);font-variant-numeric:tabular-nums}
-.prog-bg{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
-.prog-fill{height:100%;border-radius:3px}
+.prog-bg{height:6px;background:var(--surface3);border-radius:var(--r4);overflow:hidden}
+.prog-fill{height:100%;border-radius:var(--r4)}
 
 /* NOTICE */
+.notice .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px;background:var(--ink3)}
+.notice.good .dot{background:var(--ink)}
+.notice.info .dot{background:var(--ink3)}
+.notice.warn .dot{background:var(--accent)}
+.notice.bad  .dot{background:var(--bad)}
 .notice-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;height:100%}
-.notice{border-radius:10px;padding:20px 22px;border:none;border-left:4px solid #E1E5EB;display:flex;flex-direction:column;justify-content:center;gap:6px;height:100%;box-sizing:border-box;background:#F7F9FB}
+.notice{border-radius:var(--r);padding:20px 22px;border:none;border-left:4px solid #E1E5EB;display:flex;flex-direction:column;justify-content:center;gap:8px;height:100%;box-sizing:border-box;background:#F7F9FB}
 .notice .notice-icon{display:none}
 .notice .n-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A94A2}
 .notice .n-val{font-size:34px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--ink)}
-.notice .n-sub{font-size:13px;color:#8A94A2;margin-top:2px}
+.notice .n-sub{font-size:13px;color:#8A94A2;margin-top:4px}
 .notice.warn .n-val{color:#D4B400}
 .notice.bad .n-val{color:#B02B45}
 .notice.good .n-val{color:#0D1116}
@@ -238,10 +243,10 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .notice .hi-bad{color:var(--bad);font-weight:700}
 
 /* TOOLBAR */
-.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2)}
 .toolbar-l,.toolbar-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tb-lbl{font-size:11px;color:var(--ink2);font-weight:800;letter-spacing:.04em;white-space:nowrap}
-.chip{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);
+.chip{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);border-radius:var(--rp);padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);
   transition:border-color var(--d-fast) linear,color var(--d-fast) linear,transform var(--d-fast) var(--ease)}
 .chip:hover{border-color:var(--ink3);color:var(--ink);transform:translateY(-1px)}
 .chip:hover{border-color:var(--accent);color:var(--ink)}
@@ -257,37 +262,37 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 /* DRAWER */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:150;display:none;backdrop-filter:blur(3px)}
 .overlay.open{display:block}
-.drawer{position:fixed;top:0;right:-620px;width:580px;height:100vh;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--sh-lg);z-index:160;overflow-y:auto;transition:right .28s cubic-bezier(.22,.68,0,1.2);padding:22px}
+.drawer{position:fixed;top:0;right:-620px;width:580px;height:100vh;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--sh-lg);z-index:160;overflow-y:auto;transition:right .28s cubic-bezier(.22,.68,0,1.2);padding:24px}
 .drawer.open{right:0}
-.drawer-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.drawer-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .drawer-close{border:none;background:var(--surface3);border-radius:50%;width:30px;height:30px;color:var(--ink2);font-size:19px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .drawer-close:hover{background:var(--bad-dim);color:var(--bad)}
-.drawer-cover{height:120px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:rgba(255,255,255,.9);text-align:center;padding:16px;margin-bottom:14px}
+.drawer-cover{height:120px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:rgba(255,255,255,.9);text-align:center;padding:16px;margin-bottom:12px}
 .sim-lbl{font-size:10px;color:var(--ink3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
 .sim-inp{background:var(--surface2);border:1.5px solid var(--border2);border-radius:var(--r3);padding:7px 10px;color:var(--ink);font-family:var(--sans);font-size:13px;width:100%;outline:none;transition:border-color .15s}
 .sim-inp:focus{border-color:var(--accent)}
 
 /* STACKED BAR */
-.stacked-wrap{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.stacked-row{display:flex;align-items:center;gap:10px}
+.stacked-wrap{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.stacked-row{display:flex;align-items:center;gap:8px}
 .stacked-lbl{font-size:12px;color:var(--ink2);width:68px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stacked-bar{flex:1;height:20px;border-radius:4px;display:flex;overflow:hidden}
+.stacked-bar{flex:1;height:20px;border-radius:var(--r3);display:flex;overflow:hidden}
 .stacked-seg{height:100%;transition:width var(--d-slow) var(--ease),filter var(--d-fast) linear;min-width:0}
 .stacked-seg:hover{filter:brightness(1.15)}
 .stacked-tot{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;flex-shrink:0;width:76px;text-align:right;font-weight:700}
 
 /* LEGEND */
 .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink3)}
-.leg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink3)}
+.leg-dot{width:9px;height:9px;border-radius:var(--r5);flex-shrink:0}
 
 /* RESPONSIVE — 태블릿 */
 @media(max-width:1200px){
   .g6{grid-template-columns:repeat(3,1fr)}
   .g5{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(2,1fr)}
-  .pill-bar{grid-template-columns:repeat(2,1fr);height:auto;padding:12px 20px;gap:10px}
-  .pill{border-right:none;border:1px solid var(--dark-border);border-radius:10px;padding:16px 20px}
+  .pill-bar{grid-template-columns:repeat(2,1fr);height:auto;padding:12px 20px;gap:8px}
+  .pill{border-right:none;border:1px solid var(--dark-border);border-radius:var(--r);padding:16px 20px}
   .pill-val{font-size:34px}
 }
 /* RESPONSIVE — 모바일 */
@@ -295,7 +300,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
   .g2,.g2e,.g3,.g5,.g6{grid-template-columns:1fr}
   .g4{grid-template-columns:repeat(2,1fr)}
   main{padding:12px 12px 60px}
-  .hdr{padding:0 14px;gap:10px}
+  .hdr{padding:0 14px;gap:8px}
   .brand{font-size:13px}
   .brand-mark{width:22px;height:22px;font-size:11px}
   .mpick span{display:none}
@@ -304,7 +309,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
   .tabs-bar{padding:0 8px}
   .tab-btn{font-size:11px;padding:0 10px}
   .pill-bar{grid-template-columns:repeat(2,1fr);height:auto;padding:10px 12px;gap:8px}
-  .pill{border-right:none;border:1px solid var(--dark-border);border-radius:8px;padding:10px 12px}
+  .pill{border-right:none;border:1px solid var(--dark-border);border-radius:var(--r);padding:10px 12px}
   .pill-val{font-size:22px}
   .pill-lbl{font-size:10px}
   .pill-sub{font-size:11px}
@@ -333,14 +338,14 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .mkt-timeline-wrap{overflow-x:auto;padding-bottom:8px}
 .tl-chip-wrap>div:not(.tl-tooltip){transition:transform var(--d-fast) var(--ease),box-shadow var(--d-fast) var(--ease)}
 .tl-chip-wrap:hover>div:not(.tl-tooltip){transform:translateY(-1px) scale(1.015);box-shadow:0 2px 8px rgba(13,17,22,.18);z-index:5}
-.mkt-tl-header{display:flex;align-items:flex-end;margin-bottom:2px}
-.mkt-tl-row{display:flex;align-items:stretch;margin-bottom:3px}
-.mkt-lane-label{width:90px;flex-shrink:0;padding:0 8px 0 10px;display:flex;align-items:center;font-size:10px;font-weight:800;color:var(--ink2);min-height:28px;background:var(--surface2);border-radius:4px 0 0 4px;margin-right:2px}
+.mkt-tl-header{display:flex;align-items:flex-end;margin-bottom:4px}
+.mkt-tl-row{display:flex;align-items:stretch;margin-bottom:4px}
+.mkt-lane-label{width:90px;flex-shrink:0;padding:0 8px 0 10px;display:flex;align-items:center;font-size:10px;font-weight:800;color:var(--ink2);min-height:28px;background:var(--surface2);border-radius:4px 0 0 4px;margin-right:4px}
 .mkt-dates-row,.mkt-acts-row{display:flex;flex:1;min-width:0}
 .mkt-day-num{font-size:10px;color:var(--ink3);padding:2px 0;line-height:1}
-.mkt-month-label{font-size:10px;font-weight:800;color:var(--ink2);margin-bottom:1px}
-.mkt-pub-marker{font-size:10px;font-weight:900;background:var(--accent);color:var(--accent-text);border-radius:2px;padding:1px 3px;margin-top:1px;white-space:nowrap}
-.mkt-pubdate .mkt-day-num{color:var(--accent-text);background:var(--accent);border-radius:3px;font-weight:900}
+.mkt-month-label{font-size:10px;font-weight:800;color:var(--ink2);margin-bottom:4px}
+.mkt-pub-marker{font-size:10px;font-weight:900;background:var(--accent);color:var(--accent-text);border-radius:var(--r5);padding:1px 3px;margin-top:4px;white-space:nowrap}
+.mkt-pubdate .mkt-day-num{color:var(--accent-text);background:var(--accent);border-radius:var(--r4);font-weight:900}
 .mkt-today-col .mkt-day-num{color:var(--bad);font-weight:900}
 .mkt-weekend-col{opacity:.6}
 .mkt-act-cell{width:28px;min-width:28px;flex-shrink:0;height:28px}
@@ -351,9 +356,9 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .mkt-week-odd{background:rgba(26,82,138,.02)}
 .mkt-prepub-col{background:rgba(154,98,16,.07) !important}
 .mkt-weekend-col{opacity:.75}
-.mkt-week-label{font-size:10px;font-weight:900;color:var(--info);letter-spacing:.02em;line-height:1;margin-bottom:1px;height:10px;white-space:nowrap;overflow:hidden}
+.mkt-week-label{font-size:10px;font-weight:900;color:var(--info);letter-spacing:.02em;line-height:1;margin-bottom:4px;height:10px;white-space:nowrap;overflow:hidden}
 .mkt-date-cell2{width:28px;min-width:28px;flex-shrink:0;text-align:center}
-.mkt-dow{font-size:10px;font-weight:700;color:var(--ink3);line-height:1;margin-top:1px}
+.mkt-dow{font-size:10px;font-weight:700;color:var(--ink3);line-height:1;margin-top:4px}
 .mkt-dow-sun{color:var(--bad)}
 .mkt-dow-sat{color:var(--info)}
 .mkt-date-cell{width:28px;min-width:28px;text-align:center;position:relative;flex-shrink:0;padding-bottom:2px}
@@ -363,19 +368,19 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 
 .cal-wday{text-align:center;font-size:11px;font-weight:800;color:var(--ink3);padding:6px 0;letter-spacing:.04em}
 .cal-wday.cal-weekend{color:var(--bad)}
-.cal-cell{min-height:110px;border:1px solid var(--border);border-radius:var(--r3);padding:7px;cursor:pointer;transition:all .15s;background:var(--surface);position:relative}
+.cal-cell{min-height:110px;border:1px solid var(--border);border-radius:var(--r3);padding:8px;cursor:pointer;transition:all .15s;background:var(--surface);position:relative}
 .cal-cell:hover{border-color:var(--accent);background:var(--accent-dim)}
 .cal-cell.cal-empty{background:var(--surface2);border-color:var(--border);cursor:default;opacity:.4}
 .cal-cell.cal-today{border-color:var(--accent);border-width:2px;background:var(--accent-dim)}
 .cal-cell.cal-selected{border-color:var(--ink);border-width:2px;background:var(--surface2)}
-.cal-date-num{font-size:13px;font-weight:900;color:var(--ink);margin-bottom:5px}
+.cal-date-num{font-size:13px;font-weight:900;color:var(--ink);margin-bottom:4px}
 .cal-date-num.cal-weekend{color:var(--bad)}
 .cal-today .cal-date-num{color:var(--accent-text);background:var(--accent);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px}
-.cal-acts{display:flex;flex-direction:column;gap:2px}
-.cal-act-chip{display:flex;align-items:center;gap:4px;padding:2px 5px;border-radius:3px;font-size:10px;font-weight:700;line-height:1.3}
+.cal-acts{display:flex;flex-direction:column;gap:4px}
+.cal-act-chip{display:flex;align-items:center;gap:4px;padding:2px 5px;border-radius:var(--r4);font-size:10px;font-weight:700;line-height:1.3}
 .cal-more{font-size:10px;color:var(--ink3);font-weight:700;padding:1px 3px}
-.cal-detail{background:var(--surface);border:1.5px solid var(--accent);border-radius:var(--r);padding:20px 22px;margin-top:14px;box-shadow:var(--sh-md)}
-.cal-detail-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.cal-detail{background:var(--surface);border:1.5px solid var(--accent);border-radius:var(--r);padding:20px 22px;margin-top:12px;box-shadow:var(--sh-md)}
+.cal-detail-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 
 /* ── 타임라인 칩 툴팁 ── */
 .tl-tooltip {
@@ -389,7 +394,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
   font-weight:600;
   white-space:nowrap;
   padding:5px 9px;
-  border-radius:5px;
+  border-radius:var(--r3);
   pointer-events:none;
   opacity:0;
   transition:opacity .15s;
@@ -429,7 +434,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 <div id="app">
   <header>
     <div class="hdr">
-      <div class="brand" style="display:flex;align-items:flex-end;gap:10px">
+      <div class="brand" style="display:flex;align-items:flex-end;gap:8px">
   <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAE+UExURQAAAP/dD/3cDv/eD/7eD/7dD/+/AP/dD//eD/7dD//dD//fDvTVC/3cDv7dD/7dD//eDvXWCv7eD/3bDv7dD/3dEPvbDvzbD/vbD//eD/3dEf/cEP/eD/7dD//eD//dDf7dD//fEP/fAP7dD/zbDv/eD/3eEP/eEP7dD//VFf3dEP7dD/7dD/3dD/7dD//eD/3dEP3cD//cDv/dDv3dDvzcDv7dD/zcEPzbD/7dD/7dD/3dD//iD//cDv/dD/7cD/7eD//fD//eEP/eEPvbEPzbDvvdEP3dEP7dDv/fC//eDwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIQ6sNgAAABqdFJOUwA0bJvP9wREqP+tSBh84OJ9Gb+A43BHZIW6d1Hn8owm51AI11xGkZHzDKO20YnS0aR0SY6PSd9QVuvqhyMkh+vtV4OTQFt/gMMY3/9gsJtQcN+Az0Awn+/791QgDBMnr0jXv9tk5/OLGBRnFBwwAAAACXBIWXMAABcRAAAXEQHKJvM/AAAB+0lEQVRYR9WVeVcaMRTFgyB6W3FBwapV6w64VFoFu6jV2lobtB1cWje6aBe//xfwZIAhecwkjGMP5fcP5928d2fyJnkw5pNQWzjSHgm3haJ0pSE6OlHlwUO6aKYr1u3UAz29fTTBQDQulQviPrfRb1cNhBPJwUdDEcEwTdEy8hjA6Ni4HYyPjQJ4MkGTNExOiedPO/G0CKcmlRwtM6JgVhLmhJCUBAMJAKm0JKRTABKSYCADYF5R5gFkFEXLAoBFRVkEsKAoWpZcDZ4qipZl1y0sK4qWrGsTs5Jg4Jn4as8lYUUIq5JgIJ0TBXknzosw5+MgsbUXAF6+em0H6xubAN5s0SQt2+XL9HZw59378mXapSl66q7zB5/Xme3FPkrlPb17NMFMwJEmqBuqXKXA2D7n/IAx9oksEacqJKsVDdhnzrnFGCtyzg+FUDWQOGqOwXHR4eROBoF70HyDgqg6qUELK1hfOOdfLcv+PbXOyBvQ9HrIe9KDRNPr8Tawt2DVoJUVvA0abOK5ygVjl6VS6bJxA28CG1yQl6PrKt/Up3l9dG/+hYG/HgQ2kBBeTTD4XnD4cV9N9IeLQeCDZN9GCVqi8pNzflWbPte+Daqtl7gfg/Is+WU2EFv4XZs+f9SRpv1nKuPSxFYz+KsemhvfBi78JwYSdN1IqxjcAmEaWBDdwN9pAAAAAElFTkSuQmCC" style="height:44px;width:auto;">
   <span style="color:var(--ink);font-size:13px;font-weight:700;letter-spacing:-.01em;padding-bottom:2px">콘텐츠사업본부</span>
   <span class="conf-badge" title="사내 대외비 자료입니다. 외부 공유·배포를 금합니다.">대외비</span>
@@ -437,7 +442,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">시트 연결 대기</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
-        <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--dark-border);color:#8A94A2;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px" title="전체화면">⛶ 전체화면</button>
+        <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--dark-border);color:#8A94A2;border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
     </div>
   </header>
@@ -1428,6 +1433,33 @@ function stackedBarChart(rows, segs){
   </div>`;
 }
 
+// ── 스파크라인 ──
+// KPI 숫자만으로는 '지금 오르는 중인지'가 안 보인다. 최근 구간 추세를 얇은 선으로 덧붙인다.
+function spark(series, curIdx, opt){
+  opt = opt || {};
+  const span = opt.span || 6;
+  const from = Math.max(0, (curIdx|0) - span + 1);
+  const data = (series||[]).slice(from, (curIdx|0) + 1).map(v => Number(v)||0);
+  if (data.length < 2 || data.every(v => v === 0)) return '';
+  const W = 100, H = 22, P = 1.5;
+  const mx = Math.max(...data), mn = Math.min(...data);
+  const rng = (mx - mn) || 1;
+  const x = i => P + i / (data.length - 1) * (W - P*2);
+  const y = v => H - P - ((v - mn) / rng) * (H - P*2);
+  const pts = data.map((v,i) => x(i)+','+y(v)).join('L');
+  const last = data[data.length-1], prev = data[data.length-2];
+  const up = last >= prev;
+  const col = opt.color || (up ? 'var(--ink)' : 'var(--bad)');
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" '
+    + 'style="width:100%;height:22px;display:block;margin-top:12px;overflow:visible">'
+    + '<path d="M'+pts+'L'+x(data.length-1)+','+(H-P)+'L'+x(0)+','+(H-P)+'Z" fill="'+col+'" opacity=".07"/>'
+    + '<path d="M'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.5" '
+    + 'stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
+    + '<circle cx="'+x(data.length-1)+'" cy="'+y(last)+'" r="2" fill="'+col+'" '
+    + 'vector-effect="non-scaling-stroke"/>'
+    + '</svg>';
+}
+
 function progBar(label,val,total,color,sub=''){
   const r=Math.min(pct(val,total),100);
   return `<div class="prog-item">
@@ -1486,18 +1518,18 @@ function renderTrendChart(curM) {
   const retPath = retPts.length > 1 ? `M${retPts.join('L')}` : '';
 
   el.innerHTML = `
-  <div style="display:flex;align-items:center;gap:24px;margin-bottom:18px">
+  <div style="display:flex;align-items:center;gap:24px;margin-bottom:16px">
     <span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#7D8794;text-transform:uppercase">월별 실적 추이</span>
-    <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#7D8794">
-      <span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,#FFD900,#D4B400);border-radius:2px"></span>달성매출
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7D8794">
+      <span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,#FFD900,#D4B400);border-radius:var(--r5)"></span>달성매출
     </span>
-    <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#7D8794">
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7D8794">
       <span style="display:inline-block;width:18px;height:1.5px;background:#D4B400;vertical-align:middle"></span>목표매출
     </span>
-    <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#7D8794">
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7D8794">
       <span style="display:inline-block;width:18px;height:1.5px;background:#7D8794;vertical-align:middle;border-top:1.5px dashed #7D8794"></span>총비용
     </span>
-    <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#7D8794">
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7D8794">
       <span style="display:inline-block;width:8px;height:8px;background:#D9647E;border-radius:50%"></span>반품률(우)
     </span>
   </div>
@@ -1580,7 +1612,7 @@ function renderTrendChart(curM) {
     hLine.style.opacity = '1';
 
     const sv = shipData[idx], tv = targetData[idx], cv = costData[idx], rv = retData[idx];
-    const achStr = sv != null && tv ? (sv >= tv ? '✓ 달성 ' : '✗ 달성 ') : null;
+    const achStr = sv != null && tv ? (sv >= tv ? '달성 ' : '미달 ') : null;
     const lines = [
       ['tc-tt-mo',     months[idx],                                    '#7D8794'],
       ['tc-tt-ship',   sv  != null ? (achStr + fmtAmt(sv))            : null, sv != null && tv && sv >= tv ? '#FFD900' : '#D9647E'],
@@ -1719,12 +1751,12 @@ function renderSummary(){
   document.getElementById('tab-summary').innerHTML=`
     <!-- 상단 KPI 6개 -->
     <div class="g6 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mCost)}</div><div class="kpi-sub">마케팅+출판+경상비</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${mProfit>=0?'good':'bad'}">${mProfit>=0?'+':''}${won(mProfit)}</div><div class="kpi-sub">순매출 − 총 비용</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div>${spark(M_TARGET,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mCost)}</div><div class="kpi-sub">마케팅+출판+경상비</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${mProfit>=0?'good':'bad'}">${mProfit>=0?'+':''}${won(mProfit)}</div><div class="kpi-sub">순매출 − 총 비용</div>${spark(M_PROFIT,m)}</div>
     </div>
 
     <!-- 중단: 항목별 매출 추이 + 이슈 -->
@@ -1737,14 +1769,14 @@ function renderSummary(){
           const maxPct = totalCumQty ? Math.round(topBooks[0].cumShipQty/totalCumQty*1000)/10 : 1;
           const barW = Math.round(pct2/maxPct*100);
           const isBest = i===0;
-          return `<div style="margin-bottom:10px">
+          return `<div style="margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
               <span style="font-size:13px;font-weight:600;color:var(--ink1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.title)}</span>
-              ${isBest ? `<span style="font-size:10px;font-weight:700;background:#FFD900;color:#0D1116;padding:2px 7px;border-radius:10px;letter-spacing:.5px">BEST</span>` : ''}
+              ${isBest ? `<span style="font-size:10px;font-weight:700;background:#FFD900;color:#0D1116;padding:2px 7px;border-radius:var(--r);letter-spacing:.5px">BEST</span>` : ''}
               <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
             </div>
-            <div style="background:var(--ink5);border-radius:4px;height:10px;overflow:hidden">
-              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${isBest?'#161B22':colors10[i]};height:10px;border-radius:4px"></div>
+            <div style="background:var(--ink5);border-radius:var(--r3);height:10px;overflow:hidden">
+              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${isBest?'#161B22':colors10[i]};height:10px;border-radius:var(--r3)"></div>
             </div>
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
@@ -1875,11 +1907,11 @@ function renderShip(){
     <div class="card" id="stock-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>2026년 출간 도서 · 최근 3개월 실판매 기준</small></div>
-        <div style="margin-left:auto;display:flex;gap:6px">
-          <button onclick="setStockFilter('all')" id="sf-all" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:#161B22;color:#fff;border-color:#161B22">전체</button>
-          <button onclick="setStockFilter('bad')" id="sf-bad" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--bad);border-color:var(--bad)">위험 &lt;30일</button>
-          <button onclick="setStockFilter('warn')" id="sf-warn" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--warn);border-color:var(--warn)">주의 &lt;60일</button>
-          <button onclick="setStockFilter('good')" id="sf-good" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--good);border-color:var(--good)">안전</button>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button onclick="setStockFilter('all')" id="sf-all" style="cursor:pointer;padding:4px 10px;border-radius:var(--rp);font-size:12px;font-weight:600;border:1.5px solid;background:#161B22;color:#fff;border-color:#161B22">전체</button>
+          <button onclick="setStockFilter('bad')" id="sf-bad" style="cursor:pointer;padding:4px 10px;border-radius:var(--rp);font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--bad);border-color:var(--bad)">위험 &lt;30일</button>
+          <button onclick="setStockFilter('warn')" id="sf-warn" style="cursor:pointer;padding:4px 10px;border-radius:var(--rp);font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--warn);border-color:var(--warn)">주의 &lt;60일</button>
+          <button onclick="setStockFilter('good')" id="sf-good" style="cursor:pointer;padding:4px 10px;border-radius:var(--rp);font-size:12px;font-weight:600;border:1.5px solid;background:transparent;color:var(--good);border-color:var(--good)">안전</button>
         </div>
       </div>
       <div id="stock-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
@@ -1914,31 +1946,31 @@ function renderShip(){
         };
 
         return stockRows.map((b,i) => `
-          <div class="stock-card" data-status="${b.status}" onclick="openDrawer(${b.id})" style="cursor:pointer;border:1px solid ${b.status==='bad'?'rgba(176,32,32,.25)':b.status==='warn'?'rgba(154,98,16,.25)':'rgba(30,122,56,.15)'};border-radius:10px;padding:16px 18px;background:${b.status==='bad'?'var(--bad-dim)':b.status==='warn'?'var(--warn-dim)':'var(--good-dim)'}">
+          <div class="stock-card" data-status="${b.status}" onclick="openDrawer(${b.id})" style="cursor:pointer;border:1px solid ${b.status==='bad'?'rgba(176,32,32,.25)':b.status==='warn'?'rgba(154,98,16,.25)':'rgba(30,122,56,.15)'};border-radius:var(--r);padding:16px 18px;background:${b.status==='bad'?'var(--bad-dim)':b.status==='warn'?'var(--warn-dim)':'var(--good-dim)'}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
               <div style="font-size:13px;font-weight:700;color:var(--ink1);line-height:1.4;flex:1;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(b.title)}</div>
-              <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;background:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};color:#fff">${b.statusLabel}</span>
+              <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--rp);white-space:nowrap;flex-shrink:0;background:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};color:#fff">${b.statusLabel}</span>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">물류 재고</div>
-                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${(b.stock > 0 ? b.stock : 0).toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:4px;white-space:nowrap">물류 재고</div>
+                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${(b.stock > 0 ? b.stock : 0).toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:4px">부</span></div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">시중 재고</div>
-                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${b.marketStock.toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:4px;white-space:nowrap">시중 재고</div>
+                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${b.marketStock.toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:4px">부</span></div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">월평균 실판매</div>
-                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${Math.round((b.scm3m||0)/3).toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:2px">부</span></div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:4px;white-space:nowrap">월평균 실판매</div>
+                <div style="font-size:22px;font-weight:900;color:var(--ink1);letter-spacing:-.02em;line-height:1">${Math.round((b.scm3m||0)/3).toLocaleString()}<span style="font-size:11px;font-weight:400;margin-left:4px">부</span></div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;white-space:nowrap">물류 소진 예상</div>
+                <div style="font-size:10px;color:var(--ink3);margin-bottom:4px;white-space:nowrap">물류 소진 예상</div>
                 <div style="font-size:22px;font-weight:900;color:${b.status==='bad'?'var(--bad)':b.status==='warn'?'var(--warn)':'var(--good)'};letter-spacing:-.02em;line-height:1">${b.daysLeft >= 999 ? '90일+' : b.daysLeft+'일'}</div>
               </div>
             </div>
-            <div style="background:rgba(0,0,0,.08);border-radius:4px;height:5px;overflow:hidden">
-              <div class="bar-grow" style="--w:${b.barPct}%;--d:${i*60}ms;background:${b.barColor};height:5px;border-radius:4px"></div>
+            <div style="background:rgba(0,0,0,.08);border-radius:var(--r3);height:5px;overflow:hidden">
+              <div class="bar-grow" style="--w:${b.barPct}%;--d:${i*60}ms;background:${b.barColor};height:5px;border-radius:var(--r3)"></div>
             </div>
           </div>`).join('');
       })()}
@@ -2065,8 +2097,8 @@ function renderWeeklyChart() {
     const ttId  = 'wtt-'+bi;
 
     return `
-    <div style="margin-bottom:24px;padding:20px;border:1px solid var(--ink5);border-radius:12px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <div style="margin-bottom:24px;padding:20px;border:1px solid var(--ink5);border-radius:var(--r)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color}"></span>
         <span style="font-size:13px;font-weight:700;color:var(--ink1)">${esc(b.title)}</span>
         <span style="font-size:12px;color:var(--ink3);margin-left:4px">출간 ${b.pubDate} · ${n}주차 데이터</span>
@@ -2087,7 +2119,7 @@ function renderWeeklyChart() {
           ${dots}
           <line id="whl-${bi}" x1="0" x2="0" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="${color}" stroke-width="1" stroke-dasharray="3,3" opacity="0"/>
         </svg>
-        <div id="${ttId}" style="display:none;position:absolute;top:10px;background:#161B22;color:#fff;font-size:12px;padding:6px 10px;border-radius:6px;pointer-events:none;white-space:nowrap"></div>
+        <div id="${ttId}" style="display:none;position:absolute;top:10px;background:#161B22;color:#fff;font-size:12px;padding:6px 10px;border-radius:var(--r2);pointer-events:none;white-space:nowrap"></div>
       </div>
     </div>`;
   }).join('');
@@ -2195,11 +2227,11 @@ function renderCost(){
     <div class="sec-label gap2">월별 팀 단위 비용 상세</div>
     <div class="g2">
       <div class="card">
-        <div class="card-title">📣 마케팅팀 <small>메타·구글·틱톡·서점 등</small></div>
+        <div class="card-title">마케팅팀 <small>메타·구글·틱톡·서점 등</small></div>
         ${budgetTable(mktBudget)}
       </div>
       <div class="card">
-        <div class="card-title">📚 출판팀 <small>인세·제작·번역 등</small></div>
+        <div class="card-title">출판팀 <small>인세·제작·번역 등</small></div>
         ${budgetTable(pubBudget)}
       </div>
     </div>`;
@@ -2214,12 +2246,35 @@ function renderChannel(){
   const totalFan  =CHANNELS.reduce((a,c)=>a+c.followers,0);
   const totalRev  =CHANNELS.reduce((a,c)=>a+c.revenue,0);
 
-  const issues=[
-    {type:'good', icon:'🔥', text:'인스타 SH — 이달 바이럴 콘텐츠 1건 도달 120만 달성 (광고 미집행)'},
-    {type:'info', icon:'📢', text:'유튜브 필름 — 광고 집행 콘텐츠 도달 +38% 상승, 채널 구독 전환율 개선 중'},
-    {type:'warn', icon:'⚠',  text:'틱톡 농담곰 — 최근 3주 고효율 콘텐츠 없음, 기획 점검 필요'},
-    {type:'bad',  icon:'▼',  text:'인스타 홀딩업 — 저장률 전월 대비 −18% 하락, 원인 분석 필요'},
-  ];
+  // 채널 실적에서 자동 산출 (하드코딩 금지 — 없으면 빈 상태로 둔다)
+  const issues=(()=>{
+    if(!CHANNELS.length) return [];
+    const out=[];
+    const byReach=[...CHANNELS].sort((a,b)=>b.reach-a.reach);
+    const top=byReach[0];
+    if(top && top.reach>0)
+      out.push({type:'good', text:`${top.name} — 당월 도달 ${top.reach.toLocaleString()} (전 채널 중 최고)`});
+
+    // 업로드 대비 도달 효율
+    const eff=CHANNELS.filter(c=>c.uploads>0).map(c=>({...c, per:c.reach/c.uploads}));
+    if(eff.length>1){
+      const best=[...eff].sort((a,b)=>b.per-a.per)[0];
+      const worst=[...eff].sort((a,b)=>a.per-b.per)[0];
+      if(best && best.per>0)
+        out.push({type:'info', text:`${best.name} — 업로드당 평균 도달 ${Math.round(best.per).toLocaleString()}로 가장 효율적`});
+      if(worst && worst!==best)
+        out.push({type:'warn', text:`${worst.name} — 업로드당 평균 도달 ${Math.round(worst.per).toLocaleString()}, 콘텐츠 기획 점검 필요`});
+    }
+    // 팔로워 순증이 마이너스인 채널
+    const down=CHANNELS.filter(c=>c.fanGain<0).sort((a,b)=>a.fanGain-b.fanGain)[0];
+    if(down)
+      out.push({type:'bad', text:`${down.name} — 팔로워 ${down.fanGain.toLocaleString()}명 순감, 원인 분석 필요`});
+    // 업로드가 아예 없는 채널
+    const idle=CHANNELS.filter(c=>c.uploads===0).map(c=>c.name);
+    if(idle.length)
+      out.push({type:'warn', text:`${idle.join(' · ')} — 당월 업로드 없음`});
+    return out.slice(0,4);
+  })();
 
   document.getElementById('tab-channel').innerHTML=`
     <!-- 상단 KPI -->
@@ -2237,7 +2292,7 @@ function renderChannel(){
       <table>
         <tr><th>채널</th><th>플랫폼</th><th class="right">월 업로드</th><th class="right">월 도달</th><th class="right">공유수</th><th class="right">저장수</th><th class="right">팔로워</th><th class="right">팔로워 순증</th><th class="right">광고 수익</th></tr>
         ${CHANNELS.map(c=>`<tr>
-          <td><b style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${esc(c.name)}${c.link?`<a href="${c.link}" target="_blank" style="color:var(--ink3);font-size:12px;font-weight:400;text-decoration:none;margin-left:2px" onclick="event.stopPropagation()">↗</a>`:''}</b></td>
+          <td><b style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${esc(c.name)}${c.link?`<a href="${c.link}" target="_blank" style="color:var(--ink3);font-size:12px;font-weight:400;text-decoration:none;margin-left:4px" onclick="event.stopPropagation()">↗</a>`:''}</b></td>
           <td><span class="badge neutral">${c.platform}</span></td>
           <td class="right">${c.uploads}</td>
           <td class="right">${(c.reach/10000).toFixed(0)}만</td>
@@ -2254,7 +2309,8 @@ function renderChannel(){
     <div class="sec-label gap2">이슈 · 광고 · 고효율 콘텐츠</div>
     <div class="card">
       <div class="card-title">채널 이슈사항</div>
-      ${issues.map(i=>`<div class="notice ${i.type}"><span>${i.icon}</span><span>${i.text}</span></div>`).join('')}
+      ${issues.length ? issues.map(i=>`<div class="notice ${i.type}"><span class="dot"></span><span>${i.text}</span></div>`).join('')
+        : `<div class="empty-row">채널 실적 데이터가 없습니다</div>`}
     </div>
 
     <!-- 도달 차트 -->
@@ -2283,9 +2339,23 @@ function renderBooks(){
   });
   const sorted=sortRows(rows,'books',['r12ShipAmt','cumShipQty','cumShipAmt','cumSalesQty','sellThru','market']);
 
+  // 상단 요약 — 다른 탭과 동일하게 KPI 한 줄로 시작
+  const kR12   = base.reduce((a,b)=>a+(b.r12ShipAmt||0),0);
+  const kMkt   = base.reduce((a,b)=>a+Math.max(0,(b.cumShipQty||0)-(b.cumSalesQty||0)),0);
+  const kShip  = base.reduce((a,b)=>a+(b.cumShipQty||0),0);
+  const kSale  = base.reduce((a,b)=>a+(b.cumSalesQty||0),0);
+  const kThru  = kShip>0 ? Math.round(kSale/kShip*100) : 0;
+
   document.getElementById('tab-books').innerHTML=`
+    <div class="g4 gap">
+      <div class="kpi"><div class="kpi-lbl">${booksShowAll?'전체 도서':'관리 대상'}</div><div class="kpi-val">${base.length}<span style="font-size:19px;font-weight:700">종</span></div><div class="kpi-sub">전체 ${BOOKS.length}종 중</div></div>
+      <div class="kpi"><div class="kpi-lbl">최근 12개월 출고</div><div class="kpi-val">${won(kR12)}</div><div class="kpi-sub">기준월 직전 12개월</div></div>
+      <div class="kpi"><div class="kpi-lbl">평균 판매율</div><div class="kpi-val">${kThru}<span style="font-size:19px;font-weight:700">%</span></div><div class="kpi-sub">누적 실판매 ${kSale.toLocaleString()}부 / 출고 ${kShip.toLocaleString()}부</div></div>
+      <div class="kpi"><div class="kpi-lbl">시중재고</div><div class="kpi-val">${kMkt.toLocaleString()}<span style="font-size:19px;font-weight:700">부</span></div><div class="kpi-sub">누적 출고 − 누적 실판매</div></div>
+    </div>
+
     <div class="card gap">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
         <div class="card-title" style="margin:0">도서별 종합 실적
           <small>${booksShowAll ? `전체 ${BOOKS.length}종` : `관리 대상 ${activeCount}종 · 최근 12개월 출고 1,000만원 이상`} · 컬럼 클릭 시 정렬 · 행 클릭 시 상세</small>
         </div>
@@ -2424,10 +2494,10 @@ function renderCalendar() {
           ${book.subCopies && book.subCopies.length ? book.subCopies.map(c=>`<div style="font-size:12px;color:var(--ink2);line-height:1.6;margin-bottom:4px">${esc(c)}</div>`).join('') : ''}
         </div>
         <div>
-          ${book.coreTarget ? `<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.06em;margin-bottom:4px">CORE TARGET</div><div style="font-size:12px;color:var(--ink2);line-height:1.5">${esc(book.coreTarget)}</div></div>` : ''}
-          ${book.subTargets && book.subTargets.length ? `<div><div style="font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">SUB TARGET</div>${book.subTargets.map(t=>`<div style="font-size:12px;color:var(--ink3);line-height:1.5;margin-bottom:3px">· ${esc(t)}</div>`).join('')}</div>` : ''}
-          ${book.vehicle ? `<div style="margin-top:10px"><div style="font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">핵심 비히클</div><div style="font-size:12px;color:var(--ink2)">${esc(book.vehicle)}</div></div>` : ''}
-          ${book.memo ? `<div style="margin-top:10px;padding:8px 12px;background:var(--warn-dim);border-radius:6px;font-size:12px;color:var(--warn)">📝 ${esc(book.memo)}</div>` : ''}
+          ${book.coreTarget ? `<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.06em;margin-bottom:4px">CORE TARGET</div><div style="font-size:12px;color:var(--ink2);line-height:1.5">${esc(book.coreTarget)}</div></div>` : ''}
+          ${book.subTargets && book.subTargets.length ? `<div><div style="font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">SUB TARGET</div>${book.subTargets.map(t=>`<div style="font-size:12px;color:var(--ink3);line-height:1.5;margin-bottom:4px">· ${esc(t)}</div>`).join('')}</div>` : ''}
+          ${book.vehicle ? `<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">핵심 비히클</div><div style="font-size:12px;color:var(--ink2)">${esc(book.vehicle)}</div></div>` : ''}
+          ${book.memo ? `<div style="margin-top:8px;padding:8px 12px;background:var(--warn-dim);border-radius:var(--r2);font-size:12px;color:var(--warn)">${esc(book.memo)}</div>` : ''}
         </div>
       </div>
     </div>` : ''}
@@ -2545,8 +2615,8 @@ function renderCalendar() {
       return '<div class="card gap" style="margin-bottom:16px;padding:16px 0 0">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 16px 12px">'+
           '<div class="card-title" style="margin:0">일별 판매 추이 <small>출간일부터 · 서점별</small></div>'+
-          '<div style="display:flex;gap:14px;flex-wrap:wrap">'+
-            SERIES.map(sr => '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink2)">'+
+          '<div style="display:flex;gap:12px;flex-wrap:wrap">'+
+            SERIES.map(sr => '<span style="display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--ink2)">'+
               '<svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="'+sr.color+'" stroke-width="'+sr.w+'"'+
                 (sr.dash ? ' stroke-dasharray="'+sr.dash+'"' : '')+'/></svg>'+ sr.key +'</span>').join('')+
           '</div>'+
@@ -2573,7 +2643,7 @@ function renderCalendar() {
     <div class="card gap">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div class="card-title" style="margin:0">마케팅 타임라인 <small>출간일 기준 · 레인별 액션 밀도</small></div>
-        <div style="display:flex;align-items:baseline;gap:14px;font-size:11px;color:var(--ink3)">
+        <div style="display:flex;align-items:baseline;gap:12px;font-size:11px;color:var(--ink3)">
           <span>집행 액션 <b style="font-size:15px;font-weight:900;color:var(--ink)">${totalActions.toLocaleString()}</b>건</span>
           <span>운영 채널 <b style="font-size:15px;font-weight:900;color:var(--ink)">${MKT_LANES.filter(l=>actions.some(a=>a.lane===l)).length}</b>개</span>
           <span>집행 기간 <b style="font-size:15px;font-weight:900;color:var(--ink)">${dates.length}</b>일</span>
@@ -2588,12 +2658,12 @@ function renderCalendar() {
         ${MKT_LANES.filter(l=>actions.some(a=>a.lane===l)).map(l=>{
           const c=LANE_COLORS[l];
           // 레인 text 색은 칩(어두운 배경) 위에서만 유효하므로 범례 글씨엔 쓰지 않는다
-          return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink2)">
-            <span style="width:20px;height:9px;background:${c.bg};border:1px solid ${c.border};border-radius:2px;flex-shrink:0"></span>${l}
+          return `<span style="display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--ink2)">
+            <span style="width:20px;height:9px;background:${c.bg};border:1px solid ${c.border};border-radius:var(--r5);flex-shrink:0"></span>${l}
           </span>`;
         }).join('')}
-        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink2)">
-          <span style="width:20px;height:9px;background:var(--ink);border-radius:2px;flex-shrink:0"></span>판매량
+        <span style="display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--ink2)">
+          <span style="width:20px;height:9px;background:var(--ink);border-radius:var(--r5);flex-shrink:0"></span>판매량
         </span>
       </div>
     </div>
@@ -2613,7 +2683,7 @@ function renderCalendar() {
             const pct2=Math.round(cost/totalCost*100);
             // 흰 카드 위 글씨이므로 레인 text 색(칩 전용)을 쓰지 않고, 색 구분은 좌측 점으로
             return `<div class="prog-item">
-              <div class="prog-head"><b style="display:inline-flex;align-items:center;gap:6px;color:var(--ink)"><span style="width:9px;height:9px;border-radius:2px;background:${c.bg};border:1px solid ${c.border};flex-shrink:0"></span>${lane}</b><span>${won(cost)} · ${pct2}%</span></div>
+              <div class="prog-head"><b style="display:inline-flex;align-items:center;gap:8px;color:var(--ink)"><span style="width:9px;height:9px;border-radius:var(--r5);background:${c.bg};border:1px solid ${c.border};flex-shrink:0"></span>${lane}</b><span>${won(cost)} · ${pct2}%</span></div>
               <div class="prog-bg"><div class="prog-fill" style="width:${Math.round(cost/max*100)}%;background:${c.border}"></div></div>
             </div>`;
           }).join('') || '<div class="empty-row">비용 데이터 없음</div>';
@@ -2876,10 +2946,10 @@ function initDayChartHover() {
     const dt  = parseAnyDate(d.date);
     const dow = dt ? ['일','월','화','수','목','금','토'][dt.getDay()] : '';
     // 선이 겹치는 구간을 읽으려면 계열별 수치를 세로로 나란히 보여줘야 한다
-    let html = '<div style="font-weight:800;color:var(--ink);margin-bottom:7px;padding-bottom:6px;border-bottom:1px solid var(--border)">'
+    let html = '<div style="font-weight:800;color:var(--ink);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">'
       + d.date + ' <span style="color:var(--ink3);font-weight:600">(' + dow + ')</span></div>'
-      + '<div style="display:flex;justify-content:space-between;gap:18px;font-weight:800;color:var(--ink);margin-bottom:'+(row?'6px':'0')+'">'
-      + '<span style="display:inline-flex;align-items:center;gap:7px">'
+      + '<div style="display:flex;justify-content:space-between;gap:16px;font-weight:800;color:var(--ink);margin-bottom:'+(row?'6px':'0')+'">'
+      + '<span style="display:inline-flex;align-items:center;gap:8px">'
       + '<svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="#0D1116" stroke-width="3"/></svg>총판매</span>'
       + '<span>' + d.qty.toLocaleString() + '부</span></div>';
     if (row) {
@@ -2888,12 +2958,12 @@ function initDayChartHover() {
         const v = Number(row[st]) || 0;
         const sh = Math.round(v / tot * 100);
         const mk = SERIES_MARK[st] || {c:'#6B7684', d:''};
-        return '<div style="display:flex;justify-content:space-between;gap:18px;line-height:1.8">'
-          + '<span style="display:inline-flex;align-items:center;gap:7px;color:var(--ink2)">'
+        return '<div style="display:flex;justify-content:space-between;gap:16px;line-height:1.8">'
+          + '<span style="display:inline-flex;align-items:center;gap:8px;color:var(--ink2)">'
           + '<svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="'+mk.c+'" stroke-width="2"'
           + (mk.d ? ' stroke-dasharray="'+mk.d+'"' : '') + '/></svg>' + st + '</span>'
           + '<span style="font-weight:700;color:var(--ink)">' + v.toLocaleString()
-          + '<span style="color:var(--ink3);font-weight:500;margin-left:7px">' + sh + '%</span></span></div>';
+          + '<span style="color:var(--ink3);font-weight:500;margin-left:8px">' + sh + '%</span></span></div>';
       }).join('');
     }
     tt.innerHTML = html;
@@ -3076,7 +3146,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       'width:100%','height:100%',
       'background:'+c.bg,
       'border:1.5px solid '+c.border,
-      'border-radius:4px',
+      'border-radius:var(--r3)',
       'display:flex','align-items:center','justify-content:center',
       'overflow:hidden','box-sizing:border-box','cursor:pointer',
     ].join(';');
@@ -3238,7 +3308,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
           'position:absolute','left:'+(item.sIdx*CELL_W+1)+'px','width:'+(spanW-2)+'px',
           'height:'+MCHIP_H+'px','top:'+chipTop+'px',
           'background:rgba(99,102,241,.12)',
-          'border:1px dashed rgba(99,102,241,.5)','border-radius:2px',
+          'border:1px dashed rgba(99,102,241,.5)','border-radius:var(--r5)',
           'display:flex','align-items:center','overflow:hidden','z-index:2','cursor:pointer',
         ].join(';');
         subChip.title=m.label+' ('+m.days+')';
@@ -3396,7 +3466,7 @@ function openDetailPanel(a, c, material){
   if(!panel){
     panel = document.createElement('div');
     panel.id = 'mkt-detail-panel';
-    panel.style.cssText = 'margin-top:14px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);';
+    panel.style.cssText = 'margin-top:12px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);';
     document.getElementById('tab-calendar').appendChild(panel);
   }
 
@@ -3415,7 +3485,7 @@ function openDetailPanel(a, c, material){
               +'</div></a>'
               +'<div style="padding:10px 12px"><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
               +'<div style="font-size:11px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
-              +(m.cost?'<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-top:6px">집행 비용: '+won(m.cost)+'</div>':'')
+              +(m.cost?'<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-top:8px">집행 비용: '+won(m.cost)+'</div>':'')
               +'</div></div>';
           } else if(m.type==='image'){
             var mi = mediaInfo(m.url) || {kind:'link', name:'링크', mark:'LINK', open:m.url||''};
@@ -3427,32 +3497,32 @@ function openDetailPanel(a, c, material){
                 +'<img src="'+mi.thumb+'" onerror="mediaImgFallback(this,\''+(mi.thumbAlt||'')+'\')" '
                 +'style="width:100%;height:'+TH+'px;object-fit:cover;display:block">'
                 +'<div data-ph style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;'
-                +'flex-direction:column;gap:6px;background:var(--surface3);color:var(--ink3);font-size:11px;font-weight:800">'
+                +'flex-direction:column;gap:8px;background:var(--surface3);color:var(--ink3);font-size:11px;font-weight:800">'
                 +'<span style="font-size:15px">'+mi.mark+'</span>'+mi.name+'</div>'
                 +(mi.kind==='youtube'
                   ? '<span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:26px;'
-                    +'background:rgba(13,17,22,.78);border-radius:6px;display:flex;align-items:center;justify-content:center;'
+                    +'background:rgba(13,17,22,.78);border-radius:var(--r2);display:flex;align-items:center;justify-content:center;'
                     +'color:#FFF;font-size:12px;pointer-events:none">▶</span>' : '')
                 +'</div>';
             } else {
               visual = '<div style="width:100%;height:'+TH+'px;background:var(--surface3);display:flex;align-items:center;'
-                +'justify-content:center;flex-direction:column;gap:6px;color:var(--ink3)">'
+                +'justify-content:center;flex-direction:column;gap:8px;color:var(--ink3)">'
                 +'<span style="font-size:15px;font-weight:800">'+mi.mark+'</span>'
                 +'<span style="font-size:11px;font-weight:700">'+mi.name+'</span></div>';
             }
             return '<div style="flex-shrink:0;width:'+W+'px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
               +visual
               +'<div style="padding:10px 12px">'
-              +'<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">'
-              +'<span style="font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--ink3);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">'+mi.name+'</span>'
+              +'<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">'
+              +'<span style="font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--ink3);border:1px solid var(--border2);border-radius:var(--r4);padding:1px 4px">'+mi.name+'</span>'
               +'<span style="font-size:11px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.label+'</span></div>'
               +'<div style="font-size:10px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
               +(m.days?'<div style="font-size:10px;color:var(--ink3);margin-top:4px">기간: '+m.days+'</div>':'')
               +(m.cost?'<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-top:4px">'+won(m.cost)+'</div>':'')
-              +(mi.open?'<a href="'+mi.open+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;font-size:10px;font-weight:700;color:var(--ink2);text-decoration:none">원본 바로가기 ↗</a>':'')
+              +(mi.open?'<a href="'+mi.open+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r2);font-size:10px;font-weight:700;color:var(--ink2);text-decoration:none">원본 바로가기 ↗</a>':'')
               +'</div></div>';
           } else {
-            return '<div style="flex-shrink:0;min-width:240px;max-width:320px;background:var(--surface2);border-radius:var(--r2);padding:14px;border:1px solid var(--border)">'
+            return '<div style="flex-shrink:0;min-width:240px;max-width:320px;background:var(--surface2);border-radius:var(--r2);padding:12px;border:1px solid var(--border)">'
               +'<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">'+m.label+'</div>'
               +'<div style="font-size:12px;color:var(--ink2);line-height:1.7">'+m.desc+'</div>'
               +'</div>';
@@ -3465,7 +3535,7 @@ function openDetailPanel(a, c, material){
     '<div style="padding:16px 20px '+(mats?'8px':'20px')+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
     +'<div style="min-width:0">'
-    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:3px">'+a.lane+' · '+a.date+(a.days&&a.days>1?' ('+a.days+'일)':'')+'</div>'
+    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:4px">'+a.lane+' · '+a.date+(a.days&&a.days>1?' ('+a.days+'일)':'')+'</div>'
     +'<div style="font-size:15px;font-weight:900;color:var(--ink);margin-bottom:4px">'+a.label+'</div>'
     +'<div style="font-size:12px;color:var(--ink3)">'+a.detail+(a.cost&&a.cost>0?' · '+won(a.cost):'')+'</div>'
     +'</div>'+closeBtn+'</div></div>'
@@ -3488,7 +3558,17 @@ function renderData(){
   const cols = rows => `<table><tr><th style="width:150px">열</th><th>입력 내용</th></tr>${
     rows.map(([c,d])=>`<tr><td><b style="font-size:12px">${c}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td></tr>`).join('')}</table>`;
 
+  const syncTxt = (document.getElementById('syncTxt')||{}).textContent || '-';
+  const gidCount = Object.keys(CFG.gids).length + Object.values(CFG.gidsOpt).filter(Boolean).length;
+
   document.getElementById('tab-data').innerHTML=`
+    <div class="g4 gap">
+      <div class="kpi"><div class="kpi-lbl">연동 상태</div><div class="kpi-val" style="font-size:22px">${SD.loaded?'정상':'대기'}</div><div class="kpi-sub">${esc(syncTxt)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">연동 시트</div><div class="kpi-val">${gidCount}<span style="font-size:19px;font-weight:700">개</span></div><div class="kpi-sub">대시보드 + 캠페인</div></div>
+      <div class="kpi"><div class="kpi-lbl">등록 도서</div><div class="kpi-val">${BOOKS.length}<span style="font-size:19px;font-weight:700">종</span></div><div class="kpi-sub">도서 목록 기준</div></div>
+      <div class="kpi"><div class="kpi-lbl">캠페인 운영</div><div class="kpi-val">${MKT_BOOKS.length}<span style="font-size:19px;font-weight:700">종</span></div><div class="kpi-sub">00_설정 노출여부 Y</div></div>
+    </div>
+
     <div class="card gap">
       <div class="card-title">입력 3원칙 <small>이것만 지키면 대부분의 오류가 안 생깁니다</small></div>
       <table>
@@ -3617,7 +3697,7 @@ function openDrawer(id){
       <div>
         <div style="font-size:10px;color:var(--ink3);margin-bottom:4px">${b.genre} · ${b.isbn} · 출간 ${b.pubDate}</div>
         <div style="font-size:19px;font-weight:900;color:var(--ink);letter-spacing:-.02em">${esc(b.title)}</div>
-        <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">
+        <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
           <span class="badge neutral">정가 ${b.price.toLocaleString()}원</span>
           <span class="badge neutral">공급가 ${b.supply.toLocaleString()}원</span>
           <span class="badge ${b.field==='IMC1'?'acc':b.field==='IMC2'?'info':'good'}">${b.field}</span>
@@ -3626,14 +3706,14 @@ function openDrawer(id){
       </div>
       <button class="drawer-close" onclick="closeDrawer()">×</button>
     </div>
-    <div class="drawer-cover" style="background:${b.cover}"><div><div style="font-size:15px;font-weight:900;margin-bottom:5px">${esc(b.title)}</div></div></div>
+    <div class="drawer-cover" style="background:${b.cover}"><div><div style="font-size:15px;font-weight:900;margin-bottom:4px">${esc(b.title)}</div></div></div>
 
     <!-- 상단: 기본 정보 -->
     <div class="sec-label">도서 기본 정보</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
       ${[['정가',b.price.toLocaleString()+'원'],['공급가',b.supply.toLocaleString()+'원'],['담당',b.field],['기획자',b.edit],['마케터',b.mkt],['출간일',b.pubDate]].map(([l,v])=>`
         <div style="background:var(--surface2);border-radius:var(--r3);padding:8px 10px">
-          <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${l}</div>
+          <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
           <div style="font-size:13px;font-weight:700;color:var(--ink)">${v}</div>
         </div>`).join('')}
     </div>
@@ -3679,7 +3759,7 @@ function openDrawer(id){
           <tr><td>${l}</td><td class="right">${won(v)}</td><td class="right">${pct(v,cumCost)}%</td></tr>`).join('')}
         <tr style="background:var(--surface2)"><td><b>합계</b></td><td class="right"><b>${won(cumCost)}</b></td><td class="right"><b>100%</b></td></tr>
       </table>
-      ${bxp.length?`<div style="margin-top:10px"><div style="font-size:10px;color:var(--ink3);font-weight:800;margin-bottom:6px">비용 원장 (건별)</div>
+      ${bxp.length?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--ink3);font-weight:800;margin-bottom:8px">비용 원장 (건별)</div>
         <table><tr><th>날짜</th><th>팀</th><th>항목</th><th>세부</th><th class="right">금액</th></tr>
         ${bxp.map(e=>`<tr><td style="font-size:10px;color:var(--ink3)">${e.date}</td><td><span class="badge neutral" style="font-size:10px">${e.team}</span></td><td style="font-size:12px">${e.type}</td><td style="font-size:11px;color:var(--ink3)">${e.sub}</td><td class="right">${won(e.amount)}</td></tr>`).join('')}
         </table></div>`:''}
@@ -3724,20 +3804,20 @@ function toggleFullscreen() {
   const btn = document.getElementById('fsBtn');
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().then(() => {
-      btn.innerHTML = '✕ 전체화면 종료';
+      btn.innerHTML = '전체화면 종료';
       const el = document.getElementById('trend-chart');
       if (el) el._animated = false;
       renderPills();
     });
   } else {
     document.exitFullscreen().then(() => {
-      btn.innerHTML = '⛶ 전체화면';
+      btn.innerHTML = '전체화면';
     });
   }
 }
 document.addEventListener('fullscreenchange', () => {
   const btn = document.getElementById('fsBtn');
-  if (btn) btn.innerHTML = document.fullscreenElement ? '✕ 전체화면 종료' : '⛶ 전체화면';
+  if (btn) btn.innerHTML = document.fullscreenElement ? '전체화면 종료' : '전체화면';
 });
 </script>
 </body>
