@@ -710,7 +710,7 @@ async function loadMktSheets() {
             days:   parseFloat(vals[3]) || 1,
             cost:   parseFloat(String(vals[4]||'0').replace(/,/g,'')) || 0,
             status: (vals[6] || 'planned').toLowerCase(),
-            url:    (vals[7] || '').trim(),
+            url:    (vals[7] || '').trim().replace(/[''"]/g, ''),
             detail: (vals[8] || '').trim(),
             type:   'single',
           };
