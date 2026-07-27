@@ -11,7 +11,7 @@
   /* 쿨 뉴트럴 — 청회색 계열 무채색 8단계 */
   --bg:#F1F3F6; --surface:#FFF; --surface2:#F7F9FB; --surface3:#EDF0F4;
   --border:#E1E5EB; --border2:#CBD2DA;
-  --ink:#0D1116; --ink2:#5A6572; --ink3:#77808D;
+  --ink:#0D1116; --ink1:#232C38; --ink2:#5A6572; --ink3:#77808D; --ink5:#E7EAEF;
   /* 브랜드 옐로우 — 강조는 여기 하나로 */
   --accent:#FFD900; --accent-deep:#8A6D00; --accent-dim:#FFF6CC; --accent-text:#0D1116;
   /* 의미색 — 유채색은 경고 하나만, 나머지는 잉크 농도로 */
@@ -28,6 +28,23 @@
   --sans:'Pretendard',-apple-system,sans-serif;
   --num:'Pretendard',-apple-system,sans-serif;
   --hdr-h:56px; --pill-h:68px; --tab-h:44px;
+  /* 모션 — 감속 위주. 튕김 없이 정확하게 멈추는 곡선 */
+  --ease:cubic-bezier(.16,1,.3,1);
+  --ease-io:cubic-bezier(.65,0,.35,1);
+  --d-fast:140ms; --d-mid:280ms; --d-slow:620ms;
+}
+
+/* ── 모션 유틸 ── */
+@keyframes growW{from{width:0}to{width:var(--w,100%)}}
+@keyframes growH{from{height:0}to{height:var(--h,100%)}}
+@keyframes riseIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* 막대가 왼쪽에서 오른쪽으로 그어짐 */
+.bar-grow{width:var(--w,100%);animation:growW var(--d-slow) var(--ease) both;animation-delay:var(--d,0ms)}
+.rise{animation:riseIn var(--d-mid) var(--ease) both;animation-delay:var(--d,0ms)}
+.section.active{animation:riseIn var(--d-mid) var(--ease) both}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -73,7 +90,9 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(241
 /* TABS */
 .tabs-bar{position:sticky;top:var(--hdr-h);z-index:99;height:var(--tab-h);background:rgba(241,243,246,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;overflow-x:auto;gap:0}
 .tabs-bar::-webkit-scrollbar{display:none}
-.tab-btn{border:none;background:none;color:var(--ink3);padding:0 16px;height:44px;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.tab-btn{border:none;background:none;color:var(--ink3);padding:0 16px;height:44px;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:5px;
+  transition:color var(--d-fast) linear,border-color var(--d-fast) linear}
+.tab-btn:hover{color:var(--ink)}
 .tab-btn:hover:not(.active){color:var(--ink)}
 .tab-btn.active{color:var(--ink);border-bottom-color:var(--accent);font-weight:900}
 .tab-div{width:1px;height:18px;background:var(--border);margin:0 6px;flex-shrink:0}
@@ -106,13 +125,20 @@ main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
 .g6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
 
 /* CARD */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--sh-sm)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--sh-sm);
+  transition:border-color var(--d-fast) linear,box-shadow var(--d-mid) var(--ease),transform var(--d-mid) var(--ease)}
+.card:hover{border-color:var(--border2);box-shadow:var(--sh-md)}
 .card-title{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;letter-spacing:-.005em}
 .card-title small{font-size:11px;color:var(--ink3);font-weight:500;letter-spacing:0}
 
 /* KPI */
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--sh-sm);transition:border-color .15s}
-.kpi:hover{border-color:var(--accent)}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--sh-sm);position:relative;overflow:hidden;
+  transition:border-color var(--d-fast) linear,box-shadow var(--d-mid) var(--ease),transform var(--d-mid) var(--ease)}
+/* 상단에 브랜드 옐로우 라인이 좌→우로 그어짐 */
+.kpi::after{content:'';position:absolute;left:0;top:0;height:2px;width:100%;background:var(--accent);
+  transform:scaleX(0);transform-origin:left;transition:transform var(--d-mid) var(--ease)}
+.kpi:hover{border-color:var(--border2);box-shadow:var(--sh-md);transform:translateY(-2px)}
+.kpi:hover::after{transform:scaleX(1)}
 .kpi-lbl{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
 .kpi-val{font-size:34px;font-weight:800;color:var(--ink);letter-spacing:-.045em;line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
 .kpi-val.good{color:var(--good)}
@@ -120,12 +146,14 @@ main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
 .kpi-val.warn{color:var(--warn)}
 .kpi-sub{font-size:12px;color:var(--ink3);line-height:1.55}
 .kpi-bar-wrap{margin-top:10px;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
-.kpi-bar{height:100%;border-radius:2px;background:var(--accent);transition:width .6s ease}
+.kpi-bar{height:100%;border-radius:2px;background:var(--accent);transition:width var(--d-slow) var(--ease)}
 
 /* BAR CHART */
 .chart-wrap{position:relative;height:200px;display:flex;align-items:flex-end;gap:5px;padding-bottom:26px;border-bottom:1px solid var(--border)}
 .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end}
-.bar-rect{width:100%;border-radius:3px 3px 0 0;transition:height .5s cubic-bezier(.34,1.56,.64,1);min-height:3px;cursor:default;position:relative}
+.bar-rect{width:100%;border-radius:3px 3px 0 0;min-height:3px;cursor:default;position:relative;
+  transition:height var(--d-slow) var(--ease),filter var(--d-fast) linear}
+.bar-rect:hover{filter:brightness(1.12)}
 .bar-rect:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:12px;padding:5px 10px;border-radius:5px;white-space:nowrap;pointer-events:none;z-index:10;box-shadow:var(--sh-md)}
 .bar-lbl{font-size:11px;color:var(--ink3);font-family:var(--sans);text-align:center;white-space:nowrap;overflow:hidden;max-width:100%}
 .bar-val{font-size:10px;color:var(--ink2);font-weight:700;font-family:var(--sans);margin-bottom:2px;white-space:nowrap}
@@ -143,7 +171,9 @@ th{font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.09em;text-tr
 th:hover{background:var(--surface3)}
 td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--ink)}
 tr:last-child td{border-bottom:none}
+tbody tr,table tr{transition:background var(--d-fast) linear}
 tr:hover td{background:var(--surface2)}
+tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .right{text-align:right;font-variant-numeric:tabular-nums}
 .empty-row{padding:32px 10px;text-align:center;color:var(--ink3);font-size:13px;font-style:italic}
 .sort-icon{font-size:10px;color:var(--ink3);margin-left:3px}
@@ -167,7 +197,7 @@ tr:hover td{background:var(--surface2)}
 .prog-head b{color:var(--ink);font-weight:700}
 .prog-head span{color:var(--ink3);font-variant-numeric:tabular-nums}
 .prog-bg{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
-.prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.prog-fill{height:100%;border-radius:3px}
 
 /* NOTICE */
 .notice-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;height:100%}
@@ -197,7 +227,9 @@ tr:hover td{background:var(--surface2)}
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2)}
 .toolbar-l,.toolbar-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tb-lbl{font-size:11px;color:var(--ink2);font-weight:800;letter-spacing:.04em;white-space:nowrap}
-.chip{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.chip{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);
+  transition:border-color var(--d-fast) linear,color var(--d-fast) linear,transform var(--d-fast) var(--ease)}
+.chip:hover{border-color:var(--ink3);color:var(--ink);transform:translateY(-1px)}
 .chip:hover{border-color:var(--accent);color:var(--ink)}
 .chip.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:900}
 .srch{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:6px 11px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;min-width:160px;transition:border-color .15s}
@@ -226,7 +258,8 @@ tr:hover td{background:var(--surface2)}
 .stacked-row{display:flex;align-items:center;gap:10px}
 .stacked-lbl{font-size:12px;color:var(--ink2);width:68px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stacked-bar{flex:1;height:20px;border-radius:4px;display:flex;overflow:hidden}
-.stacked-seg{height:100%;transition:width .5s ease;min-width:0}
+.stacked-seg{height:100%;transition:width var(--d-slow) var(--ease),filter var(--d-fast) linear;min-width:0}
+.stacked-seg:hover{filter:brightness(1.15)}
 .stacked-tot{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;flex-shrink:0;width:76px;text-align:right;font-weight:700}
 
 /* LEGEND */
@@ -284,6 +317,8 @@ tr:hover td{background:var(--surface2)}
    BOOK MARKETING TIMELINE
 ══════════════════════════════════════ */
 .mkt-timeline-wrap{overflow-x:auto;padding-bottom:8px}
+.tl-chip-wrap>div:not(.tl-tooltip){transition:transform var(--d-fast) var(--ease),box-shadow var(--d-fast) var(--ease)}
+.tl-chip-wrap:hover>div:not(.tl-tooltip){transform:translateY(-1px) scale(1.015);box-shadow:0 2px 8px rgba(13,17,22,.18);z-index:5}
 .mkt-tl-header{display:flex;align-items:flex-end;margin-bottom:2px}
 .mkt-tl-row{display:flex;align-items:stretch;margin-bottom:3px}
 .mkt-lane-label{width:90px;flex-shrink:0;padding:0 8px 0 10px;display:flex;align-items:center;font-size:10px;font-weight:800;color:var(--ink2);min-height:28px;background:var(--surface2);border-radius:4px 0 0 4px;margin-right:2px}
@@ -1345,7 +1380,7 @@ function progBar(label,val,total,color,sub=''){
   const r=Math.min(pct(val,total),100);
   return `<div class="prog-item">
     <div class="prog-head"><b>${label}</b><span>${won(val)} / ${won(total)} · ${r}%${sub?' · '+sub:''}</span></div>
-    <div class="prog-bg"><div class="prog-fill" style="width:${r}%;background:${color}"></div></div>
+    <div class="prog-bg"><div class="prog-fill bar-grow" style="--w:${r}%;background:${color}"></div></div>
   </div>`;
 }
 
@@ -1639,7 +1674,7 @@ function renderSummary(){
               <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
             </div>
             <div style="background:var(--ink5);border-radius:4px;height:10px;overflow:hidden">
-              <div style="background:${isBest?'#161B22':colors10[i]};width:${barW}%;height:10px;border-radius:4px;transition:width .4s ease"></div>
+              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${isBest?'#161B22':colors10[i]};height:10px;border-radius:4px"></div>
             </div>
           </div>`;
         }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
@@ -1833,7 +1868,7 @@ function renderShip(){
               </div>
             </div>
             <div style="background:rgba(0,0,0,.08);border-radius:4px;height:5px;overflow:hidden">
-              <div style="background:${b.barColor};width:${b.barPct}%;height:5px;border-radius:4px;transition:width .4s ease"></div>
+              <div class="bar-grow" style="--w:${b.barPct}%;--d:${i*60}ms;background:${b.barColor};height:5px;border-radius:4px"></div>
             </div>
           </div>`).join('');
       })()}
