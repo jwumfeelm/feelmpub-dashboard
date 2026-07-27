@@ -693,21 +693,28 @@ async function loadMktSheets() {
           revenue: 0,
         };
 
-        // 마케팅 액션 파싱 (날짜 형식 YYYY-MM-DD 행만)
-        const actions = rows.filter(r => {
-          const d = r['날짜'] || Object.values(r)[0] || '';
-          return /^\d{4}-\d{2}-\d{2}$/.test(String(d).trim());
-        }).map(r => ({
-          date:   (r['날짜'] || Object.values(r)[0] || '').trim(),
-          lane:   r['레인'] || '',
-          label:  r['액션명'] || '',
-          days:   parseFloat(r['기간(일)']) || 1,
-          cost:   parseFloat(String(r['비용(원)']||'0').replace(/,/g,'')) || 0,
-          status: (r['STATUS'] || r['status'] || 'planned').toLowerCase(),
-          url:    r['소재 URL(구글 드라이브)'] || r['소재 URL (구글드라이브)'] || r['소재 URL'] || '',
-          detail: r['소재 설명'] || '',
-          type:   'single',
-        }));
+        // 마케팅 액션 파싱
+        // CSV 헤더가 기본정보 헤더로 고정되어 있어서 컬럼 인덱스로 파싱
+        // 액션 행: 첫 번째 값이 YYYY-MM-DD 형식인 행
+        // 기본정보가 1행(헤더)+1행(값) → rows[0]=기본정보값, rows[1~]=액션행들
+        // 액션 헤더 행(날짜|레인|...) 건너뛰고 실제 날짜 있는 행만
+        const actions = rows.slice(1).filter(r => {
+          const first = (Object.values(r)[0] || '').trim();
+          return /^\d{4}-\d{2}-\d{2}$/.test(first);
+        }).map(r => {
+          const vals = Object.values(r);
+          return {
+            date:   (vals[0] || '').trim(),
+            lane:   (vals[1] || '').trim(),
+            label:  (vals[2] || '').trim(),
+            days:   parseFloat(vals[3]) || 1,
+            cost:   parseFloat(String(vals[4]||'0').replace(/,/g,'')) || 0,
+            status: (vals[6] || 'planned').toLowerCase(),
+            url:    (vals[7] || '').trim(),
+            detail: (vals[8] || '').trim(),
+            type:   'single',
+          };
+        });
 
         MKT_ACTIONS[book.code] = actions;
       } catch(e) {
