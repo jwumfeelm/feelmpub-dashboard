@@ -2185,10 +2185,11 @@ function renderCalendar() {
   const daysSincePub = Math.floor((today-pubDate)/86400000);
 
   // 목표 달성률 (샘플: 현재까지 판매 기준)
+  const goalQty = (book.goal && book.goal.qty) || 1;
   const currentSales = sales ? sales.data.reduce((s,d)=>{
     return s + Object.values(d).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
-  },0) : Math.round(book.goal.qty * 0.18);
-  const goalPct = Math.min(Math.round(currentSales/book.goal.qty*100),100);
+  },0) : Math.round(goalQty * 0.18);
+  const goalPct = Math.min(Math.round(currentSales/goalQty*100),100);
 
   document.getElementById('tab-calendar').innerHTML = `
     <!-- 도서 선택 -->
