@@ -2619,6 +2619,8 @@ function renderCalendar() {
     </div>`;
   // innerHTML 세팅 후 타임라인 DOM 직접 렌더
   renderTimeline(dates, pubDate, today, actions, sales);
+  // 일별 판매 추이 호버 핸들러 연결 (innerHTML 교체로 매번 새로 붙여야 함)
+  initDayChartHover();
 }
 
 /* ── 도서명/날짜 정규화 + 일별판매 매칭 헬퍼 ── */
@@ -2843,8 +2845,10 @@ function initDayChartHover() {
     const xp = PAD_L + (n > 1 ? idx/(n-1)*cW : cW/2);
     hl.setAttribute('x1', xp); hl.setAttribute('x2', xp); hl.style.opacity = '1';
     tt.style.display = 'block';
+    // 툴팁이 오른쪽 밖으로 넘치면 커서 왼쪽에 붙인다 (박스 실제 폭 기준)
     const ttX = xp * (r.width/W);
-    tt.style.left = (ttX > r.width * 0.7 ? ttX - 150 : ttX + 10) + 'px';
+    const ttW = tt.offsetWidth || 180;
+    tt.style.left = (ttX + 14 + ttW > r.width ? Math.max(0, ttX - ttW - 14) : ttX + 14) + 'px';
     const d = sorted[idx];
     const row = storeMapH[d.date] || null;
     const dt  = parseAnyDate(d.date);
