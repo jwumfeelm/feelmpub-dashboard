@@ -686,7 +686,13 @@ function splitCSVRow(row) {
 
 function toNum(v) { return Number(String(v||0).replace(/[,원%부]/g,'')) || 0; }
 
+// gviz(tq)는 그룹 접기·숨김 처리된 행을 내보내지 않아서, 시트에서 행을 접어두면
+// 해당 데이터가 통째로 누락된다. export 는 화면 표시와 무관하게 전 행을 내보낸다.
 function sheetURL(gid) {
+  return `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/export?format=csv&gid=${gid}`;
+}
+// 구 방식 — export 가 막혔을 때 대비용
+function sheetURLLegacy(gid) {
   return `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
 
@@ -694,8 +700,12 @@ function sheetURL(gid) {
    FETCH 시트
 ───────────────────────────────────── */
 async function fetchSheet(gid) {
-  const res = await fetch(sheetURL(gid), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  let res = await fetch(sheetURL(gid), { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) {
+    // export 실패 시에만 구 방식으로 재시도
+    res = await fetch(sheetURLLegacy(gid), { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  }
   return parseCSV(await res.text());
 }
 
