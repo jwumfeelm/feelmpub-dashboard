@@ -2543,7 +2543,7 @@ function renderCalendar() {
           '<line id="dhl-'+calBook+'" x1="0" x2="0" y1="'+PAD.t+'" y2="'+(PAD.t+cH)+'" stroke="#3A434F" stroke-width="1" stroke-dasharray="3,3" opacity="0" pointer-events="none"/>'+
           '<rect x="'+PAD.l+'" y="'+PAD.t+'" width="'+cW+'" height="'+cH+'" fill="transparent" id="day-hover-'+calBook+'"/>'+
         '</svg>'+
-        '<div id="'+ttId+'" style="display:none;position:absolute;top:8px;background:#161B22;color:#fff;font-size:11px;padding:5px 9px;border-radius:5px;pointer-events:none;white-space:nowrap;z-index:10"></div>'+
+        '<div id="'+ttId+'" style="display:none;position:absolute;top:8px;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);font-size:11px;line-height:1.5;padding:10px 13px;border-radius:var(--r2);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--sh-lg);min-width:168px"></div>'+
         '</div></div>';
     })()}
 
@@ -2756,6 +2756,53 @@ function driveOpenUrl(url) {
   const m = url.match(/\/file\/d\/([^\/\?]+)/);
   return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : url;
 }
+// ── 소재 링크 → 미리보기 판별 ──
+// 유튜브는 공개 썸네일 주소가 있어 그대로 쓰고, 인스타·블로그는 서버 인증 없이
+// 썸네일을 가져올 방법이 없으므로 플랫폼 표식 + 바로가기로 대체한다.
+function mediaInfo(url) {
+  var u = String(url || '').trim();
+  if (!u) return null;
+
+  // 구글드라이브
+  var gd = u.match(/\/file\/d\/([^\/\?]+)/);
+  if (gd) return {kind:'drive', name:'구글드라이브', thumb:driveImgUrl(u), open:driveOpenUrl(u), mark:'D'};
+
+  // 유튜브 (watch / youtu.be / shorts / embed)
+  var yt = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  if (yt) return {
+    kind:'youtube', name:'YouTube', mark:'▶',
+    thumb:'https://img.youtube.com/vi/'+yt[1]+'/hqdefault.jpg',
+    thumbAlt:'https://img.youtube.com/vi/'+yt[1]+'/mqdefault.jpg',
+    open:'https://www.youtube.com/watch?v='+yt[1]
+  };
+
+  // 이미지 직링크
+  if (/\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u)) return {kind:'image', name:'이미지', thumb:u, open:u, mark:'IMG'};
+
+  // 나머지 플랫폼 — 썸네일 없음
+  var host = '';
+  try { host = new URL(u).hostname.replace(/^www\./,''); } catch(e) { host = u.slice(0,40); }
+  var known = [
+    [/instagram\.com/i,      'Instagram', 'IG'],
+    [/(blog\.naver\.com|tistory\.com|brunch\.co\.kr|velog\.io)/i, '블로그', 'BLOG'],
+    [/(facebook\.com|fb\.com)/i, 'Facebook', 'FB'],
+    [/(tiktok\.com)/i,       'TikTok',    'TT'],
+    [/(threads\.net)/i,      'Threads',   'TH'],
+    [/(x\.com|twitter\.com)/i,'X',        'X'],
+    [/(kyobobook|yes24|aladin|ridibooks)/i, '서점', 'BOOK'],
+  ];
+  for (var i=0;i<known.length;i++) if (known[i][0].test(u)) return {kind:'link', name:known[i][1], mark:known[i][2], open:u, host:host};
+  return {kind:'link', name:host || '링크', mark:'LINK', open:u, host:host};
+}
+
+// 썸네일 로드 실패 시 단계적 대체
+function mediaImgFallback(el, alt) {
+  el.onerror = null;
+  if (alt && el.src !== alt) { el.src = alt; return; }
+  var box = el.parentElement;
+  if (box) { el.style.display='none'; var ph = box.querySelector('[data-ph]'); if (ph) ph.style.display='flex'; }
+}
+
 function driveImgFallback(el, url) {
   el.onerror = null;
   var u = driveLh3Url(url);
@@ -2771,6 +2818,13 @@ function initDayChartHover() {
 
   const storeMapH = daySalesStoreFor(calBook) || {};
   const STORES_H = ['교보','예스24','알라딘','영풍'];
+  // 차트 선과 완전히 동일한 색·선형태를 툴팁 표식에도 쓴다
+  const SERIES_MARK = {
+    '교보':   {c:'#8A6D00', d:''},
+    '예스24': {c:'#3A434F', d:''},
+    '알라딘': {c:'#6B7684', d:'4,2'},
+    '영풍':   {c:'#6B7684', d:'1.5,1.5'},
+  };
 
   const svg = document.getElementById('day-chart-'+calBook);
   // 차트가 카드 폭에 맞춰 매번 다시 계산되므로, 좌표는 하드코딩하지 말고 viewBox에서 읽는다
@@ -2792,12 +2846,29 @@ function initDayChartHover() {
     const ttX = xp * (r.width/W);
     tt.style.left = (ttX > r.width * 0.7 ? ttX - 150 : ttX + 10) + 'px';
     const d = sorted[idx];
-    const row = storeMapH[d.date];
-    let html = '<b>'+d.date+'</b>  총 '+d.qty.toLocaleString()+'부';
+    const row = storeMapH[d.date] || null;
+    const dt  = parseAnyDate(d.date);
+    const dow = dt ? ['일','월','화','수','목','금','토'][dt.getDay()] : '';
+    // 선이 겹치는 구간을 읽으려면 계열별 수치를 세로로 나란히 보여줘야 한다
+    let html = '<div style="font-weight:800;color:var(--ink);margin-bottom:7px;padding-bottom:6px;border-bottom:1px solid var(--border)">'
+      + d.date + ' <span style="color:var(--ink3);font-weight:600">(' + dow + ')</span></div>'
+      + '<div style="display:flex;justify-content:space-between;gap:18px;font-weight:800;color:var(--ink);margin-bottom:'+(row?'6px':'0')+'">'
+      + '<span style="display:inline-flex;align-items:center;gap:7px">'
+      + '<svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="#0D1116" stroke-width="3"/></svg>총판매</span>'
+      + '<span>' + d.qty.toLocaleString() + '부</span></div>';
     if (row) {
-      html += '<span style="opacity:.5">  ·  </span>' + STORES_H
-        .map(st => st+' '+((Number(row[st])||0)).toLocaleString())
-        .join('<span style="opacity:.35"> / </span>');
+      const tot = d.qty || 1;
+      html += STORES_H.map(st => {
+        const v = Number(row[st]) || 0;
+        const sh = Math.round(v / tot * 100);
+        const mk = SERIES_MARK[st] || {c:'#6B7684', d:''};
+        return '<div style="display:flex;justify-content:space-between;gap:18px;line-height:1.8">'
+          + '<span style="display:inline-flex;align-items:center;gap:7px;color:var(--ink2)">'
+          + '<svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="'+mk.c+'" stroke-width="2"'
+          + (mk.d ? ' stroke-dasharray="'+mk.d+'"' : '') + '/></svg>' + st + '</span>'
+          + '<span style="font-weight:700;color:var(--ink)">' + v.toLocaleString()
+          + '<span style="color:var(--ink3);font-weight:500;margin-left:7px">' + sh + '%</span></span></div>';
+      }).join('');
     }
     tt.innerHTML = html;
   });
@@ -3321,14 +3392,38 @@ function openDetailPanel(a, c, material){
               +(m.cost?'<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-top:6px">집행 비용: '+won(m.cost)+'</div>':'')
               +'</div></div>';
           } else if(m.type==='image'){
-            return '<div style="flex-shrink:0;width:200px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
-              +'<img src="'+m.img+'" onerror="driveImgFallback(this,\''+(m.url||'')+'\')" style="width:100%;height:200px;object-fit:cover;display:block;background:var(--surface3)">'
+            var mi = mediaInfo(m.url) || {kind:'link', name:'링크', mark:'LINK', open:m.url||''};
+            var W = 220, TH = 124;   // 16:9 근사
+            // 썸네일이 있으면 이미지, 없으면 플랫폼 표식 자리표시자
+            var visual;
+            if (mi.thumb) {
+              visual = '<div style="position:relative;width:100%;height:'+TH+'px;background:var(--surface3)">'
+                +'<img src="'+mi.thumb+'" onerror="mediaImgFallback(this,\''+(mi.thumbAlt||'')+'\')" '
+                +'style="width:100%;height:'+TH+'px;object-fit:cover;display:block">'
+                +'<div data-ph style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;'
+                +'flex-direction:column;gap:6px;background:var(--surface3);color:var(--ink3);font-size:11px;font-weight:800">'
+                +'<span style="font-size:15px">'+mi.mark+'</span>'+mi.name+'</div>'
+                +(mi.kind==='youtube'
+                  ? '<span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:26px;'
+                    +'background:rgba(13,17,22,.78);border-radius:6px;display:flex;align-items:center;justify-content:center;'
+                    +'color:#FFF;font-size:12px;pointer-events:none">▶</span>' : '')
+                +'</div>';
+            } else {
+              visual = '<div style="width:100%;height:'+TH+'px;background:var(--surface3);display:flex;align-items:center;'
+                +'justify-content:center;flex-direction:column;gap:6px;color:var(--ink3)">'
+                +'<span style="font-size:15px;font-weight:800">'+mi.mark+'</span>'
+                +'<span style="font-size:11px;font-weight:700">'+mi.name+'</span></div>';
+            }
+            return '<div style="flex-shrink:0;width:'+W+'px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
+              +visual
               +'<div style="padding:10px 12px">'
-              +'<div style="font-size:11px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
+              +'<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">'
+              +'<span style="font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--ink3);border:1px solid var(--border2);border-radius:3px;padding:1px 4px">'+mi.name+'</span>'
+              +'<span style="font-size:11px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.label+'</span></div>'
               +'<div style="font-size:10px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
               +(m.days?'<div style="font-size:10px;color:var(--ink3);margin-top:4px">기간: '+m.days+'</div>':'')
               +(m.cost?'<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-top:4px">'+won(m.cost)+'</div>':'')
-              +(m.url?'<a href="'+driveOpenUrl(m.url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;font-size:10px;font-weight:700;color:var(--ink2);text-decoration:none">원본 바로가기 ↗</a>':'')
+              +(mi.open?'<a href="'+mi.open+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;font-size:10px;font-weight:700;color:var(--ink2);text-decoration:none">원본 바로가기 ↗</a>':'')
               +'</div></div>';
           } else {
             return '<div style="flex-shrink:0;min-width:240px;max-width:320px;background:var(--surface2);border-radius:var(--r2);padding:14px;border:1px solid var(--border)">'
