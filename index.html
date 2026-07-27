@@ -927,12 +927,18 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       mkt:         '',
       edit:        '',
       isbn:        r['ISBN']||'',
+      // 출고 표기명 별칭 — 시트 수식이 못 잡아도 코드에서 다시 매칭
+      altTitles:   String(r['출고표기명']||r['출고 표기명']||'')
+                     .split(/[,|;\n]/).map(x=>x.trim()).filter(Boolean),
       pubDate:     r['출간일']||'',
       isStrategic: (r['전략도서 여부']||'').toString().toLowerCase()==='true',
-      cumShipQty:  toNum(r['과거출고부수']),
-      cumShipAmt:  toNum(r['과거출고매출']),
-      cumSalesQty: toNum(r['과거판매부수']),
-      cumSalesPub: toNum(r['과거판매액']),
+      // 도서 목록의 '과거*' 열은 2024년 이전분이 아니라 전체 누적 스냅샷이므로
+      // 여기에 2025년 이후 실적을 더하면 이중 계상됨. 스냅샷은 따로 보관 후 max로 결합.
+      snapShipQty:  toNum(r['과거출고부수']),
+      snapShipAmt:  toNum(r['과거출고매출']),
+      snapSalesQty: toNum(r['과거판매부수']),
+      snapSalesPub: toNum(r['과거판매액']),
+      cumShipQty:  0, cumShipAmt: 0, cumSalesQty: 0, cumSalesPub: 0,
       cumMktCost:  0, cumPubCost: 0, cumComCost: 0,
       r12ShipQty:  0, r12ShipAmt: 0,   // 최근 12개월 (관리 대상 판정용)
       mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0, stock:0, scm3m:0,
@@ -952,10 +958,10 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       const prev = byIsbn.get(k);
       if (!prev) { byIsbn.set(k, b); merged.push(b); return; }
       // 과거 실적은 합산
-      prev.cumShipQty  += b.cumShipQty;
-      prev.cumShipAmt  += b.cumShipAmt;
-      prev.cumSalesQty += b.cumSalesQty;
-      prev.cumSalesPub += b.cumSalesPub;
+      prev.snapShipQty  += b.snapShipQty;
+      prev.snapShipAmt  += b.snapShipAmt;
+      prev.snapSalesQty += b.snapSalesQty;
+      prev.snapSalesPub += b.snapSalesPub;
       prev.isStrategic  = prev.isStrategic || b.isStrategic;
       // 대표명 선정: 머리표 없는 이름 > 판본 공통명 > 기존
       if (tagged(prev.title) && !tagged(b.title)) {
@@ -968,6 +974,8 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       if (!prev.price && b.price) prev.price = b.price;
       if (!prev.pubDate && b.pubDate) prev.pubDate = b.pubDate;
       (prev.aliases = prev.aliases || []).push(b.title);
+      if (b.altTitles && b.altTitles.length)
+        prev.altTitles = (prev.altTitles || []).concat(b.altTitles);
     });
     merged.forEach((b,i)=>{ b.id = i+1; });
 
@@ -979,6 +987,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     merged.forEach(b => {
       bookByTitle.set(b.title.replace(/\s/g,''), b);
       (b.aliases||[]).forEach(a => bookByTitle.set(String(a).replace(/\s/g,''), b));
+      (b.altTitles||[]).forEach(a => bookByTitle.set(String(a).replace(/\s/g,''), b));
     });
     const findBook = r => bookByIsbn.get(isbnKey(r['ISBN']))
                        || bookByTitle.get(String(r['도서명']||'').replace(/\s/g,''))
@@ -1070,6 +1079,20 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       }
       // 누적 실판매 전체 기간 (시중재고 계산용 - 2026년 출간 도서는 과거데이터 없음)
       b.cumSalesQty += toNum(r['총판매(부)']);
+    });
+
+    // ── 누적 확정: 스냅샷(전체 누적)과 실집계 중 큰 값 ──
+    // 2024년 이전 실적은 03/04 시트에 없고 스냅샷에만 있으므로 max로 흡수
+    merged.forEach(b => {
+      b.cumShipQty  = Math.max(b.snapShipQty,  b.cumShipQty);
+      b.cumShipAmt  = Math.max(b.snapShipAmt,  b.cumShipAmt);
+      b.cumSalesQty = Math.max(b.snapSalesQty, b.cumSalesQty);
+      // 공급단가 = 실제 출고매출 / 출고부수 (정가의 약 55%)
+      b.supply = b.cumShipQty > 0 ? Math.round(b.cumShipAmt / b.cumShipQty) : 0;
+      // 판매액은 공급가 기준으로 통일 (출고매출과 동일 기준).
+      // 시트의 '과거판매액'은 정가 기준이라 그대로 쓰면 손익이 과대 계상됨.
+      b.cumSalesPub = b.cumSalesQty * b.supply;
+      b.cumSalesList = b.snapSalesPub;   // 정가 기준 원본 (참고용 보관)
     });
 
     if(merged.length > 0) {
