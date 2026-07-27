@@ -666,7 +666,7 @@ async function loadMktSheets() {
           const r = rows[0];
           Object.keys(r).forEach(k => {
             const v = (r[k] || '').trim();
-            const key = k.trim();
+            const key = k.trim().replace(/\s+/g, ' ');
             if (!key || !v) return;
             if (/^Sub.?Target/i.test(key)) subTargets.push(v);
             else if (/^Sub.?Copy/i.test(key)) subCopies.push(v);
