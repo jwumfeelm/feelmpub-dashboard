@@ -934,17 +934,64 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       cumSalesQty: toNum(r['과거판매부수']),
       cumSalesPub: toNum(r['과거판매액']),
       cumMktCost:  0, cumPubCost: 0, cumComCost: 0,
+      r12ShipQty:  0, r12ShipAmt: 0,   // 최근 12개월 (관리 대상 판정용)
       mShipQty:0, mShipAmt:0, mReturn:0, mReturnAmt:0, stock:0, scm3m:0,
       stores:{kyobo:0,yes:0,aladin:0,naver:0,others:0},
       mktBreak:{meta:0,google:0,tiktok:0,store:0,etc:0},
     })).filter(b=>b.title);
+
+    // ── 동일 ISBN 행 병합 (리커버·에디션·구판표기 등) ──
+    // 대표 도서명은 [구판]/[리커버]/(구) 같은 머리표가 없는 쪽을 우선
+    const isbnKey = v => String(v||'').replace(/[^0-9]/g,'');
+    const tagged  = t => /^[\[(]/.test(String(t||'').trim());
+    const byIsbn = new Map();
+    const merged = [];
+    mapped.forEach(b => {
+      const k = isbnKey(b.isbn);
+      if (!k) { merged.push(b); return; }          // ISBN 없으면 단독 유지
+      const prev = byIsbn.get(k);
+      if (!prev) { byIsbn.set(k, b); merged.push(b); return; }
+      // 과거 실적은 합산
+      prev.cumShipQty  += b.cumShipQty;
+      prev.cumShipAmt  += b.cumShipAmt;
+      prev.cumSalesQty += b.cumSalesQty;
+      prev.cumSalesPub += b.cumSalesPub;
+      prev.isStrategic  = prev.isStrategic || b.isStrategic;
+      // 대표명 선정: 머리표 없는 이름 > 판본 공통명 > 기존
+      if (tagged(prev.title) && !tagged(b.title)) {
+        prev.title = b.title;
+      } else if (tagged(prev.title) && tagged(b.title)) {
+        // 둘 다 [리커버]/(구) 같은 머리표뿐이고 벗기면 같은 이름이면 공통명 사용
+        const strip = t => String(t||'').replace(/^\s*[\[(][^\])]*[\])]\s*/, '').trim();
+        if (strip(prev.title) && strip(prev.title) === strip(b.title)) prev.title = strip(prev.title);
+      }
+      if (!prev.price && b.price) prev.price = b.price;
+      if (!prev.pubDate && b.pubDate) prev.pubDate = b.pubDate;
+      (prev.aliases = prev.aliases || []).push(b.title);
+    });
+    merged.forEach((b,i)=>{ b.id = i+1; });
+
+    // ISBN → 도서 인덱스 (시트 간 조인 키)
+    const bookByIsbn = new Map();
+    merged.forEach(b => { const k=isbnKey(b.isbn); if(k) bookByIsbn.set(k, b); });
+    // 도서명 → 도서 (ISBN 미기재 행 대비 폴백)
+    const bookByTitle = new Map();
+    merged.forEach(b => {
+      bookByTitle.set(b.title.replace(/\s/g,''), b);
+      (b.aliases||[]).forEach(a => bookByTitle.set(String(a).replace(/\s/g,''), b));
+    });
+    const findBook = r => bookByIsbn.get(isbnKey(r['ISBN']))
+                       || bookByTitle.get(String(r['도서명']||'').replace(/\s/g,''))
+                       || null;
 
     // 03_마케팅비용 → 도서별 누적 마케팅비
     // ── 02_비용원장 → 도서별 누적 비용
     cost.forEach(r => {
       if ((r['구분']||'').trim() !== '지급') return;
       const bookName = r['도서명'] || '';
-      const b2 = mapped.find(x => x.title === bookName || x.code === bookName);
+      const b2 = findBook(r)
+                 || bookByTitle.get(String(bookName).replace(/\s/g,''))
+                 || merged.find(x => x.code === bookName);
       const amt = toNum(r['비용']);
       const team = (r['귀속팀'] || '').trim();
       if (b2) {
@@ -957,14 +1004,24 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     // ── 03_출고실적 → 당월 출고 + 기준월까지 누적 집계
     const m = getM();
     const curYM = document.getElementById('monthPicker').value; // YYYY-MM
+    const r12From = (()=>{
+      const [y,mo] = curYM.split('-').map(Number);
+      const d = new Date(y, mo-1-11, 1);
+      return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);
+    })();
     ship.forEach(r => {
-      const b = mapped.find(x=>x.title===r['도서명']);
+      const b = findBook(r);
       if(!b) return;
       const ym = r['연도·월'] || '';
       // 2025년 이후 기준월 이하 누적 집계 (2024년 이전은 도서목록 과거데이터로 관리)
       if(ym && ym >= '2025-01' && ym <= curYM) {
         b.cumShipQty += toNum(r['출고부수']);
         b.cumShipAmt += toNum(r['출고매출(원)']);
+      }
+      // 최근 12개월 (기준월 포함 직전 12개월)
+      if(ym && ym >= r12From && ym <= curYM) {
+        b.r12ShipQty += toNum(r['출고부수']);
+        b.r12ShipAmt += toNum(r['출고매출(원)']);
       }
       // 당월 집계
       if(!ym || !ym.startsWith(curYM.slice(0,7))) return;
@@ -981,8 +1038,9 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
         stockByTitle[r['도서명']] = toNum(r['재고']);
       }
     });
-    mapped.forEach(b => {
+    merged.forEach(b => {
       if(stockByTitle[b.title] !== undefined) b.stock = stockByTitle[b.title];
+      else (b.aliases||[]).forEach(a => { if(stockByTitle[a] !== undefined) b.stock = stockByTitle[a]; });
     });
 
     // 06_마케팅실적(SCM) → 당월 서점별
@@ -994,14 +1052,9 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       cur3m.push(d.toISOString().slice(0,7));
     }
 
-    // SCM 도서명 매칭 맵 생성 (공백 제거 비교)
-    const scmTitleMap = {};
-    mapped.forEach(b => { scmTitleMap[b.title.replace(/\s/g,'')] = b; });
-
     scm.forEach(r => {
       const ym = r['연도·월'] || '';
-      const scmTitle = (r['도서명']||'').replace(/\s/g,'');
-      const b = mapped.find(x=>x.title===r['도서명']) || scmTitleMap[scmTitle];
+      const b = findBook(r);
       if(!b) return;
       // 당월 서점별 판매
       if(ym.startsWith(curYM.slice(0,7))) {
@@ -1019,8 +1072,8 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       b.cumSalesQty += toNum(r['총판매(부)']);
     });
 
-    if(mapped.length > 0) {
-      BOOKS.splice(0, BOOKS.length, ...mapped);
+    if(merged.length > 0) {
+      BOOKS.splice(0, BOOKS.length, ...merged);
     }
   }
 
@@ -1494,7 +1547,23 @@ function renderSummary(){
     {type:achPct>=100?'good':'warn', val:`${achPct}%`,    label:'목표 달성률', sub:`목표 ${won(mTarget)} / 실적 ${won(mShip)}`},
     {type:retPct>=15?'bad':'warn',   val:`${retPct}%`,    label:'반품률',      sub:`반품액 ${won(mRet)} · ${retPct>=15?'위험':'정상 범위'}`},
     {type:mProfit>=0?'good':'bad',   val:`${mProfit>=0?'+':''}${won(mProfit)}`, label:'예상 손익', sub:`순매출 ${won(mNet)} · 비용 ${won(mCost)}`},
-    {type:'info',                    val:'260부',          label:'재고 소진 주의', sub:'당신은결국 · 14일 소진 예상'},
+    (()=>{
+      // 재고 소진 임박 도서 — 실데이터 기준 (시중재고 / 월평균 실판매)
+      const cands = BOOKS.filter(b=>b.isStrategic).map(b=>{
+        const market = Math.max(0, b.cumShipQty - b.cumSalesQty);
+        const monthly = b.stores ? Object.values(b.stores).reduce((a,v)=>a+v,0) : 0;
+        const days = monthly>0 ? Math.round(market/(monthly/30)) : null;
+        return {title:b.title, market, days};
+      }).filter(x=>x.days!==null).sort((a,b)=>a.days-b.days);
+      const top = cands[0];
+      if(!top) return {type:'info', val:'-', label:'재고 소진 주의', sub:'판매 데이터 부족'};
+      return {
+        type: top.days<=30?'bad':top.days<=60?'warn':'info',
+        val:  top.market.toLocaleString()+'부',
+        label:'재고 소진 주의',
+        sub:  top.title+' · '+top.days+'일 소진 예상'
+      };
+    })(),
   ];
   // 도서별 누적 출고 부수 비중 (상위 10개)
   const topBooks = [...BOOKS]
@@ -2057,24 +2126,39 @@ function renderChannel(){
 /* ─────────────────────────────────────
    6. 도서별 DB
 ───────────────────────────────────── */
+// 도서 DB 표시 범위: 최근 12개월 출고매출 1,000만원 이상만 (전체 보기 토글)
+let booksShowAll = false;
+const BOOKS_ACTIVE_MIN = 10000000;
+function toggleBooksScope(){ booksShowAll = !booksShowAll; renderBooks(); }
+
 function renderBooks(){
-  const rows=BOOKS.map(b=>{
+  const activeCount = BOOKS.filter(b=>(b.r12ShipAmt||0) >= BOOKS_ACTIVE_MIN).length;
+  const base = booksShowAll ? BOOKS : BOOKS.filter(b=>(b.r12ShipAmt||0) >= BOOKS_ACTIVE_MIN);
+  const rows=base.map(b=>{
     const cumCost=b.cumMktCost+b.cumPubCost+b.cumComCost;
     const profit=b.cumSalesPub-cumCost;
     const roas=b.cumMktCost?Math.round(b.cumSalesPub/b.cumMktCost*100):0;
     const roi =cumCost?Math.round(b.cumSalesPub/cumCost*100):0;
     return {...b, cumCost, profit, roas, roi};
   });
-  const sorted=sortRows(rows,'books',['cumShipQty','cumShipAmt','cumSalesQty','cumSalesPub','cumMktCost','cumCost','roas','roi','profit']);
+  const sorted=sortRows(rows,'books',['r12ShipAmt','cumShipQty','cumShipAmt','cumSalesQty','cumSalesPub','cumMktCost','cumCost','roas','roi','profit']);
 
   document.getElementById('tab-books').innerHTML=`
     <div class="card gap">
-      <div class="card-title">도서별 종합 실적 <small>컬럼 클릭 시 정렬 · 행 클릭 시 상세</small></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0">도서별 종합 실적
+          <small>${booksShowAll ? `전체 ${BOOKS.length}종` : `관리 대상 ${activeCount}종 · 최근 12개월 출고 1,000만원 이상`} · 컬럼 클릭 시 정렬 · 행 클릭 시 상세</small>
+        </div>
+        <button onclick="toggleBooksScope()" style="border:1px solid var(--border2);background:var(--surface);color:var(--ink2);border-radius:var(--r3);padding:6px 12px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+          ${booksShowAll ? `관리 대상만 (${activeCount}종)` : `전체 보기 (${BOOKS.length}종)`}
+        </button>
+      </div>
       <table>
         <tr>
           ${thS('books','title','도서명')}
-          <th>정가</th><th>분야</th><th>저자</th>
+          <th>정가</th><th>분야</th>
 
+          ${thS('books','r12ShipAmt','최근12개월 출고','right')}
           ${thS('books','cumShipQty','누적 출고부수','right')}
           ${thS('books','cumShipAmt','누적 출고매출','right')}
           ${thS('books','cumSalesQty','누적 판매부수','right')}
@@ -2090,7 +2174,7 @@ function renderBooks(){
           <td style="font-size:11px;white-space:nowrap">${b.price.toLocaleString()}원</td>
           <td><span class="badge neutral">${esc(b.genre)}</span></td>
 
-          <td><span class="badge ${b.field==='IMC1'?'acc':b.field==='IMC2'?'info':'good'}">${b.field}</span></td>
+          <td class="right">${won(b.r12ShipAmt)}</td>
           <td class="right">${b.cumShipQty.toLocaleString()}부</td>
           <td class="right">${won(b.cumShipAmt)}</td>
           <td class="right">${b.cumSalesQty.toLocaleString()}부</td>
