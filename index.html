@@ -2289,7 +2289,15 @@ function renderCalendar() {
 
     <!-- 일자형 마케팅 타임라인 -->
     <div class="card gap">
-      <div class="card-title">마케팅 타임라인 <small>출간일 기준 · 레인별 액션 밀도</small></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div class="card-title" style="margin:0">마케팅 타임라인 <small>출간일 기준 · 레인별 액션 밀도</small></div>
+        <div style="display:flex;align-items:baseline;gap:14px;font-size:11px;color:var(--ink3)">
+          <span>집행 액션 <b style="font-size:15px;font-weight:900;color:var(--ink)">${totalActions.toLocaleString()}</b>건</span>
+          <span>운영 채널 <b style="font-size:15px;font-weight:900;color:var(--ink)">${MKT_LANES.filter(l=>actions.some(a=>a.lane===l)).length}</b>개</span>
+          <span>집행 기간 <b style="font-size:15px;font-weight:900;color:var(--ink)">${dates.length}</b>일</span>
+          <span>총 집행액 <b style="font-size:15px;font-weight:900;color:var(--ink)">${won(totalCost)}</b></span>
+        </div>
+      </div>
       <div class="mkt-timeline-wrap" id="tl-wrap"></div>
       </div>
 
@@ -2515,7 +2523,7 @@ function initDayChartHover() {
 }
 
 function renderTimeline(dates, pubDate, today, actions, sales) {
-  var CELL_W = 44;
+  var CELL_W = 38;
   var LBL_W  = 130;
   var STORES_TL = ["교보","예스24","영풍","알라딘"];
   if(!window.tlExpanded) window.tlExpanded = {};
@@ -2687,47 +2695,27 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       'background:'+c.bg,
       'border:1.5px solid '+c.border,
       'border-radius:4px',
-      'display:flex','align-items:center',
+      'display:flex','align-items:center','justify-content:center',
       'overflow:hidden','box-sizing:border-box','cursor:pointer',
     ].join(';');
 
-    // ── 액션명: 칩 안에 들어가면 안쪽, 좁으면 오른쪽 바깥으로 노출 ──
-    var arrowW = isExpandable ? 20 : 0;
-    var dotW   = (spanCells===1) ? 15 : 0;
-    var fs     = (spanCells===1) ? 9 : Math.max(9, Math.min(11, Math.floor((spanW-28)/6)));
-    var innerAvail = spanW - 12 - arrowW - dotW;
-    var approxW    = (a.label||'').length * fs * 0.98;   // 한글 기준 근사 폭
-    var fitsInside = approxW <= innerAvail;
-
-    if(spanCells===1){
-      var dot=document.createElement('span');
-      dot.style.cssText='width:7px;height:7px;border-radius:50%;background:'+c.border+';flex-shrink:0;margin:0 4px;';
-      chip.appendChild(dot);
-    }
-
-    if(fitsInside){
-      var txt=document.createElement('span');
-      txt.style.cssText='padding:0 '+(spanCells===1?'2px':'6px')+';font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
-      txt.textContent=a.label;
-      chip.appendChild(txt);
+    // ── 액션명: 칩 안에 표시 (기존 관리 시트와 동일한 방식) ──
+    // 좁은 칩(1~2일)은 2줄 줄바꿈, 넓은 칩은 1줄 가운데 정렬
+    var narrow = spanCells <= 2;
+    var txt = document.createElement('span');
+    if(narrow){
+      txt.style.cssText='padding:1px 1px;font-size:8px;line-height:1.1;font-weight:700;color:'+c.text+';'
+        +'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;'
+        +'overflow:hidden;word-break:break-all;text-align:center;pointer-events:none;'
+        +'flex:1;min-width:0;';
     } else {
-      // 다음 칩 직전까지만 바깥 라벨 허용
-      var nextIdx = (nextSIdx==null ? dates.length : nextSIdx);
-      var outW = Math.max(0, (nextIdx - range.eIdx - 1) * CELL_W - 6);
-      if(outW >= 16){
-        var out=document.createElement('span');
-        out.style.cssText='position:absolute;left:'+(spanW+3)+'px;top:0;height:'+chipH+'px;max-width:'+outW+'px;'
-          +'display:flex;align-items:center;font-size:'+fs+'px;font-weight:700;color:'+c.text+';'
-          +'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;z-index:3;';
-        out.textContent=a.label;
-        wrap2.appendChild(out);
-      } else {
-        var txt2=document.createElement('span');
-        txt2.style.cssText='padding:0 2px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
-        txt2.textContent=a.label;
-        chip.appendChild(txt2);
-      }
+      var fs = Math.max(9, Math.min(11, Math.floor((spanW-28)/6)));
+      txt.style.cssText='padding:0 6px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';'
+        +'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;'
+        +'pointer-events:none;flex:1;min-width:0;';
     }
+    txt.textContent=a.label;
+    chip.appendChild(txt);
 
     // 호버 툴팁 (공통)
     var tip=document.createElement('div');
@@ -2758,14 +2746,14 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
 
   // ── 레인 행 추가 (멀티트랙) ──
   function addLaneRow(lane, acts, c, showDots){
-    var TRACK_H=32, CHIP_H=26;
+    var TRACK_H=33, CHIP_H=31;   // 간격 2px — 밀도 우선
     var assigned=assignTracks(acts);
     var numTracks=assigned.trackCount;
     var rowH=numTracks*TRACK_H;
 
     var r=makeRow(rowH,
       '<span style="font-size:11px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block">'+lane+'</span>',
-      'border-left:3px solid '+c.border+';align-items:flex-start;padding-top:4px;',false,showDots);
+      'border-left:3px solid '+c.border+';align-items:flex-start;padding-top:2px;',false,showDots);
 
     // 트랙별로 다음 칩 시작 위치 계산 (바깥 라벨이 겹치지 않도록)
     var byTrack={};
