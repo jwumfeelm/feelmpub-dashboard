@@ -958,29 +958,49 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
   // 주의: '교보문고' 같은 서점명이 [출고 매출] · [전자책 매출] · [반품액] 세 구간에
   //       반복 등장한다. 항목명만으로 찾으면 엉뚱한 구간 값을 읽는다.
   //       또 '연도'가 병합 셀이면 하위 행에서 비어 나오므로 위 값을 이어받는다.
-  const SECT = {'출고 매출':'ship', '전자책 매출':'ebook', '반품액':'return'};
-  const mFirst = {};   // 연도|항목  → 최초 등장 행 (총 매출·목표 등 고유 항목용)
-  const mSect  = {};   // 연도|구간|항목 → 구간별 행 (서점명처럼 중복되는 항목용)
+  const flatL = x => String(x || '').replace(/[\s\u00A0]+/g, '');
+  const yr4   = x => { const m = String(x || '').match(/\d{4}/); return m ? m[0] : ''; };
+  // 구간 헤더 판별 — 표기 흔들림(공백·괄호)에 견디도록 느슨하게
+  const sectOf = L => {
+    if (/^출고매출/.test(L)) return 'ship';
+    if (/^전자책/.test(L))   return 'ebook';
+    if (/^반품액/.test(L))   return 'return';
+    if (/^(총매출|순매출|총비용)/.test(L)) return 'top';
+    return null;
+  };
+  const mFirst = {};   // 연도|항목 → 최초 등장 행
+  const mSect  = {};   // 연도|구간|항목 → 구간별 행
+  const mSeen  = {ship:0, ebook:0, return:0};
   (() => {
     let curYear = '', curSect = 'top';
     monthly.forEach(r => {
-      const y = String(r['연도'] || '').trim();
+      const y = yr4(r['연도']);
       if (y) curYear = y;
-      const label = String(r['항목'] || '').trim();
-      if (!label) return;
-      if (SECT[label]) curSect = SECT[label];
-      else if (label === '총 매출' || label === '순매출' || label === '총 비용') curSect = 'top';
-      const fk = curYear + '|' + label;
+      const L = flatL(r['항목']);
+      if (!L) return;
+      const sc = sectOf(L);
+      if (sc) { curSect = sc; if (mSeen[sc] !== undefined) mSeen[sc]++; }
+      const fk = curYear + '|' + L;
       if (!(fk in mFirst)) mFirst[fk] = r;
-      mSect[curYear + '|' + curSect + '|' + label] = r;
+      mSect[curYear + '|' + curSect + '|' + L] = r;
     });
   })();
 
   const rowToArr = row => row ? MONTHS.map(m => toNum(row[m] || 0)) : Array(12).fill(0);
-  // 고유 항목 — 최초 등장 행
-  const getMonthly = (label, year = yr) => rowToArr(mFirst[String(year) + '|' + label]);
-  // 서점명처럼 구간마다 반복되는 항목 — 구간을 지정해서 조회
-  const getSect = (label, sect, year = yr) => rowToArr(mSect[String(year) + '|' + sect + '|' + label]);
+  const getMonthly = (label, year = yr) => rowToArr(mFirst[yr4(year) + '|' + flatL(label)]);
+  // 구간 지정 조회. 구간을 못 찾으면 0을 주지 말고 기존 방식(최초 등장)으로 되돌린다.
+  const getSect = (label, sect, year = yr) => {
+    const key = yr4(year) + '|' + sect + '|' + flatL(label);
+    if (mSect[key]) return rowToArr(mSect[key]);
+    return getMonthly(label, year);
+  };
+  // 진단용 — 구간 인식이 안 되면 콘솔에서 바로 확인 가능
+  window.__monthlyDiag = () => ({
+    '연도목록': [...new Set(monthly.map(r => yr4(r['연도'])).filter(Boolean))],
+    '구간헤더인식': mSeen,
+    '항목샘플': monthly.slice(0, 12).map(r => flatL(r['항목'])).filter(Boolean),
+    '2026출고구간키': Object.keys(mSect).filter(k => k.indexOf('|ship|') > 0).slice(0, 12),
+  });
 
   const newShip   = getMonthly('총 매출');
   const newReturn = getMonthly('반품액');
