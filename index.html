@@ -668,21 +668,8 @@ async function loadMktSheets() {
         const col0 = colKeys[0] || '';
         const col1 = colKeys[1] || '';
 
-        // 헤더 행 자체가 데이터인 경우 처리
-        // col0 = '저자 분야', col1 = '짐 콜린스 경제경영' 형태로 합쳐질 수 있음
-        // 공백으로 분리해서 쌍으로 매핑
-        const col0Parts = col0.split(/\s+/).filter(Boolean);
-        const col1Parts = col1.split(/\s+/).filter(Boolean);
-        // 단일 단어면 키-값 쌍으로, 아니면 전체를 하나의 항목으로
-        if (col0Parts.length > 0 && col1Parts.length > 0) {
-          col0Parts.forEach((k, i) => {
-            const v = col1Parts[i] || '';
-            if (!k || k === '항목') return;
-            if (/^서브.?타깃|^Sub.?Target/i.test(k)) { if(v) subTargets.push(v); }
-            else if (/^서브.?카피|^Sub.?Copy/i.test(k)) { if(v) subCopies.push(v); }
-            else info[k] = v;
-          });
-        }
+        // A1이 '#'이면 헤더 행을 버리고 데이터 행만 사용
+        // col0이 '#'이거나 헤더가 합쳐진 경우 헤더 행 스킵
 
         allRows.forEach(r => {
           const k = (Object.values(r)[0] || '').trim();
