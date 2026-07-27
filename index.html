@@ -767,7 +767,10 @@ async function loadSheets() {
       fetchSheet(CFG.gids.daySales),  // 판매량_일별
       // 선택: 판매량_일별_서점 (미설정이면 빈 배열)
       CFG.gidsOpt.daySalesStore
-        ? fetchSheet(CFG.gidsOpt.daySalesStore).catch(() => [])
+        ? fetchSheet(CFG.gidsOpt.daySalesStore).catch(e => {
+            console.warn('[판매량_일별_서점] 로드 실패 — GID/공유설정 확인:', e);
+            return [];
+          })
         : Promise.resolve([]),
     ]);
 
@@ -1009,25 +1012,57 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
   }
 
   // ── 판매량_일별_서점 → DAY_SALES_STORE 갱신 ──
-  // 기대 컬럼: 판매일 | 도서(도서명) | 서점(서점분류) | 판매부수
+  // 기대 컬럼: 판매일 | 도서 | 서점 | 판매부수
+  // 헤더명이 달라도 열 순서(1~4번째)로 폴백하므로 label 절이 없어도 동작
+  window.__mktStoreDiag = { rows: 0, headers: [], mapped: null, parsed: 0, titles: [] };
   if (daySalesStore && daySalesStore.length > 0) {
     Object.keys(DAY_SALES_STORE).forEach(k => delete DAY_SALES_STORE[k]);
-    const pick = (r, names) => {
-      for (const n of names) { if (r[n] != null && String(r[n]).trim() !== '') return String(r[n]).trim(); }
-      return '';
+
+    const keys0 = Object.keys(daySalesStore[0] || {});
+    const flat  = x => String(x||'').replace(/\s/g,'');
+    const findKey = names =>
+      keys0.find(k => names.some(n => flat(k) === flat(n))) ||
+      keys0.find(k => names.some(n => flat(k).indexOf(flat(n)) >= 0));
+
+    let kDate  = findKey(['판매일','날짜(일별)','날짜','일자']);
+    let kTitle = findKey(['도서명','도서','제목']);
+    let kStore = findKey(['서점분류','서점','채널']);
+    let kQty   = findKey(['판매부수','판매수량','수량']);
+    // 헤더로 못 찾은 항목은 열 순서로 대체
+    if (!kDate || !kTitle || !kStore || !kQty) {
+      kDate  = kDate  || keys0[0];
+      kTitle = kTitle || keys0[1];
+      kStore = kStore || keys0[2];
+      kQty   = kQty   || keys0[3];
+    }
+
+    // 교보_온/교보_오프/교보_법인 등 세부 코드를 서점 단위로 통합
+    const normStore = v => {
+      const t = String(v||'').trim();
+      if (/교보/.test(t))            return '교보';
+      if (/예스|YES24/i.test(t))     return '예스24';
+      if (/알라딘/.test(t))          return '알라딘';
+      if (/영풍/.test(t))            return '영풍';
+      return t;
     };
+
     daySalesStore.forEach(r => {
-      const title = pick(r, ['도서명','도서','제목']);
-      const rawDt = pick(r, ['판매일','날짜','날짜(일별)','일자']);
-      const store = pick(r, ['서점','서점분류','채널']);
-      const qty   = toNum(pick(r, ['판매부수','판매수량','수량','sum 판매수량']));
-      const key   = ymd(parseAnyDate(rawDt));
+      const title = String(r[kTitle]  || '').trim();
+      const store = normStore(r[kStore]);
+      const qty   = toNum(r[kQty]);
+      const key   = ymd(parseAnyDate(r[kDate]));
       if (!title || !key || !store) return;
       if (!DAY_SALES_STORE[title]) DAY_SALES_STORE[title] = {};
       if (!DAY_SALES_STORE[title][key]) DAY_SALES_STORE[title][key] = {};
       const cur = DAY_SALES_STORE[title][key];
       cur[store] = (cur[store] || 0) + qty;
+      window.__mktStoreDiag.parsed++;
     });
+
+    window.__mktStoreDiag.rows    = daySalesStore.length;
+    window.__mktStoreDiag.headers = keys0;
+    window.__mktStoreDiag.mapped  = {날짜:kDate, 도서:kTitle, 서점:kStore, 부수:kQty};
+    window.__mktStoreDiag.titles  = Object.keys(DAY_SALES_STORE);
   }
 
   // ── 판매량_주차별 → WEEK_SALES 갱신 ──
@@ -2360,6 +2395,24 @@ function getDaySalesFor(code){
   }
   return null;
 }
+// 진단용 — 콘솔에서 mktDiag() 실행
+function mktDiag(){
+  var d = window.__mktStoreDiag || {rows:0};
+  var out = {
+    '설정된GID': CFG.gidsOpt.daySalesStore || '(비어있음)',
+    '받은행수': d.rows,
+    '시트헤더': d.headers,
+    '인식한열': d.mapped,
+    '집계된행': d.parsed,
+    '서점데이터_도서명': d.titles,
+    '일별데이터_도서명': Object.keys(DAY_SALES),
+    '현재선택도서': calBook,
+    '매칭결과': daySalesStoreFor(calBook) ? '성공' : '실패'
+  };
+  console.table ? console.log(out) : console.log(JSON.stringify(out,null,2));
+  return out;
+}
+
 // 서점별 일별 판매 → {'YYYY-MM-DD': {교보:n, ...}} (없으면 null)
 function daySalesStoreFor(code){
   var keys=Object.keys(DAY_SALES_STORE);
