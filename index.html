@@ -110,6 +110,19 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(241
 .pill-val.dn{color:#D9647E}
 .pill-sub{font-size:12px;color:#7D8794;text-align:right;margin-top:8px;letter-spacing:.01em}
 
+/* 보안 고지 */
+.conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:3px;
+  background:var(--accent-dim);border:1px solid var(--accent);color:var(--ink);
+  font-size:9px;font-weight:800;letter-spacing:.08em;white-space:nowrap;flex-shrink:0}
+.conf-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:22px;padding:12px 2px 0;
+  border-top:1px solid var(--border);font-size:11px;color:var(--ink3);line-height:1.6}
+.conf-note b{color:var(--ink2);font-weight:800}
+.conf-stamp{margin-left:auto;font-size:10px;color:var(--ink3);white-space:nowrap}
+@media print{
+  .conf-note{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #999}
+  .tabs-bar,.hdr-r{display:none}
+}
+
 /* MAIN */
 main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
 .section{display:none}
@@ -419,6 +432,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
       <div class="brand" style="display:flex;align-items:flex-end;gap:10px">
   <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAE+UExURQAAAP/dD/3cDv/eD/7eD/7dD/+/AP/dD//eD/7dD//dD//fDvTVC/3cDv7dD/7dD//eDvXWCv7eD/3bDv7dD/3dEPvbDvzbD/vbD//eD/3dEf/cEP/eD/7dD//eD//dDf7dD//fEP/fAP7dD/zbDv/eD/3eEP/eEP7dD//VFf3dEP7dD/7dD/3dD/7dD//eD/3dEP3cD//cDv/dDv3dDvzcDv7dD/zcEPzbD/7dD/7dD/3dD//iD//cDv/dD/7cD/7eD//fD//eEP/eEPvbEPzbDvvdEP3dEP7dDv/fC//eDwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIQ6sNgAAABqdFJOUwA0bJvP9wREqP+tSBh84OJ9Gb+A43BHZIW6d1Hn8owm51AI11xGkZHzDKO20YnS0aR0SY6PSd9QVuvqhyMkh+vtV4OTQFt/gMMY3/9gsJtQcN+Az0Awn+/791QgDBMnr0jXv9tk5/OLGBRnFBwwAAAACXBIWXMAABcRAAAXEQHKJvM/AAAB+0lEQVRYR9WVeVcaMRTFgyB6W3FBwapV6w64VFoFu6jV2lobtB1cWje6aBe//xfwZIAhecwkjGMP5fcP5928d2fyJnkw5pNQWzjSHgm3haJ0pSE6OlHlwUO6aKYr1u3UAz29fTTBQDQulQviPrfRb1cNhBPJwUdDEcEwTdEy8hjA6Ni4HYyPjQJ4MkGTNExOiedPO/G0CKcmlRwtM6JgVhLmhJCUBAMJAKm0JKRTABKSYCADYF5R5gFkFEXLAoBFRVkEsKAoWpZcDZ4qipZl1y0sK4qWrGsTs5Jg4Jn4as8lYUUIq5JgIJ0TBXknzosw5+MgsbUXAF6+em0H6xubAN5s0SQt2+XL9HZw59378mXapSl66q7zB5/Xme3FPkrlPb17NMFMwJEmqBuqXKXA2D7n/IAx9oksEacqJKsVDdhnzrnFGCtyzg+FUDWQOGqOwXHR4eROBoF70HyDgqg6qUELK1hfOOdfLcv+PbXOyBvQ9HrIe9KDRNPr8Tawt2DVoJUVvA0abOK5ygVjl6VS6bJxA28CG1yQl6PrKt/Up3l9dG/+hYG/HgQ2kBBeTTD4XnD4cV9N9IeLQeCDZN9GCVqi8pNzflWbPte+Daqtl7gfg/Is+WU2EFv4XZs+f9SRpv1nKuPSxFYz+KsemhvfBi78JwYSdN1IqxjcAmEaWBDdwN9pAAAAAElFTkSuQmCC" style="height:44px;width:auto;">
   <span style="color:var(--ink);font-size:13px;font-weight:700;letter-spacing:-.01em;padding-bottom:2px">콘텐츠사업본부</span>
+  <span class="conf-badge" title="사내 대외비 자료입니다. 외부 공유·배포를 금합니다.">대외비</span>
 </div>
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">시트 연결 대기</span></div>
@@ -438,6 +452,13 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
     <div id="tab-channel"  class="section"></div>
     <div id="tab-books"    class="section"></div>
     <div id="tab-data"     class="section"></div>
+
+    <!-- 보안 고지 (전 탭 공통) -->
+    <footer class="conf-note">
+      <span class="conf-badge">대외비</span>
+      <span>본 화면의 매출·비용·판매 데이터는 <b>사내 대외비</b>입니다. 캡처·인쇄·전달을 포함한 외부 반출을 금합니다.</span>
+      <span class="conf-stamp" id="confStamp"></span>
+    </footer>
     <div id="tab-calendar" class="section"></div>
   </main>
 </div>
@@ -1307,6 +1328,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
 ───────────────────────────────────── */
 function initApp(){
   renderTabs(); renderPills(); renderActive();
+  stampConfNote();
   loadSheets();
   if(CFG.autoRefreshMin > 0) {
     setInterval(loadSheets, CFG.autoRefreshMin * 60 * 1000);
@@ -3686,6 +3708,16 @@ function openDrawer(id){
 function closeDrawer(){
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('drawer').classList.remove('open');
+}
+
+// 캡처본의 시점을 알 수 있도록 열람 일시를 남긴다
+function stampConfNote(){
+  const el = document.getElementById('confStamp');
+  if (!el) return;
+  const d = new Date();
+  const p = n => ('0'+n).slice(-2);
+  el.textContent = '열람 ' + d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate())
+    + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
 function toggleFullscreen() {
