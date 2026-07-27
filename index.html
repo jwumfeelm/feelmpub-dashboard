@@ -99,9 +99,10 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(241
 
 /* PILL BAR */
 .pill-bar-wrap{background:var(--dark-bg);border-bottom:1px solid var(--dark-border);width:100%}
-.pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;height:116px}
-.pill{display:flex;flex-direction:column;justify-content:space-between;padding:20px 32px;border-right:1px solid var(--dark-border);cursor:default;position:relative}
-.pill:last-child{border-right:none}
+.pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;min-height:128px}
+.pill{display:flex;flex-direction:column;justify-content:space-between;padding:19px 32px;cursor:default;position:relative;min-width:0}
+/* 구분선은 안쪽 그림자로 — 테두리를 쓰면 셀이 컨테이너보다 커질 때 밖으로 흘러나온다 */
+.pill:not(:last-child){box-shadow:inset -1px 0 0 var(--dark-border)}
 .pill-lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
 .pill-val{font-size:44px;font-weight:800;color:#fff;letter-spacing:-.045em;line-height:1;text-align:right;margin-top:auto;font-variant-numeric:tabular-nums}
 /* 어두운 배경 위에서는 잉크 대신 브랜드 옐로우로 강조 */
@@ -2447,18 +2448,44 @@ function renderCalendar() {
       const parseDate = s => parseAnyDate(s) || new Date(0);
       const maxQty = Math.max(...sorted.map(d => d.qty), 1);
       const n = sorted.length;
-      // 도수에 비례해 충분한 가로폭 확보 (최소 60px/일)
-      const CELL = Math.max(60, Math.floor(900 / n));
-      const W = n * CELL + 60;
-      const H = 180;
-      const PAD = {t:20, r:20, b:32, l:44};
+      const H = 190;
+      const PAD = {t:20, r:20, b:40, l:44};
+
+      // 카드 폭에 맞춰 칸 너비를 계산 — 남는 여백 없이 꽉 채운다.
+      // 일수가 많아 최소 칸폭(36px)을 밑돌면 가로 스크롤로 넘어간다.
+      const tabW  = (document.getElementById('tab-calendar') || {}).clientWidth || 1200;
+      const availW = Math.max(640, tabW - 2);
+      const segs  = Math.max(n - 1, 1);
+      const CELL  = Math.max(36, (availW - PAD.l - PAD.r) / segs);
+      const W     = Math.round(PAD.l + PAD.r + CELL * segs);
       const cW = W - PAD.l - PAD.r;
       const cH = H - PAD.t - PAD.b;
       const xPos = i => PAD.l + (n > 1 ? i/(n-1) : 0.5) * cW;
       const yPos = v => PAD.t + cH - (v/maxQty)*cH;
 
-      const pts = sorted.map((d,i) => xPos(i)+','+yPos(d.qty)).join('L');
-      const area = 'M'+xPos(0)+','+(PAD.t+cH)+' L'+xPos(0)+','+yPos(sorted[0].qty)+'L'+pts+'L'+xPos(n-1)+','+(PAD.t+cH)+' Z';
+      // ── 계열 정의 ──
+      // 색만으로 5개를 가르면 모노톤에서 뭉개지므로, 밝기 + 선 형태를 함께 쓴다
+      const storeMapC = daySalesStoreFor(calBook) || {};
+      const hasStores = Object.keys(storeMapC).length > 0;
+      const SERIES = [
+        {key:'총판매',  color:'#0D1116', w:2.4, dash:'',    area:true},
+        {key:'교보',    color:'#8A6D00', w:1.6, dash:''},
+        {key:'예스24',  color:'#3A434F', w:1.6, dash:''},
+        {key:'알라딘',  color:'#6B7684', w:1.6, dash:'6,3'},
+        {key:'영풍',    color:'#6B7684', w:1.6, dash:'2,2'},
+      ].filter(sr => sr.key === '총판매' || hasStores);
+
+      const valOf = (sr, i) => {
+        if (sr.key === '총판매') return sorted[i].qty;
+        const row = storeMapC[sorted[i].date];
+        return row ? (Number(row[sr.key]) || 0) : 0;
+      };
+      // 합계가 항상 최대이므로 총판매 기준으로 y축을 잡는다
+      const pathOf = sr => 'M' + sorted.map((d,i) => xPos(i)+','+yPos(valOf(sr,i))).join('L');
+
+      const area = 'M'+xPos(0)+','+(PAD.t+cH)+' L'+
+        sorted.map((d,i) => xPos(i)+','+yPos(d.qty)).join('L')+
+        'L'+xPos(n-1)+','+(PAD.t+cH)+' Z';
 
       // y축 그리드 (4단계)
       const ySteps = 4;
@@ -2468,34 +2495,51 @@ function renderCalendar() {
           '<text x="'+(PAD.l-6)+'" y="'+(yPos(v)+4)+'" fill="#C2C9D2" font-size="10" text-anchor="end">'+v+'</text>';
       }).join('');
 
-      // x축 날짜 레이블 (7일마다)
+      // x축 — 모든 날짜 표기. 첫날과 매월 1일만 'M/D', 나머지는 일자만
       const xLabels = sorted.map((d,i) => {
-        if(i % 7 !== 0 && i !== n-1) return '';
         const dt = parseDate(d.date);
-        const label = (dt.getMonth()+1)+'/'+(dt.getDate());
-        return '<text x="'+xPos(i)+'" y="'+(PAD.t+cH+18)+'" fill="#7D8794" font-size="10" text-anchor="middle">'+label+'</text>';
+        const head = (i === 0 || dt.getDate() === 1);
+        const label = head ? (dt.getMonth()+1)+'/'+dt.getDate() : String(dt.getDate());
+        const sun = dt.getDay() === 0;
+        return '<text x="'+xPos(i)+'" y="'+(PAD.t+cH+17)+'" fill="'+(sun?'#B02B45':(head?'#5A6572':'#7D8794'))+
+          '" font-size="'+(head?10:9)+'" font-weight="'+(head||sun?700:400)+'" text-anchor="middle">'+label+'</text>';
       }).join('');
 
-      // 세로 그리드 (7일마다)
+      // 세로 그리드 — 월요일 / 매월 1일
       const vGrid = sorted.map((d,i) => {
-        if(i % 7 !== 0) return '';
-        return '<line x1="'+xPos(i)+'" x2="'+xPos(i)+'" y1="'+PAD.t+'" y2="'+(PAD.t+cH)+'" stroke="#00000006" stroke-width="1"/>';
+        const dt = parseDate(d.date);
+        if (dt.getDay() !== 1 && dt.getDate() !== 1) return '';
+        return '<line x1="'+xPos(i)+'" x2="'+xPos(i)+'" y1="'+PAD.t+'" y2="'+(PAD.t+cH)+'" stroke="#0000000A" stroke-width="1"/>';
       }).join('');
+
+      // 점은 총판매에만 (5계열 전부 찍으면 뭉개짐)
+      const dots = sorted.map((d,i) =>
+        '<circle cx="'+xPos(i)+'" cy="'+yPos(d.qty)+'" r="2.5" fill="#FFF" stroke="#0D1116" stroke-width="1.5"/>'
+      ).join('');
 
       const chartId = 'day-chart-'+calBook;
       const ttId = 'day-tt-'+calBook;
 
       return '<div class="card gap" style="margin-bottom:16px;padding:16px 0 0">'+
-        '<div class="card-title" style="padding:0 16px 12px">일별 판매 추이 <small>출간일부터 · 총판매 기준</small></div>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 16px 12px">'+
+          '<div class="card-title" style="margin:0">일별 판매 추이 <small>출간일부터 · 서점별</small></div>'+
+          '<div style="display:flex;gap:14px;flex-wrap:wrap">'+
+            SERIES.map(sr => '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink2)">'+
+              '<svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="'+sr.color+'" stroke-width="'+sr.w+'"'+
+                (sr.dash ? ' stroke-dasharray="'+sr.dash+'"' : '')+'/></svg>'+ sr.key +'</span>').join('')+
+          '</div>'+
+        '</div>'+
         '<div style="position:relative;overflow-x:auto">'+
-        '<svg id="'+chartId+'" width="'+W+'px" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block;min-width:100%">'+
+        '<svg id="'+chartId+'" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMinYMid meet" style="display:block">'+
           '<defs><linearGradient id="dg1" x1="0" y1="0" x2="0" y2="1">'+
             '<stop offset="0%" stop-color="#3A434F" stop-opacity=".15"/>'+
             '<stop offset="100%" stop-color="#3A434F" stop-opacity="0"/>'+
           '</linearGradient></defs>'+
           grid + vGrid + xLabels +
           '<path d="'+area+'" fill="url(#dg1)"/>'+
-          '<path d="M'+pts+'" fill="none" stroke="#3A434F" stroke-width="1.5"/>'+
+          SERIES.slice().reverse().map(sr => '<path d="'+pathOf(sr)+'" fill="none" stroke="'+sr.color+
+            '" stroke-width="'+sr.w+'" stroke-linejoin="round" stroke-linecap="round"'+
+            (sr.dash ? ' stroke-dasharray="'+sr.dash+'"' : '')+'/>').join('') + dots +
           '<line id="dhl-'+calBook+'" x1="0" x2="0" y1="'+PAD.t+'" y2="'+(PAD.t+cH)+'" stroke="#3A434F" stroke-width="1" stroke-dasharray="3,3" opacity="0" pointer-events="none"/>'+
           '<rect x="'+PAD.l+'" y="'+PAD.t+'" width="'+cW+'" height="'+cH+'" fill="transparent" id="day-hover-'+calBook+'"/>'+
         '</svg>'+
@@ -2521,12 +2565,13 @@ function renderCalendar() {
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         ${MKT_LANES.filter(l=>actions.some(a=>a.lane===l)).map(l=>{
           const c=LANE_COLORS[l];
-          return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:${c.text}">
-            <span style="width:20px;height:8px;background:${c.bg};border:1.5px solid ${c.border};border-radius:2px"></span>${l}
+          // 레인 text 색은 칩(어두운 배경) 위에서만 유효하므로 범례 글씨엔 쓰지 않는다
+          return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink2)">
+            <span style="width:20px;height:9px;background:${c.bg};border:1px solid ${c.border};border-radius:2px;flex-shrink:0"></span>${l}
           </span>`;
         }).join('')}
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--good)">
-          <span style="width:12px;height:12px;background:var(--good);border-radius:2px;opacity:.8"></span>판매량
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink2)">
+          <span style="width:20px;height:9px;background:var(--ink);border-radius:2px;flex-shrink:0"></span>판매량
         </span>
       </div>
     </div>
@@ -2544,8 +2589,9 @@ function renderCalendar() {
           return entries.map(([lane,cost])=>{
             const c=LANE_COLORS[lane]||{bg:"#E1E5EB",text:"#5A6572",border:"#C2C9D2"};
             const pct2=Math.round(cost/totalCost*100);
+            // 흰 카드 위 글씨이므로 레인 text 색(칩 전용)을 쓰지 않고, 색 구분은 좌측 점으로
             return `<div class="prog-item">
-              <div class="prog-head"><b style="color:${c.text}">${lane}</b><span>${won(cost)} · ${pct2}%</span></div>
+              <div class="prog-head"><b style="display:inline-flex;align-items:center;gap:6px;color:var(--ink)"><span style="width:9px;height:9px;border-radius:2px;background:${c.bg};border:1px solid ${c.border};flex-shrink:0"></span>${lane}</b><span>${won(cost)} · ${pct2}%</span></div>
               <div class="prog-bg"><div class="prog-fill" style="width:${Math.round(cost/max*100)}%;background:${c.border}"></div></div>
             </div>`;
           }).join('') || '<div class="empty-row">비용 데이터 없음</div>';
@@ -2722,9 +2768,15 @@ function initDayChartHover() {
   const sorted = dayTotalsFor(calBook);
   if (!sorted.length) return;
   const n = sorted.length;
-  const W = 1200, PAD_L = 48, PAD_R = 16, cW = W - PAD_L - PAD_R;
+
+  const storeMapH = daySalesStoreFor(calBook) || {};
+  const STORES_H = ['교보','예스24','알라딘','영풍'];
 
   const svg = document.getElementById('day-chart-'+calBook);
+  // 차트가 카드 폭에 맞춰 매번 다시 계산되므로, 좌표는 하드코딩하지 말고 viewBox에서 읽는다
+  const vb = svg ? (svg.getAttribute('viewBox')||'').split(/\s+/).map(Number) : [];
+  const W = vb[2] || 1200;
+  const PAD_L = 44, PAD_R = 20, cW = W - PAD_L - PAD_R;
   const tt  = document.getElementById('day-tt-'+calBook);
   const hl  = document.getElementById('dhl-'+calBook);
   const ha  = document.getElementById('day-hover-'+calBook);
@@ -2740,7 +2792,14 @@ function initDayChartHover() {
     const ttX = xp * (r.width/W);
     tt.style.left = (ttX > r.width * 0.7 ? ttX - 150 : ttX + 10) + 'px';
     const d = sorted[idx];
-    tt.textContent = d.date + ' | ' + d.qty.toLocaleString() + '부';
+    const row = storeMapH[d.date];
+    let html = '<b>'+d.date+'</b>  총 '+d.qty.toLocaleString()+'부';
+    if (row) {
+      html += '<span style="opacity:.5">  ·  </span>' + STORES_H
+        .map(st => st+' '+((Number(row[st])||0)).toLocaleString())
+        .join('<span style="opacity:.35"> / </span>');
+    }
+    tt.innerHTML = html;
   });
   ha.addEventListener('mouseleave', function() {
     hl.style.opacity = '0'; tt.style.display = 'none';
@@ -2978,7 +3037,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     var rowH=numTracks*TRACK_H;
 
     var r=makeRow(rowH,
-      '<span style="font-size:11px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block">'+lane+'</span>',
+      '<span style="font-size:11px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block">'+lane+'</span>',
       'border-left:3px solid '+c.border+';align-items:flex-start;padding-top:2px;',false,showDots);
 
     // 트랙별로 다음 칩 시작 위치 계산 (바깥 라벨이 겹치지 않도록)
