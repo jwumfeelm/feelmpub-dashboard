@@ -633,10 +633,32 @@ async function fetchSheet(gid) {
 /* ─────────────────────────────────────
    LOAD ALL SHEETS
 ───────────────────────────────────── */
-async function fetchMktSheet(gid) {
-  const url = `https://docs.google.com/spreadsheets/d/${CFG.mktSheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+// CSV를 2차원 배열 그대로 반환 (헤더 키 충돌 없이 열 위치로 접근)
+function parseCSVGrid(text) {
+  return text.trim().split('\n').map(line =>
+    splitCSVRow(line).map(v => (v || '').replace(/\r/g, '').trim())
+  );
+}
+
+// 캠페인 시트는 gviz 대신 export 사용.
+// gviz는 열마다 단일 데이터 타입을 강제해서, 같은 열에 날짜(기본정보)와
+// 문자열(액션명)이 섞이면 타입이 다른 쪽을 빈 값으로 날려버림.
+async function fetchMktSheetGrid(gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${CFG.mktSheetId}/export?format=csv&gid=${gid}`;
   const res = await fetch(url, { cache: 'no-store' });
-  return parseCSV(await res.text());
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseCSVGrid(await res.text());
+}
+
+async function fetchMktSheet(gid) {
+  const grid = await fetchMktSheetGrid(gid);
+  if (grid.length < 2) return [];
+  const headers = grid[0];
+  return grid.slice(1).map(vals => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h.trim()] = vals[i] || ''; });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ''));
 }
 
 async function loadMktSheets() {
@@ -661,7 +683,13 @@ async function loadMktSheets() {
       const gid = CFG.mktGids.books[book.code];
       if (!gid) continue;
       try {
-        const rows = await fetchMktSheet(gid);
+        const grid = await fetchMktSheetGrid(gid);
+        const hdr  = grid[0] || [];
+        const rows = grid.slice(1).map(vals => {
+          const o = {};
+          hdr.forEach((h, i) => { o[h.trim()] = vals[i] || ''; });
+          return o;
+        });
         // 도서 기본정보 파싱 (A열=항목명, B열=값)
         const info = {};
         const subTargets = [], subCopies = [];
@@ -704,13 +732,15 @@ async function loadMktSheets() {
         // 액션 행: 첫 번째 값이 YYYY-MM-DD 형식인 행
         // 기본정보가 1행(헤더)+1행(값) → rows[0]=기본정보값, rows[1~]=액션행들
         // 액션 헤더 행(날짜|레인|...) 건너뛰고 실제 날짜 있는 행만
-        const actions = rows.slice(1).filter(r => {
-          const first = (Object.values(r)[0] || '').trim();
-          return /^\d{4}-\d{2}-\d{2}$/.test(first);
-        }).map(r => {
-          const vals = Object.values(r);
+        // grid[0]=헤더, grid[1]=기본정보 값 → grid[2~]가 액션 후보
+        const actions = grid.slice(2).filter(vals => {
+          const first = (vals[0] || '').trim();
+          // 4자리 연도 + 구분자가 있는 것만 날짜로 인정 ('6' 같은 값이 Date로 해석되는 것 방지)
+          if (!/^\d{4}[-./]/.test(first)) return false;
+          return !!parseAnyDate(first);
+        }).map(vals => {
           return {
-            date:   (vals[0] || '').trim(),
+            date:   ymd(parseAnyDate(vals[0])),
             lane:   (vals[1] || '').trim(),
             label:  (vals[2] || '').trim(),
             days:   parseFloat(vals[3]) || 1,
