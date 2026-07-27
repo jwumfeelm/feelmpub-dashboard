@@ -3346,7 +3346,8 @@ function parseMonthDay(str){
 
 function openDetailPanel(a, c, material){
   // 표시할 소재 목록
-  var mats = material ? [material] : (a.materials && a.materials.length ? a.materials : null);
+  var mats = material ? [material] : (a.materials && a.materials.length ? a.materials :
+    (a.url ? [{type:'image', img: driveImgUrl(a.url), label: a.label||'', desc: a.detail||'', url: a.url}] : null));
 
   // 패널 컨테이너: tab-calendar 마지막에 추가 or 기존 패널 재사용
   var panel = document.getElementById('mkt-detail-panel');
