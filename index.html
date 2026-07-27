@@ -852,6 +852,10 @@ async function loadSheets() {
     dot.className = 'sync-dot';
     txt.textContent = '시트 연동 완료 · ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
 
+    // 최초 렌더는 빈 데이터로 그려지므로 애니메이션 잠금을 풀고 실데이터로 다시 재생
+    const _tc = document.getElementById('trend-chart');
+    if (_tc) _tc._animated = false;
+
     renderPills();
     renderActive();
 
@@ -1493,9 +1497,9 @@ function renderTrendChart(curM) {
 
     <!-- 반품률 라인 -->
     <path id="tc-ret" d="${retPath}" fill="none" stroke="#D9647E" stroke-width="1.5" opacity=".8"/>
-    ${retData.map((v,i) => v !== null ? `
+    <g id="tc-ret-dots">${retData.map((v,i) => v !== null ? `
       <circle cx="${xPos(i)}" cy="${yRet(v)}" r="3" fill="#D9647E" stroke="#0D1116" stroke-width="1.5"/>
-    ` : '').join('')}
+    ` : '').join('')}</g>
 
     <!-- 기준월 강조 -->
     <line x1="${xPos(curM)}" x2="${xPos(curM)}" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="#FFFFFF18" stroke-width="1" stroke-dasharray="3,3"/>
@@ -1558,6 +1562,9 @@ function renderTrendChart(curM) {
   if (el._animated) return;
   el._animated = true;
 
+  const EASE = 'cubic-bezier(.16,1,.3,1)';
+
+  // ── 막대: 바닥에서 위로 자라남 (월 순서대로 60ms 간격) ──
   const allBars = el.querySelectorAll('#tc-ship-bars rect');
   allBars.forEach((bar, i) => {
     const origY = parseFloat(bar.getAttribute('y'));
@@ -1565,38 +1572,53 @@ function renderTrendChart(curM) {
     bar.setAttribute('y', origY + origH);
     bar.setAttribute('height', 0);
     setTimeout(() => {
-      bar.style.transition = 'y .5s cubic-bezier(.4,0,.2,1), height .5s cubic-bezier(.4,0,.2,1)';
+      bar.style.transition = 'y .62s ' + EASE + ', height .62s ' + EASE;
       bar.setAttribute('y', origY);
       bar.setAttribute('height', origH);
     }, i * 60);
   });
+
+  // ── 라인: 왼쪽에서 오른쪽으로 그려짐 ──
+  const barsDone = allBars.length * 60 + 200;
+  [['tc-target', 0.75, 0], ['tc-cost', 0.8, 140], ['tc-ret', 0.85, 280]].forEach(([id, op, delay]) => {
+    animateLine(el.querySelector('#' + id), op, barsDone + delay);
+  });
+
+  // ── 반품률 점: 라인이 다 그려진 뒤 하나씩 ──
+  const dots = el.querySelectorAll('#tc-ret-dots circle');
+  dots.forEach((c, i) => {
+    c.style.opacity = '0';
+    setTimeout(() => {
+      c.style.transition = 'opacity .3s linear';
+      c.style.opacity = '1';
+    }, barsDone + 280 + 900 + i * 45);
+  });
 }
 
-function animateLine(path, onDone) {
+// 선을 왼쪽에서 오른쪽으로 그림. 점선(stroke-dasharray)도 원래 패턴을 보존한다.
+function animateLine(path, finalOpacity, delay) {
   if (!path) return;
-  const len = path.getTotalLength();
-  path.style.strokeDasharray = len;
+  let len = 0;
+  try { len = path.getTotalLength(); } catch(e) { return; }
+  if (!len) return;
+
+  const origDash = path.getAttribute('stroke-dasharray');   // 점선 패턴 백업
+  path.style.opacity = '0';
+  path.style.strokeDasharray = len + ' ' + len;
   path.style.strokeDashoffset = len;
   path.style.transition = 'none';
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      path.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)';
-      path.style.strokeDashoffset = '0';
-      path.addEventListener('transitionend', () => {
-        const el = document.getElementById('trend-chart');
-        if (el) el._animated = true;
-        const show = (id, op, delay) => setTimeout(() => {
-          const e = document.getElementById(id);
-          if (e) { e.style.transition = 'opacity .5s'; e.style.opacity = op; }
-        }, delay);
-        show('tc-ship-fill', '1', 0);
-        show('tc-target', '.7', 100);
-        show('tc-cost', '.8', 200);
-        show('tc-ret', '.7', 300);
-        show('tc-dots', '1', 400);
-      }, {once:true});
-    });
-  });
+
+  setTimeout(() => {
+    path.style.opacity = String(finalOpacity);
+    path.style.transition = 'stroke-dashoffset 1s cubic-bezier(.16,1,.3,1)';
+    path.style.strokeDashoffset = '0';
+    // 다 그려지면 원래 점선 패턴 복원
+    path.addEventListener('transitionend', () => {
+      path.style.transition = 'none';
+      path.style.strokeDashoffset = '';
+      path.style.strokeDasharray = origDash || '';
+    }, {once:true});
+  }, delay);
 }
 
 function renderSummary(){
@@ -1843,7 +1865,7 @@ function renderShip(){
           });
         };
 
-        return stockRows.map(b => `
+        return stockRows.map((b,i) => `
           <div class="stock-card" data-status="${b.status}" onclick="openDrawer(${b.id})" style="cursor:pointer;border:1px solid ${b.status==='bad'?'rgba(176,32,32,.25)':b.status==='warn'?'rgba(154,98,16,.25)':'rgba(30,122,56,.15)'};border-radius:10px;padding:16px 18px;background:${b.status==='bad'?'var(--bad-dim)':b.status==='warn'?'var(--warn-dim)':'var(--good-dim)'}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
               <div style="font-size:13px;font-weight:700;color:var(--ink1);line-height:1.4;flex:1;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(b.title)}</div>
