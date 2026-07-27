@@ -2191,11 +2191,15 @@ function renderCalendar() {
   const today = new Date();
   const daysSincePub = Math.floor((today-pubDate)/86400000);
 
-  // 목표 달성률 (샘플: 현재까지 판매 기준)
+  // 목표 달성률 — 판매량_일별 실데이터 우선, 없으면 서점별 샘플
   const goalQty = (book.goal && book.goal.qty) || 1;
-  const currentSales = sales ? sales.data.reduce((s,d)=>{
-    return s + Object.values(d).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
-  },0) : Math.round(goalQty * 0.18);
+  const dayMapKPI = daySalesByDate(calBook);
+  const dayTotalKPI = Object.values(dayMapKPI).reduce((a,b)=>a+b,0);
+  const currentSales = dayTotalKPI > 0
+    ? dayTotalKPI
+    : (sales ? sales.data.reduce((s,d)=>{
+        return s + Object.values(d).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
+      },0) : 0);
   const goalPct = Math.min(Math.round(currentSales/goalQty*100),100);
 
   document.getElementById('tab-calendar').innerHTML = `
@@ -2261,23 +2265,19 @@ function renderCalendar() {
 
     <!-- 일별 판매 라인차트 -->
     ${(()=>{
-      // calBook 코드 → MKT_BOOKS name → BOOKS title 순으로 매칭
-      const mktBook = MKT_BOOKS.find(b => b.code === calBook);
-      const mktName = mktBook ? mktBook.name.replace(/\s/g,'').replace(/[\(\)개정판]/g,'') : '';
-      const bookTitle = Object.keys(DAY_SALES).find(t =>
-        t.replace(/\s/g,'').replace(/[\(\)개정판]/g,'') === mktName
-      );
-      const dayData = bookTitle ? DAY_SALES[bookTitle] : null;
+      // calBook → 판매량_일별 도서명 매칭 (정규화 후 완전일치 → 부분일치)
+      const dayData = getDaySalesFor(calBook);
       if (!dayData || !dayData.length) return '<div class="card gap" style="color:var(--ink3);padding:20px;text-align:center">일별 판매 데이터 없음</div>';
 
-      // 날짜 파싱 (2026. 7. 7 형식)
-      const parseDate = s => {
-        if(!s) return new Date(0);
-        const p = s.replace(/\s/g,'').split('.');
-        if(p.length >= 3) return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
-        return new Date(s);
-      };
-      const sorted = [...dayData].sort((a,b) => parseDate(a.date) - parseDate(b.date));
+      const parseDate = s => parseAnyDate(s) || new Date(0);
+      // 같은 날짜 중복 행은 합산
+      const dayMap = {};
+      dayData.forEach(r => {
+        const k = ymd(parseAnyDate(r.date));
+        if (!k) return;
+        dayMap[k] = (dayMap[k] || 0) + (Number(r.qty) || 0);
+      });
+      const sorted = Object.keys(dayMap).sort().map(k => ({date: k, qty: dayMap[k]}));
       const maxQty = Math.max(...sorted.map(d => d.qty), 1);
       const n = sorted.length;
       // 도수에 비례해 충분한 가로폭 확보 (최소 60px/일)
@@ -2400,383 +2400,60 @@ function renderCalendar() {
   renderTimeline(dates, pubDate, today, actions, sales);
 }
 
-function renderTimeline(dates, pubDate, today, actions, sales) {
-  var CELL_W = 34;
-  var LBL_W  = 120;
-  var STORES_TL = ["교보","예스24","영풍","알라딘"];
-  if(!window.tlExpanded) window.tlExpanded = {};
-
-  var salesByDate = {};
-  if (sales) {
-    sales.data.forEach(function(row) {
-      var total = STORES_TL.reduce(function(s,st){ return s+(row[st]||0); }, 0);
-      salesByDate[row.date] = Object.assign({total:total}, row);
-    });
-  }
-
-  var MO_BG   = ["rgba(26,82,138,.08)","rgba(101,40,170,.07)","rgba(30,122,56,.07)","rgba(0,150,130,.07)","rgba(26,82,138,.09)","rgba(101,40,170,.08)","rgba(176,32,32,.08)","rgba(220,120,0,.07)","rgba(0,150,200,.07)","rgba(180,60,120,.07)","rgba(80,160,80,.07)","rgba(100,100,180,.07)"];
-  var MO_TEXT = ["#1A528A","#65287A","#1E7A38","#00785A","#1A528A","#65287A","#901818","#8A4A00","#00628A","#782050","#306830","#3A3878"];
-
-  function wkBg(d){
-    var diff=Math.floor((d-pubDate)/86400000);
-    if(diff<0) return 'rgba(154,98,16,.05)';
-    return Math.floor(diff/7)%2===0?'transparent':'rgba(0,0,0,.025)';
-  }
-
-  var wrap=document.getElementById('tl-wrap');
-  if(!wrap) return;
-  var savedScroll=wrap.scrollLeft||0;
-  wrap.innerHTML='';
-  wrap.style.cssText='overflow-x:auto;padding-bottom:8px;';
-  var totalW=dates.length*CELL_W;
-
-  // ── DOM 행 생성 헬퍼 ──
-  function makeRow(h, lblHTML, lblStyle, noBg){
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;min-height:'+h+'px;';
-    var lbl=document.createElement('div');
-    lbl.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;display:flex;align-items:center;padding:0 8px 0 10px;box-sizing:border-box;overflow:hidden;'+(lblStyle||'');
-    lbl.innerHTML=lblHTML||'';
-    row.appendChild(lbl);
-    var bar=document.createElement('div');
-    bar.style.cssText='width:'+totalW+'px;flex-shrink:0;position:relative;min-height:'+h+'px;';
-    if(!noBg) dates.forEach(function(d,idx){
-      var bg=document.createElement('div');
-      bg.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;top:0;bottom:0;background:'+wkBg(d)+';';
-      bar.appendChild(bg);
-    });
-    row.appendChild(bar);
-    wrap.appendChild(row);
-    return {lbl:lbl,bar:bar,row:row};
-  }
-
-  function makeSectionHeader(text){
-    var div=document.createElement('div');
-    div.style.cssText='display:flex;height:20px;';
-    var l=document.createElement('div');
-    l.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:var(--surface3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;padding-left:10px;';
-    l.innerHTML='<span style="font-size:9px;font-weight:800;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;">'+text+'</span>';
-    div.appendChild(l);
-    var r=document.createElement('div');
-    r.style.cssText='width:'+totalW+'px;background:var(--surface3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);';
-    div.appendChild(r);
-    wrap.appendChild(div);
-  }
-
-  function makeDivider(){
-    var div=document.createElement('div');div.style.cssText='display:flex;height:1px;';
-    var l=document.createElement('div');l.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:var(--border);';div.appendChild(l);
-    var r=document.createElement('div');r.style.cssText='width:'+totalW+'px;background:var(--border);';div.appendChild(r);
-    wrap.appendChild(div);
-  }
-
-  // ── 칩의 날짜 범위 계산 ──
-  function getChipRange(a){
-    var sDate=new Date(a.date),eDate=new Date(a.date);
-    eDate.setDate(eDate.getDate()+(a.days||1)-1);
-    var sIdx=dates.findIndex(function(d){return d.toDateString()===sDate.toDateString();});
-    var eIdx=dates.findIndex(function(d){return d.toDateString()===eDate.toDateString();});
-    if(sIdx<0) return null;
-    if(eIdx<0) eIdx=dates.length-1;
-    return {sIdx:sIdx, eIdx:eIdx};
-  }
-
-  // ── 겹침 방지: 액션 목록을 여러 줄(트랙)로 배분 ──
-  function assignTracks(acts){
-    var tracks=[]; // tracks[i] = 마지막 eIdx
-    var result=acts.map(function(a){
-      var range=getChipRange(a);
-      if(!range) return {a:a,track:0,range:null};
-      // 비어있는 트랙 찾기
-      var placed=false;
-      for(var t=0;t<tracks.length;t++){
-        if(tracks[t]<range.sIdx){ // 겹치지 않음
-          tracks[t]=range.eIdx;
-          return {a:a,track:t,range:range};
-        }
-      }
-      // 새 트랙
-      tracks.push(range.eIdx);
-      return {a:a,track:tracks.length-1,range:range};
-    });
-    return {items:result, trackCount:Math.max(tracks.length,1)};
-  }
-
-  // ── 칩 DOM 생성 ──
-  function makeChip(bar, a, chipH, rowH, trackH, trackIdx, c, isExpandable){
-    var range=getChipRange(a);
-    if(!range) return;
-    var spanCells=range.eIdx-range.sIdx+1, spanW=spanCells*CELL_W;
-    var chipTop=trackIdx*trackH+Math.round((trackH-chipH)/2);
-
-    var chip=document.createElement('div');
-    chip.style.cssText=[
-      'position:absolute',
-      'left:'+(range.sIdx*CELL_W+1)+'px',
-      'width:'+(spanW-2)+'px',
-      'height:'+chipH+'px',
-      'top:'+chipTop+'px',
-      'background:'+c.bg,
-      'border:1.5px solid '+c.border,
-      'border-radius:4px',
-      'display:flex','align-items:center',
-      'overflow:hidden','box-sizing:border-box','z-index:2','cursor:pointer',
-    ].join(';');
-    chip.title=a.label+' — '+a.detail+(a.cost?' ('+won(a.cost)+')':'');
-
-    var fs=spanCells===1?Math.max(6,Math.min(8,Math.floor((spanW-28)/5))):8;
-    var txt=document.createElement('span');
-    txt.style.cssText='padding:0 5px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
-    txt.textContent=a.label;
-    chip.appendChild(txt);
-
-    if(isExpandable){
-      var arrow=document.createElement('span');
-      arrow.style.cssText='font-size:10px;color:'+c.text+';padding:0 7px 0 2px;flex-shrink:0;transition:transform .2s;user-select:none;font-weight:900;';
-      arrow.textContent=window.tlExpanded[a.date+a.lane]?'▲':'▼';
-      chip.appendChild(arrow);
-      chip.addEventListener('click',function(e){
-        e.stopPropagation();
-        window.tlExpanded[a.date+a.lane]=!window.tlExpanded[a.date+a.lane];
-        renderTimeline(dates,pubDate,today,actions,sales);
-        setTimeout(function(){wrap.scrollLeft=savedScroll;},10);
-      });
-    } else {
-      chip.addEventListener('click',function(e){
-        e.stopPropagation();
-        openDetailPanel(a,c);
-      });
-    }
-    bar.appendChild(chip);
-  }
-
-  // ── 레인 행 추가 (멀티트랙) ──
-  function addLaneRow(lane, acts, c){
-    var TRACK_H=26, CHIP_H=20;
-    var assigned=assignTracks(acts);
-    var numTracks=assigned.trackCount;
-    var rowH=numTracks*TRACK_H;
-
-    var r=makeRow(rowH,
-      '<span style="font-size:9px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block">'+lane+'</span>',
-      'border-left:3px solid '+c.border+';align-items:flex-start;padding-top:4px;');
-
-    assigned.items.forEach(function(item){
-      if(!item.range) return;
-      var isExp=item.a.type==='expandable';
-      makeChip(r.bar,item.a,CHIP_H,rowH,TRACK_H,item.track,c,isExp);
-    });
-    return r;
-  }
-
-  // ── 날짜 파싱 (7/8 → Date) ──
-  function parseMonthDay(str){
-    var parts=str.trim().replace('일','').split('/');
-    return new Date(2026, parseInt(parts[0])-1, parseInt(parts[1]));
-  }
-
-  // ── 소재 드롭다운 행 삽입 (wrap에 직접, 특정 행 뒤에) ──
-  function insertExpandedRows(afterRow, a, c){
-    if(!a.materials||!a.materials.length) return;
-    var phases={},phOrder=[];
-    a.materials.forEach(function(m){
-      var ph=m.phase||'기타';
-      if(!phases[ph]){phases[ph]=[];phOrder.push(ph);}
-      phases[ph].push(m);
-    });
-
-    // afterRow.row 다음에 삽입
-    var anchor=afterRow.row.nextSibling;
-
-    phOrder.forEach(function(ph){
-      // 페이즈 헤더
-      var phDiv=document.createElement('div');
-      phDiv.style.cssText='display:flex;height:16px;';
-      var phL=document.createElement('div');
-      phL.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:rgba(99,102,241,.06);border-left:3px solid '+c.border+';padding-left:14px;display:flex;align-items:center;box-sizing:border-box;';
-      phL.innerHTML='<span style="font-size:8px;font-weight:800;color:#6366F1">'+ph+'</span>';
-      phDiv.appendChild(phL);
-      var phR=document.createElement('div');
-      phR.style.cssText='width:'+totalW+'px;background:rgba(99,102,241,.04);border-top:1px dashed rgba(99,102,241,.2);';
-      phDiv.appendChild(phR);
-      wrap.insertBefore(phDiv,anchor);
-
-      // 소재 칩 행 (겹침 방지)
-      var mActs=phases[ph].map(function(m){
-        if(!m.days) return null;
-        var parts=m.days.split('~');
-        var sDt=parseMonthDay(parts[0]),eDt=parseMonthDay(parts[parts.length-1]);
-        var sIdx2=dates.findIndex(function(d){return d.toDateString()===sDt.toDateString();});
-        var eIdx2=dates.findIndex(function(d){return d.toDateString()===eDt.toDateString();});
-        if(sIdx2<0) return null;
-        if(eIdx2<0) eIdx2=sIdx2;
-        return {m:m, sIdx:sIdx2, eIdx:eIdx2};
-      }).filter(Boolean);
-
-      // 트랙 배분
-      var mTracks=[];
-      var mAssigned=mActs.map(function(item){
-        for(var t=0;t<mTracks.length;t++){
-          if(mTracks[t]<item.sIdx){mTracks[t]=item.eIdx;return{item:item,track:t};}
-        }
-        mTracks.push(item.eIdx);
-        return{item:item,track:mTracks.length-1};
-      });
-      var numMTracks=Math.max(mTracks.length,1);
-      var MTRACK_H=18,MCHIP_H=13;
-      var mRowH=numMTracks*MTRACK_H;
-
-      var subDiv=document.createElement('div');
-      subDiv.style.cssText='display:flex;min-height:'+mRowH+'px;';
-      var subL=document.createElement('div');
-      subL.style.cssText='width:'+LBL_W+'px;min-width:'+LBL_W+'px;flex-shrink:0;background:rgba(99,102,241,.03);border-left:3px solid '+c.border+';padding-left:18px;display:flex;align-items:flex-start;padding-top:3px;box-sizing:border-box;';
-      subL.innerHTML='<span style="font-size:7px;font-weight:500;color:var(--ink3)">소재</span>';
-      subDiv.appendChild(subL);
-      var subR=document.createElement('div');
-      subR.style.cssText='width:'+totalW+'px;position:relative;min-height:'+mRowH+'px;background:rgba(99,102,241,.03);';
-      dates.forEach(function(d2,idx2){
-        var bg2=document.createElement('div');
-        bg2.style.cssText='position:absolute;left:'+(idx2*CELL_W)+'px;width:'+CELL_W+'px;top:0;bottom:0;background:'+wkBg(d2)+';';
-        subR.appendChild(bg2);
-      });
-
-      mAssigned.forEach(function(ma){
-        var item=ma.item,m=item.m,t=ma.track;
-        var spanCells=item.eIdx-item.sIdx+1,spanW=spanCells*CELL_W;
-        var chipTop=t*MTRACK_H+Math.round((MTRACK_H-MCHIP_H)/2);
-        var subChip=document.createElement('div');
-        subChip.style.cssText=[
-          'position:absolute','left:'+(item.sIdx*CELL_W+1)+'px','width:'+(spanW-2)+'px',
-          'height:'+MCHIP_H+'px','top:'+chipTop+'px',
-          'background:rgba(99,102,241,.12)',
-          'border:1px dashed rgba(99,102,241,.5)','border-radius:2px',
-          'display:flex','align-items:center','overflow:hidden','z-index:2','cursor:pointer',
-        ].join(';');
-        subChip.title=m.label+' ('+m.days+')';
-        var stxt=document.createElement('span');
-        stxt.style.cssText='padding:0 4px;font-size:7px;font-weight:600;color:#6366F1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(spanW-6)+'px;display:block;';
-        stxt.textContent=m.label;
-        subChip.appendChild(stxt);
-        subChip.addEventListener('click',function(e){
-          e.stopPropagation();
-          openDetailPanel(Object.assign({},a,{label:m.label,detail:m.desc||'',cost:m.cost,date:m.days}),c,m);
-        });
-        subR.appendChild(subChip);
-      });
-
-      subDiv.appendChild(subR);
-      wrap.insertBefore(subDiv,anchor);
-    });
-  }
-
-  // ══ 헤더 행들 ══
-  var moR=makeRow(16,'','border:none;background:transparent;',true);
-  var i=0;
-  while(i<dates.length){
-    var d=dates[i],mIdx=d.getMonth(),span=1;
-    while(i+span<dates.length&&dates[i+span].getMonth()===mIdx)span++;
-    var mc=document.createElement('div');
-    mc.style.cssText='position:absolute;left:'+(i*CELL_W)+'px;width:'+(span*CELL_W)+'px;height:16px;top:0;background:'+MO_BG[mIdx]+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:'+MO_TEXT[mIdx]+';border-left:1px solid rgba(0,0,0,.08);box-sizing:border-box;';
-    mc.textContent=(mIdx+1)+'월';
-    moR.bar.appendChild(mc);i+=span;
-  }
-  var wkR=makeRow(13,'','border:none;background:transparent;',true);
-  i=0;
-  while(i<dates.length){
-    var d=dates[i],diff=Math.floor((d-pubDate)/86400000),isPre=diff<0,wkId=Math.floor(diff/7),span=1;
-    if(isPre){while(i+span<dates.length&&Math.floor((dates[i+span]-pubDate)/86400000)<0)span++;}
-    else{while(i+span<dates.length){var dd2=Math.floor((dates[i+span]-pubDate)/86400000);if(dd2<0||Math.floor(dd2/7)!==wkId)break;span++;}}
-    diff=Math.floor((d-pubDate)/86400000);
-    var wc=document.createElement('div');
-    wc.style.cssText='position:absolute;left:'+(i*CELL_W)+'px;width:'+(span*CELL_W)+'px;height:13px;top:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:'+(isPre?'#9A6210':'#AAAAAA')+';white-space:nowrap;overflow:hidden;background:'+wkBg(d)+';';
-    wc.textContent=isPre?'예약판매':(Math.floor(diff/7)+1)+'주차';
-    wkR.bar.appendChild(wc);i+=span;
-  }
-  var dtR=makeRow(17,'','border:none;background:transparent;');
-  dates.forEach(function(d,idx){
-    var isPub2=d.toDateString()===pubDate.toDateString(),isT=d.toDateString()===today.toDateString();
-    var cell=document.createElement('div');
-    cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:17px;top:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-    var num=document.createElement('div');
-    if(isPub2)num.style.cssText='background:var(--accent);color:var(--accent-text);border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;';
-    else num.style.cssText='font-size:10px;font-weight:'+(isT?800:400)+';color:'+(isT?'var(--bad)':'#BBBBBB')+';';
-    num.textContent=d.getDate();
-    cell.appendChild(num);dtR.bar.appendChild(cell);
-  });
-  var DOWS=["일","월","화","수","목","금","토"];
-  var dowR=makeRow(13,'','border:none;background:transparent;');
-  dates.forEach(function(d,idx){
-    var col=d.getDay()===0?'#D0504A':d.getDay()===6?'#6090C0':'#CCCCCC';
-    var cell=document.createElement('div');
-    cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:13px;top:0;text-align:center;font-size:8px;font-weight:'+(d.getDay()===0||d.getDay()===6?600:400)+';color:'+col+';line-height:13px;z-index:1;';
-    cell.textContent=DOWS[d.getDay()];dowR.bar.appendChild(cell);
-  });
-
-  // ══ 판매량 ══
-  makeSectionHeader('판매량');
-  var totR=makeRow(18,'<span style="font-size:10px;font-weight:700;color:var(--ink2)">총판매</span>','background:var(--surface2);border-left:2px solid var(--border2);');
-  var totBg=document.createElement('div');totBg.style.cssText='position:absolute;left:0;top:0;width:'+totalW+'px;height:100%;background:var(--surface2);';
-  totR.bar.insertBefore(totBg,totR.bar.firstChild);
-  dates.forEach(function(d,idx){
-    var ds=d.toISOString().slice(0,10),dd=salesByDate[ds],val=dd?dd.total:0;
-    if(!val)return;
-    var cell=document.createElement('div');
-    cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:18px;top:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--ink);z-index:1;';
-    cell.textContent=val;totR.bar.appendChild(cell);
-  });
-  STORES_TL.forEach(function(st){
-    var stR=makeRow(16,'<span style="font-size:9px;font-weight:500;color:var(--ink3);padding-left:6px">'+st+'</span>','background:var(--surface2);border-left:2px solid var(--border2);');
-    var stBg=document.createElement('div');stBg.style.cssText='position:absolute;left:0;top:0;width:'+totalW+'px;height:100%;background:var(--surface2);';
-    stR.bar.insertBefore(stBg,stR.bar.firstChild);
-    dates.forEach(function(d,idx){
-      var ds=d.toISOString().slice(0,10),dd=salesByDate[ds],val=dd?(dd[st]||0):0;
-      if(!val)return;
-      var cell=document.createElement('div');
-      cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:16px;top:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:400;color:var(--ink2);z-index:1;';
-      cell.textContent=val;stR.bar.appendChild(cell);
-    });
-  });
-
-  // ══ 마케팅 액션 ══
-  makeSectionHeader('마케팅 액션');
-  var laneGroups={},laneOrder=[];
-  actions.forEach(function(a){
-    if(a.label&&a.label.startsWith('└'))return;
-    if(!laneGroups[a.lane]){laneGroups[a.lane]=[];laneOrder.push(a.lane);}
-    laneGroups[a.lane].push(a);
-  });
-
-  laneOrder.forEach(function(lane,laneIdx){
-    var acts=laneGroups[lane];
-    var c=LANE_COLORS[lane]||{bg:'#F5F5F3',text:'#555552',border:'#D0D0CA'};
-    if(laneIdx>0) makeDivider();
-
-    var laneRow=addLaneRow(lane,acts,c);
-
-    // 드롭다운 확장 행 삽입 (해당 레인 행 바로 다음)
-    acts.forEach(function(a){
-      if(a.type!=='expandable') return;
-      if(!window.tlExpanded[a.date+a.lane]) return;
-      insertExpandedRows(laneRow,a,c);
-    });
-  });
-
-  // 스크롤 복원 / 초기화
-  if(savedScroll>0){
-    wrap.scrollLeft=savedScroll;
-  } else {
-    setTimeout(function(){
-      var preStart=new Date(pubDate);preStart.setDate(preStart.getDate()-10);
-      var scrollIdx=dates.findIndex(function(d){return d.toDateString()===preStart.toDateString();});
-      if(scrollIdx>=0) wrap.scrollLeft=Math.max(0,scrollIdx*CELL_W-4);
-    },50);
-  }
-  setTimeout(initDayChartHover, 150);
+/* ── 도서명/날짜 정규화 + 일별판매 매칭 헬퍼 ── */
+function normTitle(s){
+  return String(s||'')
+    .replace(/\s+/g,'')
+    .replace(/개정판|증보판|합본|특별판|리커버/g,'')
+    .replace(/[()\[\]{}<>·・.,'"\u2018\u2019\u201C\u201D-]/g,'');
 }
-
-function parseMonthDay(str){
-  var parts=str.trim().replace('일','').split('/');
-  return new Date(2026, parseInt(parts[0])-1, parseInt(parts[1]));
+function ymd(d){
+  if(!(d instanceof Date) || isNaN(d)) return '';
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function parseAnyDate(v){
+  if(v instanceof Date) return isNaN(v)?null:v;
+  if(v==null || v==='') return null;
+  var t=String(v).trim();
+  var p=t.replace(/[.\/]/g,'-').replace(/\s/g,'').split('-').filter(function(x){return x!=='';});
+  if(p.length>=3){
+    var y=parseInt(p[0],10), m=parseInt(p[1],10), dd=parseInt(p[2],10);
+    if(y&&m&&dd) return new Date(y,m-1,dd);
+  }
+  var d=new Date(t);
+  return isNaN(d)?null:d;
+}
+// calBook(캠페인 시트 코드) → 판매량_일별 도서명 매칭
+function getDaySalesFor(code){
+  var keys=Object.keys(DAY_SALES);
+  if(!keys.length) return null;
+  var mb=(typeof MKT_BOOKS!=='undefined') ? MKT_BOOKS.find(function(b){return b.code===code;}) : null;
+  var cands=[];
+  if(mb){ if(mb.name) cands.push(mb.name); if(mb.code) cands.push(mb.code); }
+  if(code) cands.push(code);
+  for(var i=0;i<cands.length;i++){
+    var target=normTitle(cands[i]);
+    if(!target) continue;
+    var hit=keys.find(function(k){ return normTitle(k)===target; });
+    if(hit) return DAY_SALES[hit];
+    hit=keys.find(function(k){
+      var nk=normTitle(k);
+      return nk && (nk.indexOf(target)>=0 || target.indexOf(nk)>=0);
+    });
+    if(hit) return DAY_SALES[hit];
+  }
+  return null;
+}
+// 일별 판매 → {YYYY-MM-DD: 부수}
+function daySalesByDate(code){
+  var arr=getDaySalesFor(code), out={};
+  if(!arr) return out;
+  arr.forEach(function(r){
+    var d=parseAnyDate(r.date), k=ymd(d);
+    if(!k) return;
+    out[k]=(out[k]||0)+(Number(r.qty)||0);
+  });
+  return out;
 }
 
 function driveImgUrl(url) {
@@ -2791,86 +2468,35 @@ function drivePreviewUrl(url) {
   if (m) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
   return '';
 }
-
-function openDetailPanel(a, c, material){
-  // 표시할 소재 목록
-  var mats = material ? [material] : (a.materials && a.materials.length ? a.materials : 
-    (a.url ? [{type:'image', img: driveImgUrl(a.url), label: a.label||'', desc: a.detail||'', url: a.url}] : null));
-
-  // 패널 컨테이너: tab-calendar 마지막에 추가 or 기존 패널 재사용
-  var panel = document.getElementById('mkt-detail-panel');
-  if(!panel){
-    panel = document.createElement('div');
-    panel.id = 'mkt-detail-panel';
-    panel.style.cssText = 'margin-top:14px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);';
-    document.getElementById('tab-calendar').appendChild(panel);
-  }
-
-  var closeBtn = '<button onclick="document.getElementById(\'mkt-detail-panel\').remove()" style="border:none;background:var(--surface3);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink2)">×</button>';
-
-  var matsHTML = '';
-  if(mats && mats.length){
-    matsHTML = '<div style="display:flex;gap:12px;padding:0 20px 20px;overflow-x:auto;flex-wrap:nowrap;">'
-      + mats.map(function(m){
-          if(m.type==='youtube'){
-            return '<div style="flex-shrink:0;width:280px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
-              +'<a href="'+m.url+'" target="_blank" style="display:block;position:relative;text-decoration:none">'
-              +'<img src="'+m.thumb+'" style="width:100%;height:160px;object-fit:cover;display:block;background:#111">'
-              +'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
-              +'<div style="width:48px;height:48px;background:rgba(255,0,0,.85);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff">▶</div>'
-              +'</div></a>'
-              +'<div style="padding:10px 12px"><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
-              +'<div style="font-size:11px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
-              +(m.cost?'<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-top:6px">집행 비용: '+won(m.cost)+'</div>':'')
-              +'</div></div>';
-          } else if(m.type==='image'){
-            return '<div style="flex-shrink:0;width:200px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
-              +'<img src="'+m.img+'" style="width:100%;height:200px;object-fit:cover;display:block;background:var(--surface3)">'
-              +'<div style="padding:10px 12px">'
-              +'<div style="font-size:11px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
-              +'<div style="font-size:10px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
-              +(m.days?'<div style="font-size:10px;color:var(--ink3);margin-top:4px">기간: '+m.days+'</div>':'')
-              +(m.cost?'<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-top:4px">'+won(m.cost)+'</div>':'')
-              +'</div></div>';
-          } else {
-            return '<div style="flex-shrink:0;min-width:240px;max-width:320px;background:var(--surface2);border-radius:var(--r2);padding:14px;border:1px solid var(--border)">'
-              +'<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">'+m.label+'</div>'
-              +'<div style="font-size:12px;color:var(--ink2);line-height:1.7">'+m.desc+'</div>'
-              +'</div>';
-          }
-        }).join('')
-      +'</div>';
-  }
-
-  panel.innerHTML =
-    '<div style="padding:16px 20px '+(mats?'8px':'20px')+'">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
-    +'<div style="min-width:0">'
-    +'<div style="font-size:10px;color:var(--ink3);margin-bottom:3px">'+a.lane+' · '+a.date+(a.days&&a.days>1?' ('+a.days+'일)':'')+'</div>'
-    +'<div style="font-size:16px;font-weight:900;color:var(--ink);margin-bottom:4px">'+a.label+'</div>'
-    +'<div style="font-size:12px;color:var(--ink3)">'+a.detail+(a.cost&&a.cost>0?' · '+won(a.cost):'')+'</div>'
-    +'</div>'+closeBtn+'</div></div>'
-    + matsHTML;
-
-  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+function driveLh3Url(url) {
+  if (!url) return '';
+  const m = url.match(/\/file\/d\/([^\/\?]+)/);
+  return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w1200' : '';
+}
+function driveOpenUrl(url) {
+  if (!url) return '';
+  const m = url.match(/\/file\/d\/([^\/\?]+)/);
+  return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : url;
+}
+function driveImgFallback(el, url) {
+  el.onerror = null;
+  var u = driveLh3Url(url);
+  if (u && el.src !== u) { el.src = u; return; }
+  el.style.display = 'none';
 }
 
 function initDayChartHover() {
-  const mktBook2 = MKT_BOOKS.find(b => b.code === calBook);
-  const mktName2 = mktBook2 ? mktBook2.name.replace(/\s/g,'').replace(/[\(\)개정판]/g,'') : '';
-  const bookTitle = Object.keys(DAY_SALES).find(t =>
-    t.replace(/\s/g,'').replace(/[\(\)개정판]/g,'') === mktName2
-  );
-  const dayData = bookTitle ? DAY_SALES[bookTitle] : null;
+  const dayData = getDaySalesFor(calBook);
   if (!dayData || !dayData.length) return;
 
-  const parseDateH = s => {
-    if(!s) return new Date(0);
-    const p = s.replace(/\s/g,'').split('.');
-    if(p.length >= 3) return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
-    return new Date(s);
-  };
-  const sorted = [...dayData].sort((a,b) => parseDateH(a.date) - parseDateH(b.date));
+  // 차트와 동일한 방식으로 날짜별 합산 후 정렬 (툴팁 인덱스 일치)
+  const dayMapH = {};
+  dayData.forEach(r => {
+    const k = ymd(parseAnyDate(r.date));
+    if (!k) return;
+    dayMapH[k] = (dayMapH[k] || 0) + (Number(r.qty) || 0);
+  });
+  const sorted = Object.keys(dayMapH).sort().map(k => ({date: k, qty: dayMapH[k]}));
   const n = sorted.length;
   const W = 1200, PAD_L = 48, PAD_R = 16, cW = W - PAD_L - PAD_R;
 
@@ -2897,10 +2523,6 @@ function initDayChartHover() {
   });
 }
 
-function renderCalendarEmpty(){
-  document.getElementById('tab-calendar').innerHTML=`<div class="card gap"><div class="empty-row">마케팅 데이터가 없습니다</div></div>`;
-}
-
 function renderTimeline(dates, pubDate, today, actions, sales) {
   var CELL_W = 44;
   var LBL_W  = 130;
@@ -2908,11 +2530,17 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
   if(!window.tlExpanded) window.tlExpanded = {};
 
   var salesByDate = {};
-  if (sales) {
+  var hasStoreBreakdown = false;
+  if (sales && sales.data && sales.data.length) {
+    hasStoreBreakdown = true;
     sales.data.forEach(function(row) {
       var total = STORES_TL.reduce(function(s,st){ return s+(row[st]||0); }, 0);
       salesByDate[row.date] = Object.assign({total:total}, row);
     });
+  } else {
+    // 서점별 분해 데이터가 없으면 판매량_일별(총판매)로 채움
+    var dmap = daySalesByDate(calBook);
+    Object.keys(dmap).forEach(function(k){ salesByDate[k] = {total: dmap[k]}; });
   }
 
   var MO_BG   = ["rgba(26,82,138,.08)","rgba(101,40,170,.07)","rgba(30,122,56,.07)","rgba(0,150,130,.07)","rgba(26,82,138,.09)","rgba(101,40,170,.08)","rgba(176,32,32,.08)","rgba(220,120,0,.07)","rgba(0,150,200,.07)","rgba(180,60,120,.07)","rgba(80,160,80,.07)","rgba(100,100,180,.07)"];
@@ -3025,7 +2653,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
   }
 
   // ── 칩 DOM 생성 ──
-  function makeChip(bar, a, chipH, rowH, trackH, trackIdx, c, isExpandable){
+  function makeChip(bar, a, chipH, rowH, trackH, trackIdx, c, isExpandable, nextSIdx){
     var range=getChipRange(a);
     if(!range) return;
     var spanCells=range.eIdx-range.sIdx+1, spanW=spanCells*CELL_W;
@@ -3053,34 +2681,49 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       'overflow:hidden','box-sizing:border-box','cursor:pointer',
     ].join(';');
 
-    // 1일짜리: 도트 + 짧은 라벨, 호버 툴팁
+    // ── 액션명: 칩 안에 들어가면 안쪽, 좁으면 오른쪽 바깥으로 노출 ──
+    var arrowW = isExpandable ? 20 : 0;
+    var dotW   = (spanCells===1) ? 15 : 0;
+    var fs     = (spanCells===1) ? 9 : Math.max(9, Math.min(11, Math.floor((spanW-28)/6)));
+    var innerAvail = spanW - 12 - arrowW - dotW;
+    var approxW    = (a.label||'').length * fs * 0.98;   // 한글 기준 근사 폭
+    var fitsInside = approxW <= innerAvail;
+
     if(spanCells===1){
       var dot=document.createElement('span');
       dot.style.cssText='width:7px;height:7px;border-radius:50%;background:'+c.border+';flex-shrink:0;margin:0 4px;';
       chip.appendChild(dot);
-      // 남은 공간에 텍스트 최대한
-      var short=a.label.length>4?a.label.slice(0,4)+'…':a.label;
-      var stxt=document.createElement('span');
-      stxt.style.cssText='font-size:9px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;flex:1;min-width:0;';
-      stxt.textContent=short;
-      chip.appendChild(stxt);
-      // 툴팁 말풍선
-      var tip=document.createElement('div');
-      tip.className='tl-tooltip';
-      tip.textContent=a.label+(a.detail?' — '+a.detail:'')+(a.cost&&a.cost>0?' ('+won(a.cost)+')':'');
-      wrap2.appendChild(tip);
-    } else {
-      var fs=Math.max(9,Math.min(11,Math.floor((spanW-28)/6)));
+    }
+
+    if(fitsInside){
       var txt=document.createElement('span');
-      txt.style.cssText='padding:0 6px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
+      txt.style.cssText='padding:0 '+(spanCells===1?'2px':'6px')+';font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
       txt.textContent=a.label;
       chip.appendChild(txt);
-      // 멀티데이도 호버 툴팁
-      var tip=document.createElement('div');
-      tip.className='tl-tooltip';
-      tip.textContent=a.label+(a.detail?' — '+a.detail:'')+(a.cost&&a.cost>0?' ('+won(a.cost)+')':'');
-      wrap2.appendChild(tip);
+    } else {
+      // 다음 칩 직전까지만 바깥 라벨 허용
+      var nextIdx = (nextSIdx==null ? dates.length : nextSIdx);
+      var outW = Math.max(0, (nextIdx - range.eIdx - 1) * CELL_W - 6);
+      if(outW >= 16){
+        var out=document.createElement('span');
+        out.style.cssText='position:absolute;left:'+(spanW+3)+'px;top:0;height:'+chipH+'px;max-width:'+outW+'px;'
+          +'display:flex;align-items:center;font-size:'+fs+'px;font-weight:700;color:'+c.text+';'
+          +'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;z-index:3;';
+        out.textContent=a.label;
+        wrap2.appendChild(out);
+      } else {
+        var txt2=document.createElement('span');
+        txt2.style.cssText='padding:0 2px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;flex:1;min-width:0;';
+        txt2.textContent=a.label;
+        chip.appendChild(txt2);
+      }
     }
+
+    // 호버 툴팁 (공통)
+    var tip=document.createElement('div');
+    tip.className='tl-tooltip';
+    tip.textContent=a.label+(a.detail?' — '+a.detail:'')+(a.cost&&a.cost>0?' ('+won(a.cost)+')':'');
+    wrap2.appendChild(tip);
 
     if(isExpandable){
       var arrow=document.createElement('span');
@@ -3114,10 +2757,23 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       '<span style="font-size:11px;font-weight:700;color:'+c.text+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block">'+lane+'</span>',
       'border-left:3px solid '+c.border+';align-items:flex-start;padding-top:4px;',false,showDots);
 
+    // 트랙별로 다음 칩 시작 위치 계산 (바깥 라벨이 겹치지 않도록)
+    var byTrack={};
+    assigned.items.forEach(function(it){
+      if(!it.range) return;
+      (byTrack[it.track]=byTrack[it.track]||[]).push(it);
+    });
+    Object.keys(byTrack).forEach(function(t){
+      var arr=byTrack[t].sort(function(x,y){return x.range.sIdx-y.range.sIdx;});
+      arr.forEach(function(it,i){
+        it.nextSIdx = (i+1<arr.length) ? arr[i+1].range.sIdx : dates.length;
+      });
+    });
+
     assigned.items.forEach(function(item){
       if(!item.range) return;
       var isExp=item.a.type==='expandable';
-      makeChip(r.bar,item.a,CHIP_H,rowH,TRACK_H,item.track,c,isExp);
+      makeChip(r.bar,item.a,CHIP_H,rowH,TRACK_H,item.track,c,isExp,item.nextSIdx);
     });
     return r;
   }
@@ -3284,15 +2940,15 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
   var totR=makeRow(22,totLbl,'border-left:2px solid var(--border2,false,true);padding:0 0 0 10px;background:transparent;',false,true);
 
   dates.forEach(function(d,idx){
-    var ds=d.toISOString().slice(0,10),dd=salesByDate[ds],val=dd?dd.total:0;
+    var ds=ymd(d),dd=salesByDate[ds],val=dd?dd.total:0;
     if(!val)return;
     var cell=document.createElement('div');
     cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:22px;top:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--ink);z-index:1;';
     cell.textContent=val;totR.bar.appendChild(cell);
   });
 
-  // ── 서점별 행 (라벨에 누적값 표시) ──
-  STORES_TL.forEach(function(st){
+  // ── 서점별 행 (라벨에 누적값 표시) ── 서점별 분해 데이터가 있을 때만
+  (hasStoreBreakdown ? STORES_TL : []).forEach(function(st){
     var cum=cumByStore[st];
     var stLbl='<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:0 6px 0 0">'
       +'<span style="font-size:10px;font-weight:500;color:var(--ink3)">'+st+'</span>'
@@ -3301,7 +2957,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     var stR=makeRow(20,stLbl,'border-left:2px solid var(--border2,false,true);padding:0 0 0 16px;background:transparent;',false,true);
 
     dates.forEach(function(d,idx){
-      var ds=d.toISOString().slice(0,10),dd=salesByDate[ds],val=dd?(dd[st]||0):0;
+      var ds=ymd(d),dd=salesByDate[ds],val=dd?(dd[st]||0):0;
       if(!val)return;
       var cell=document.createElement('div');
       cell.style.cssText='position:absolute;left:'+(idx*CELL_W)+'px;width:'+CELL_W+'px;height:20px;top:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:400;color:var(--ink2);z-index:1;';
@@ -3383,12 +3039,13 @@ function openDetailPanel(a, c, material){
               +'</div></div>';
           } else if(m.type==='image'){
             return '<div style="flex-shrink:0;width:200px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)">'
-              +'<img src="'+m.img+'" style="width:100%;height:200px;object-fit:cover;display:block;background:var(--surface3)">'
+              +'<img src="'+m.img+'" onerror="driveImgFallback(this,\''+(m.url||'')+'\')" style="width:100%;height:200px;object-fit:cover;display:block;background:var(--surface3)">'
               +'<div style="padding:10px 12px">'
               +'<div style="font-size:11px;font-weight:700;color:var(--ink);margin-bottom:4px">'+m.label+'</div>'
               +'<div style="font-size:10px;color:var(--ink3);line-height:1.5">'+m.desc+'</div>'
               +(m.days?'<div style="font-size:10px;color:var(--ink3);margin-top:4px">기간: '+m.days+'</div>':'')
               +(m.cost?'<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-top:4px">'+won(m.cost)+'</div>':'')
+              +(m.url?'<a href="'+driveOpenUrl(m.url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;font-size:10px;font-weight:700;color:var(--ink2);text-decoration:none">원본 바로가기 ↗</a>':'')
               +'</div></div>';
           } else {
             return '<div style="flex-shrink:0;min-width:240px;max-width:320px;background:var(--surface2);border-radius:var(--r2);padding:14px;border:1px solid var(--border)">'
