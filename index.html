@@ -378,7 +378,7 @@ tr:hover td{background:var(--surface2)}
   <span style="color:var(--ink);font-size:13px;font-weight:700;letter-spacing:-.01em;padding-bottom:2px">콘텐츠사업본부</span>
 </div>
       <div class="hdr-r">
-        <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">샘플 데이터</span></div>
+        <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">시트 연결 대기</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
         <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--dark-border);color:#aaa;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px" title="전체화면">⛶ 전체화면</button>
       </div>
@@ -421,6 +421,10 @@ const CFG = {
     bookList: "927629470",    // 도서 목록
     weekSales:"105549750",    // 판매량_주차별
     daySales: "1033640825",   // 판매량_일별
+  },
+  // 선택 시트 — GID 비워두면 해당 기능만 비활성 (전체 연동에는 영향 없음)
+  gidsOpt: {
+    daySalesStore: "2121676287",  // 판매량_일별_서점 (판매일|도서|서점|판매부수)
   },
   // 마케팅 캠페인 별도 구글 시트
   mktSheetId: "1SgFVN8aOV7TIz_9PsP3xncnU1HwvquY-i7gCq6XNOno",
@@ -489,6 +493,8 @@ const BOOKS = [];
 const WEEK_SALES = {}; // {도서명: [{week, qty}]}
 // 일별 판매 데이터
 const DAY_SALES = {}; // {도서명: [{date, qty}]}
+// 일별 × 서점별 판매 데이터
+const DAY_SALES_STORE = {}; // {도서명: {'YYYY-MM-DD': {교보:n, 예스24:n, 알라딘:n, 영풍:n}}}
 
 // 비용 원장 — 시트(02_비용원장)에서 동적으로 채워짐
 const EXPENSES = [];
@@ -736,11 +742,11 @@ async function loadSheets() {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncTxt');
 
-  // GID 미설정이면 샘플 데이터 유지
+  // GID 미설정이면 연동 불가
   const allSet = Object.values(CFG.gids).every(g => g !== '');
   if (!CFG.sheetId || !allSet) {
-    dot.className = 'sync-dot';
-    txt.textContent = '샘플 데이터 표시 중';
+    dot.className = 'sync-dot error';
+    txt.textContent = '시트 ID/GID 미설정 — 데이터 없음';
     return;
   }
 
@@ -749,7 +755,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales, daySalesStore] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
@@ -759,9 +765,13 @@ async function loadSheets() {
       fetchSheet(CFG.gids.bookList),  // 도서 목록
       fetchSheet(CFG.gids.weekSales), // 판매량_주차별
       fetchSheet(CFG.gids.daySales),  // 판매량_일별
+      // 선택: 판매량_일별_서점 (미설정이면 빈 배열)
+      CFG.gidsOpt.daySalesStore
+        ? fetchSheet(CFG.gidsOpt.daySalesStore).catch(() => [])
+        : Promise.resolve([]),
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales, daySalesStore });
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -780,8 +790,8 @@ async function loadSheets() {
     // 로컬(file://)에서 열면 CORS로 fetch 불가 → 안내 메시지
     const isLocal = location.protocol === 'file:';
     txt.textContent = isLocal
-      ? '로컬 환경 — 샘플 데이터 표시 중 (GitHub Pages 배포 후 실시간 연동)'
-      : '연동 실패 — 샘플 데이터 표시 중';
+      ? '로컬(file://) 환경 — 시트 연동 불가 (GitHub Pages 배포 후 연동)'
+      : '시트 연동 실패 — 데이터 없음';
     dot.className = isLocal ? 'sync-dot' : 'sync-dot error';
     if(!isLocal) console.warn('Sheet fetch error:', e);
   }
@@ -790,7 +800,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales, daySalesStore }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw, 채널링크 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -995,6 +1005,28 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       if (!title || !date) return;
       if (!DAY_SALES[title]) DAY_SALES[title] = [];
       DAY_SALES[title].push({date, qty});
+    });
+  }
+
+  // ── 판매량_일별_서점 → DAY_SALES_STORE 갱신 ──
+  // 기대 컬럼: 판매일 | 도서(도서명) | 서점(서점분류) | 판매부수
+  if (daySalesStore && daySalesStore.length > 0) {
+    Object.keys(DAY_SALES_STORE).forEach(k => delete DAY_SALES_STORE[k]);
+    const pick = (r, names) => {
+      for (const n of names) { if (r[n] != null && String(r[n]).trim() !== '') return String(r[n]).trim(); }
+      return '';
+    };
+    daySalesStore.forEach(r => {
+      const title = pick(r, ['도서명','도서','제목']);
+      const rawDt = pick(r, ['판매일','날짜','날짜(일별)','일자']);
+      const store = pick(r, ['서점','서점분류','채널']);
+      const qty   = toNum(pick(r, ['판매부수','판매수량','수량','sum 판매수량']));
+      const key   = ymd(parseAnyDate(rawDt));
+      if (!title || !key || !store) return;
+      if (!DAY_SALES_STORE[title]) DAY_SALES_STORE[title] = {};
+      if (!DAY_SALES_STORE[title][key]) DAY_SALES_STORE[title][key] = {};
+      const cur = DAY_SALES_STORE[title][key];
+      cur[store] = (cur[store] || 0) + qty;
     });
   }
 
@@ -2014,11 +2046,8 @@ function renderBooks(){
 /* ─────────────────────────────────────
    BOOK MARKETING DATA
 ───────────────────────────────────── */
-const MKT_BOOKS = [
-  { code:"생존지능", name:"생존 지능", pubDate:"2026-07-15", price:17800, goal:{rank:"종합 10위",qty:50000,revenue:890000000}, phase:3 },
-  { code:"다정한사람이이긴다(개정판)", name:"다정한 사람이 이긴다", pubDate:"2026-06-10", price:16800, goal:{rank:"분야 1위",qty:30000,revenue:504000000}, phase:2 },
-  { code:"불안한날에니체를읽는다", name:"불안한 날에 니체를 읽는다", pubDate:"2026-05-20", price:16000, goal:{rank:"종합 20위",qty:20000,revenue:320000000}, phase:2 },
-];
+// 도서 목록 — 마케팅 캠페인 시트 00_설정에서 로드 (loadMktSheets)
+const MKT_BOOKS = [];
 
 // 도서별 마케팅 액션 (레인별)
 const MKT_LANES = ["서점광고","메타광고","구글광고","제휴·유튜브","인스타그램","블로그","이벤트"];
@@ -2034,119 +2063,9 @@ const LANE_COLORS = {
 
 // 도서별 마케팅 액션 데이터
 // type: "main"=일반칩, "expandable"=드롭다운 가능, "sub"=하위 소재(접힘)
-const MKT_ACTIONS = {
-  "생존지능": [
-    // 예약판매 구간 (7/5~7/14)
-    {date:"2026-07-05",lane:"서점광고",   label:"교보 모바일팝업", detail:"7/5~7/20 교보문고 모바일팝업",    cost:5500000, days:16},
-    {date:"2026-07-08",lane:"구글광고",   label:"구글 검색광고",   detail:"SEO 키워드 검색광고 집행",        cost:1000000, days:7},
-    {date:"2026-07-09",lane:"블로그",     label:"블로그 시딩 1차", detail:"블로그 리뷰어 5명 발송",          cost:0,       days:3},
-    // ── 메타광고: 하나의 통합 칩 (드롭다운으로 소재 펼침) ──
-    {date:"2026-07-08", lane:"메타광고", label:"메타광고 전체 캠페인", detail:"예약판매~3주차 전체 소재 운영",
-     cost:9270000, days:35, type:"expandable",
-     materials:[
-       {id:"ma1", phase:"예약판매", label:"소재 A — 짧은 카피",    type:"image", cost:200000, days:"7/8~7/11",
-        img:"https://picsum.photos/seed/meta1/400/500", desc:"15초 릴스 소재. 핵심 카피: '당신은 결국 무엇이든 해내는 사람'"},
-       {id:"ma2", phase:"예약판매", label:"소재 B — 저자 인터뷰",   type:"image", cost:180000, days:"7/8~7/12",
-        img:"https://picsum.photos/seed/meta2/400/500", desc:"짐콜린스 저자 인터뷰 클립 편집본"},
-       {id:"ma3", phase:"예약판매", label:"소재 C — 독자 후기",     type:"image", cost:120000, days:"7/10~7/14",
-        img:"https://picsum.photos/seed/meta3/400/500", desc:"베타리더 후기 기반 소셜 프루프 소재"},
-       {id:"ma4", phase:"1주차",   label:"소재 D — 순위 발표",     type:"image", cost:400000, days:"7/15~7/17",
-        img:"https://picsum.photos/seed/meta4/400/500", desc:"베스트셀러 종합 순위 달성 소재"},
-       {id:"ma5", phase:"1주차",   label:"소재 E — 저자 권위",     type:"image", cost:350000, days:"7/15~7/17",
-        img:"https://picsum.photos/seed/meta5/400/500", desc:"짐콜린스 34년 연구 데이터 강조"},
-       {id:"ma6", phase:"1주차",   label:"소재 F — 독자 리뷰",     type:"image", cost:300000, days:"7/18~7/21",
-        img:"https://picsum.photos/seed/meta6/400/500", desc:"출간 후 실독자 반응 큐레이션"},
-       {id:"ma7", phase:"1주차",   label:"소재 G — 미키 클립",     type:"image", cost:280000, days:"7/18~7/21",
-        img:"https://picsum.photos/seed/meta7/400/500", desc:"미키피디아 영상 클립 소재"},
-       {id:"ma8", phase:"2주차",   label:"소재 H — 1만부 돌파",    type:"image", cost:300000, days:"7/22~7/26",
-        img:"https://picsum.photos/seed/meta8/400/500", desc:"출간 1주 만에 1만부 돌파 인증 소재"},
-       {id:"ma9", phase:"2주차",   label:"소재 I — 서평 모음",     type:"image", cost:280000, days:"7/22~7/25",
-        img:"https://picsum.photos/seed/meta9/400/500", desc:"온라인 서평 큐레이션 카드뉴스"},
-       {id:"ma10",phase:"2주차",   label:"소재 J — 신사임당 클립", type:"image", cost:260000, days:"7/24~7/28",
-        img:"https://picsum.photos/seed/meta10/400/500",desc:"신사임당 브랜디드 클립 소재"},
-       {id:"ma11",phase:"3주차",   label:"소재 K — 3주 판매",      type:"image", cost:500000, days:"7/29~8/4",
-        img:"https://picsum.photos/seed/meta11/400/500",desc:"누적 3만부 성과 소재"},
-       {id:"ma12",phase:"3주차",   label:"소재 L — 채부심 클립",   type:"image", cost:400000, days:"7/29~8/4",
-        img:"https://picsum.photos/seed/meta12/400/500",desc:"채부심 브랜디드 클립 소재"},
-       {id:"ma13",phase:"4주차",   label:"소재 M — 한달 기념",     type:"image", cost:450000, days:"8/5~8/11",
-        img:"https://picsum.photos/seed/meta13/400/500",desc:"출간 한달 기념 누적 성과 소재"},
-     ]},
-    // ── 서점광고 ──
-    {date:"2026-07-05", lane:"서점광고", label:"교보 모바일팝업", detail:"7/5~7/20 교보문고 모바일 팝업", cost:5500000, days:16,
-     materials:[{id:"s1",label:"교보 팝업 이미지",type:"image",img:"https://picsum.photos/seed/kyobo1/600/400",desc:"교보문고 앱 메인 팝업 배너 (600×400)"}]},
-    {date:"2026-07-15", lane:"서점광고", label:"교보 강남 매대",  detail:"강남점 오프라인 매대 광고",     cost:2750000, days:17,
-     materials:[{id:"s2",label:"매대 배치 사진",type:"image",img:"https://picsum.photos/seed/kyobo2/600/400",desc:"교보문고 강남점 정면대 배치"}]},
-    {date:"2026-07-20", lane:"서점광고", label:"예스24 HOT",      detail:"지금인기있어요 HOT 구좌",       cost:1650000, days:7,
-     materials:[{id:"s3",label:"예스24 HOT 배너",type:"image",img:"https://picsum.photos/seed/yes1/600/400",desc:"예스24 지금인기있어요 구좌"}]},
-    {date:"2026-07-20", lane:"서점광고", label:"알라딘 팝업",     detail:"알라딘 모바일 팝업",            cost:3300000, days:7,
-     materials:[{id:"s4",label:"알라딘 팝업 이미지",type:"image",img:"https://picsum.photos/seed/aladin1/600/400",desc:"알라딘 앱 모바일 팝업"}]},
-    // ── 구글광고 ──
-    {date:"2026-07-08", lane:"구글광고", label:"구글 검색광고", detail:"SEO 키워드 검색광고 집행", cost:1000000, days:7,
-     materials:[{id:"g1",label:"검색광고 키워드",type:"text",desc:"짐콜린스 / 자기계발서추천 / 인생책 / 헤지호그 / 생존지능"}]},
-    // ── 제휴·유튜브 ──
-    {date:"2026-07-15", lane:"제휴·유튜브", label:"하와이대저택",     detail:"브랜디드 콘텐츠", cost:6600000, days:1,
-     materials:[{id:"y1",label:"하와이대저택 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 95만 자기계발 채널. 브랜디드 롱폼"}]},
-    {date:"2026-07-17", lane:"제휴·유튜브", label:"미키피디아",       detail:"줌인터뷰 브랜디드",cost:16500000,days:1,
-     materials:[{id:"y2",label:"미키피디아 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 35만 자기계발 채널. 저자 줌인터뷰 형식"}]},
-    {date:"2026-07-19", lane:"제휴·유튜브", label:"신사임당",         detail:"브랜디드 콘텐츠", cost:3300000, days:1,
-     materials:[{id:"y3",label:"신사임당 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 206만 자기계발/경제 채널"}]},
-    {date:"2026-07-21", lane:"제휴·유튜브", label:"삼프로TV",         detail:"PPL 클로징 멘트", cost:3300000, days:1,
-     materials:[{id:"y4",label:"삼프로TV 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 266만 경제 채널. 클로징 PPL"}]},
-    {date:"2026-07-23", lane:"제휴·유튜브", label:"피치",             detail:"브랜디드 콘텐츠", cost:4400000, days:1,
-     materials:[{id:"y5",label:"피치 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 64만 경제 채널"}]},
-    {date:"2026-07-25", lane:"제휴·유튜브", label:"한창수 마음정비소", detail:"브랜디드 콘텐츠", cost:2200000, days:1,
-     materials:[{id:"y6",label:"한창수 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 8만 심리 채널"}]},
-    {date:"2026-07-29", lane:"제휴·유튜브", label:"채부심",           detail:"브랜디드 콘텐츠", cost:2750000, days:1,
-     materials:[{id:"y7",label:"채부심 영상",type:"youtube",url:"https://www.youtube.com/watch?v=dQw4w9WgXcQ",thumb:"https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",desc:"구독자 20만 경제 채널"}]},
-    // ── 인스타그램 ──
-    {date:"2026-07-15", lane:"인스타그램", label:"뚱이야 IS",  detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i1",label:"뚱이야 포스트",type:"image",img:"https://picsum.photos/seed/insta1/500/500",desc:"팔로워 22만 라이프스타일 계정"}]},
-    {date:"2026-07-16", lane:"인스타그램", label:"북러비 IS",  detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i2",label:"북러비 포스트",type:"image",img:"https://picsum.photos/seed/insta2/500/500",desc:"팔로워 8만 독서 계정"}]},
-    {date:"2026-07-18", lane:"인스타그램", label:"Hsi IS",     detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i3",label:"Hsi 포스트",  type:"image",img:"https://picsum.photos/seed/insta3/500/500",desc:"팔로워 15만 자기계발 계정"}]},
-    {date:"2026-07-26", lane:"인스타그램", label:"찌니 IS",    detail:"인스타 시딩", cost:0, days:1, materials:[{id:"i4",label:"찌니 포스트",type:"image",img:"https://picsum.photos/seed/insta4/500/500",desc:"팔로워 6만 독서 계정"}]},
-    // ── 블로그 ──
-    {date:"2026-07-09", lane:"블로그", label:"블로그 시딩 1차", detail:"블로그 리뷰어 5명", cost:0, days:3, materials:[{id:"b1",label:"블로그 리뷰 목록",type:"text",desc:"네이버 블로그 5명 시딩 (책리뷰어A, 독서노트B, 자기계발C, 인생책D, 북스타그램E)"}]},
-    {date:"2026-07-24", lane:"블로그", label:"블로그 시딩 2차", detail:"추가 블로거 8명",   cost:0, days:3, materials:[{id:"b2",label:"블로그 리뷰 목록",type:"text",desc:"네이버 블로그 8명 추가 시딩"}]},
-    // ── 이벤트 ──
-    {date:"2026-07-22", lane:"이벤트", label:"교보 저자 사인회",  detail:"교보 강남점 저자 사인회",  cost:200000, days:1, materials:[{id:"e1",label:"사인회 현장",type:"image",img:"https://picsum.photos/seed/event1/600/400",desc:"2026.7.22 교보문고 강남점 저자 사인회. 참석 150명"}]},
-    {date:"2026-07-28", lane:"이벤트", label:"온라인 독자이벤트", detail:"SNS 독자 이벤트",           cost:0,      days:3, materials:[{id:"e2",label:"이벤트 배너",type:"image",img:"https://picsum.photos/seed/event2/600/400",desc:"인스타그램 독자 이벤트. 책 사진 인증 시 사인본 증정"}]},
-  ],
-};
+// 도서별 마케팅 액션 — 캠페인 시트 각 도서 탭에서 로드 {code: [action,...]}
+const MKT_ACTIONS = {};
 
-// 판매 데이터 (서점별 일별)
-const MKT_SALES = {
-  "생존지능": {
-    stores: ["교보","예스24","영풍","알라딘"],
-    colors: ["#9A7A00","#1E6832","#1A4A7A","#901818"],
-    data: [
-      {date:"2026-07-05",교보:1,  예스24:0,  영풍:0,알라딘:0},
-      {date:"2026-07-06",교보:4,  예스24:1,  영풍:0,알라딘:1},
-      {date:"2026-07-07",교보:7,  예스24:2,  영풍:0,알라딘:2},
-      {date:"2026-07-08",교보:12, 예스24:4,  영풍:0,알라딘:3},
-      {date:"2026-07-09",교보:18, 예스24:6,  영풍:0,알라딘:4},
-      {date:"2026-07-10",교보:24, 예스24:8,  영풍:0,알라딘:6},
-      {date:"2026-07-11",교보:31, 예스24:11, 영풍:0,알라딘:8},
-      {date:"2026-07-12",교보:28, 예스24:9,  영풍:0,알라딘:7},
-      {date:"2026-07-13",교보:22, 예스24:7,  영풍:0,알라딘:5},
-      {date:"2026-07-14",교보:19, 예스24:6,  영풍:0,알라딘:4},
-      {date:"2026-07-15",교보:346,예스24:155,영풍:0,알라딘:146},
-      {date:"2026-07-16",교보:292,예스24:128,영풍:0,알라딘:121},
-      {date:"2026-07-17",교보:248,예스24:109,영풍:0,알라딘:98},
-      {date:"2026-07-18",교보:214,예스24:96, 영풍:0,알라딘:84},
-      {date:"2026-07-19",교보:198,예스24:88, 영풍:0,알라딘:76},
-      {date:"2026-07-20",교보:182,예스24:81, 영풍:0,알라딘:69},
-      {date:"2026-07-21",교보:168,예스24:74, 영풍:0,알라딘:63},
-      {date:"2026-07-22",교보:152,예스24:68, 영풍:0,알라딘:57},
-      {date:"2026-07-23",교보:144,예스24:64, 영풍:0,알라딘:54},
-      {date:"2026-07-24",교보:138,예스24:61, 영풍:0,알라딘:51},
-      {date:"2026-07-25",교보:131,예스24:58, 영풍:0,알라딘:48},
-      {date:"2026-07-26",교보:124,예스24:55, 영풍:0,알라딘:45},
-      {date:"2026-07-27",교보:118,예스24:52, 영풍:0,알라딘:43},
-      {date:"2026-07-28",교보:162,예스24:72, 영풍:0,알라딘:60},
-      {date:"2026-07-29",교보:148,예스24:66, 영풍:0,알라딘:55},
-      {date:"2026-07-30",교보:186,예스24:83, 영풍:0,알라딘:68},
-    ]
-  }
-};
 
 let calBook = MKT_BOOKS.length > 0 ? MKT_BOOKS[0].code : "";
 
@@ -2156,9 +2075,11 @@ let calBook = MKT_BOOKS.length > 0 ? MKT_BOOKS[0].code : "";
    RENDER BOOK MARKETING
 ───────────────────────────────────── */
 function renderCalendar() {
+  if (!MKT_BOOKS.length) { renderCalendarEmpty(); return; }
   const book = MKT_BOOKS.find(b=>b.code===calBook) || MKT_BOOKS[0];
   const actions = MKT_ACTIONS[calBook] || [];
-  const sales   = MKT_SALES[calBook];
+  // 서점별 일별 분해는 아직 미연동 → 판매량_일별(총판매)로 대체
+  const sales   = null;
 
   // 날짜 범위 계산
   const pubDate   = new Date(book.pubDate);
@@ -2191,15 +2112,10 @@ function renderCalendar() {
   const today = new Date();
   const daysSincePub = Math.floor((today-pubDate)/86400000);
 
-  // 목표 달성률 — 판매량_일별 실데이터 우선, 없으면 서점별 샘플
+  // 목표 달성률 — 판매량_일별 실판매 합계 기준
   const goalQty = (book.goal && book.goal.qty) || 1;
   const dayMapKPI = daySalesByDate(calBook);
-  const dayTotalKPI = Object.values(dayMapKPI).reduce((a,b)=>a+b,0);
-  const currentSales = dayTotalKPI > 0
-    ? dayTotalKPI
-    : (sales ? sales.data.reduce((s,d)=>{
-        return s + Object.values(d).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
-      },0) : 0);
+  const currentSales = Object.values(dayMapKPI).reduce((a,b)=>a+b,0);
   const goalPct = Math.min(Math.round(currentSales/goalQty*100),100);
 
   document.getElementById('tab-calendar').innerHTML = `
@@ -2444,6 +2360,28 @@ function getDaySalesFor(code){
   }
   return null;
 }
+// 서점별 일별 판매 → {'YYYY-MM-DD': {교보:n, ...}} (없으면 null)
+function daySalesStoreFor(code){
+  var keys=Object.keys(DAY_SALES_STORE);
+  if(!keys.length) return null;
+  var mb=(typeof MKT_BOOKS!=='undefined') ? MKT_BOOKS.find(function(b){return b.code===code;}) : null;
+  var cands=[];
+  if(mb){ if(mb.name) cands.push(mb.name); if(mb.code) cands.push(mb.code); }
+  if(code) cands.push(code);
+  for(var i=0;i<cands.length;i++){
+    var target=normTitle(cands[i]);
+    if(!target) continue;
+    var hit=keys.find(function(k){ return normTitle(k)===target; });
+    if(hit) return DAY_SALES_STORE[hit];
+    hit=keys.find(function(k){
+      var nk=normTitle(k);
+      return nk && (nk.indexOf(target)>=0 || target.indexOf(nk)>=0);
+    });
+    if(hit) return DAY_SALES_STORE[hit];
+  }
+  return null;
+}
+
 // 일별 판매 → {YYYY-MM-DD: 부수}
 function daySalesByDate(code){
   var arr=getDaySalesFor(code), out={};
@@ -2531,14 +2469,33 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
 
   var salesByDate = {};
   var hasStoreBreakdown = false;
-  if (sales && sales.data && sales.data.length) {
+
+  var storeMap = daySalesStoreFor(calBook);
+  if (storeMap && Object.keys(storeMap).length) {
+    // ① 판매량_일별_서점 — 서점별 분해
+    hasStoreBreakdown = true;
+    Object.keys(storeMap).forEach(function(k){
+      var row = storeMap[k], entry = {};
+      var total = 0;
+      STORES_TL.forEach(function(st){
+        var v = row[st] || 0;
+        entry[st] = v; total += v;
+      });
+      // STORES_TL에 없는 서점도 총합에는 포함
+      Object.keys(row).forEach(function(st){
+        if(STORES_TL.indexOf(st) < 0) total += (row[st] || 0);
+      });
+      entry.total = total;
+      salesByDate[k] = entry;
+    });
+  } else if (sales && sales.data && sales.data.length) {
     hasStoreBreakdown = true;
     sales.data.forEach(function(row) {
       var total = STORES_TL.reduce(function(s,st){ return s+(row[st]||0); }, 0);
       salesByDate[row.date] = Object.assign({total:total}, row);
     });
   } else {
-    // 서점별 분해 데이터가 없으면 판매량_일별(총판매)로 채움
+    // ② 서점별 분해가 없으면 판매량_일별(총판매)로만 채움
     var dmap = daySalesByDate(calBook);
     Object.keys(dmap).forEach(function(k){ salesByDate[k] = {total: dmap[k]}; });
   }
@@ -3071,7 +3028,7 @@ function openDetailPanel(a, c, material){
 }
 
 function renderCalendarEmpty(){
-  document.getElementById('tab-calendar').innerHTML=`<div class="card gap"><div class="empty-row">마케팅 데이터가 없습니다</div></div>`;
+  document.getElementById('tab-calendar').innerHTML=`<div class="card gap"><div class="empty-row">마케팅 캠페인 시트에 연동된 도서가 없습니다<br><span style="font-size:11px;color:var(--ink3)">캠페인 시트 00_설정에서 노출여부를 Y로 설정하세요</span></div></div>`;
 }
 
 function renderData(){
