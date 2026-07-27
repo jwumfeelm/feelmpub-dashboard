@@ -955,11 +955,32 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
 
   // ── 01_월별실적 → M_SHIP_SALES 등 갱신 ──
   // 구조: 항목 | 연도 | 1월~12월
-  const getMonthly = (label, year=yr) => {
-    const row = monthly.find(r => r['항목']===label && String(r['연도'])===String(year));
-    if (!row) return Array(12).fill(0);
-    return MONTHS.map(m => toNum(row[m]||0));
-  };
+  // 주의: '교보문고' 같은 서점명이 [출고 매출] · [전자책 매출] · [반품액] 세 구간에
+  //       반복 등장한다. 항목명만으로 찾으면 엉뚱한 구간 값을 읽는다.
+  //       또 '연도'가 병합 셀이면 하위 행에서 비어 나오므로 위 값을 이어받는다.
+  const SECT = {'출고 매출':'ship', '전자책 매출':'ebook', '반품액':'return'};
+  const mFirst = {};   // 연도|항목  → 최초 등장 행 (총 매출·목표 등 고유 항목용)
+  const mSect  = {};   // 연도|구간|항목 → 구간별 행 (서점명처럼 중복되는 항목용)
+  (() => {
+    let curYear = '', curSect = 'top';
+    monthly.forEach(r => {
+      const y = String(r['연도'] || '').trim();
+      if (y) curYear = y;
+      const label = String(r['항목'] || '').trim();
+      if (!label) return;
+      if (SECT[label]) curSect = SECT[label];
+      else if (label === '총 매출' || label === '순매출' || label === '총 비용') curSect = 'top';
+      const fk = curYear + '|' + label;
+      if (!(fk in mFirst)) mFirst[fk] = r;
+      mSect[curYear + '|' + curSect + '|' + label] = r;
+    });
+  })();
+
+  const rowToArr = row => row ? MONTHS.map(m => toNum(row[m] || 0)) : Array(12).fill(0);
+  // 고유 항목 — 최초 등장 행
+  const getMonthly = (label, year = yr) => rowToArr(mFirst[String(year) + '|' + label]);
+  // 서점명처럼 구간마다 반복되는 항목 — 구간을 지정해서 조회
+  const getSect = (label, sect, year = yr) => rowToArr(mSect[String(year) + '|' + sect + '|' + label]);
 
   const newShip   = getMonthly('총 매출');
   const newReturn = getMonthly('반품액');
@@ -967,15 +988,15 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
   const newPub    = getMonthly('출판팀 비용');
   const newCom    = getMonthly('경상비');
   const newTarget = getMonthly('월 목표 매출');
-  // 서점별 출고 부수 (01_월별실적에서)
-  const newKyobo      = getMonthly('교보문고');
-  const newYes        = getMonthly('예스24');
-  const newAladin     = getMonthly('알라딘');
-  const newYoungpoong = getMonthly('영풍');
-  const newCoupang    = getMonthly('쿠팡');
-  const newBooksun    = getMonthly('북센');
-  const newDosomae    = getMonthly('도소매(자유서적 포함)');
-  const newOthers     = getMonthly('기타(현매)');
+  // 서점별 출고액 — [출고 매출] 구간에서만 읽는다 (전자책·반품 구간과 이름이 겹침)
+  const newKyobo      = getSect('교보문고','ship');
+  const newYes        = getSect('예스24','ship');
+  const newAladin     = getSect('알라딘','ship');
+  const newYoungpoong = getSect('영풍','ship');
+  const newCoupang    = getSect('쿠팡','ship');
+  const newBooksun    = getSect('북센','ship');
+  const newDosomae    = getSect('도소매(자유서적 포함)','ship');
+  const newOthers     = getSect('기타(현매)','ship');
 
   // 목표 매출은 출고 매출과 무관하게 항상 반영
   if (newTarget.some(v=>v>0)) {
