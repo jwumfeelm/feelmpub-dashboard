@@ -489,11 +489,7 @@ const CFG = {
     channel:  "419118457",    // 05_채널실적
     bookList: "927629470",    // 도서 목록
     weekSales:"105549750",    // 판매량_주차별
-    daySales: "1033640825",   // 판매량_일별
-  },
-  // 선택 시트 — GID 비워두면 해당 기능만 비활성 (전체 연동에는 영향 없음)
-  gidsOpt: {
-    daySalesStore: "2121676287",  // 판매량_일별_서점 (판매일|도서|서점|판매부수)
+    daySalesStore: "2121676287", // 판매량_일별_서점 (판매일|도서|서점|판매부수)
   },
   // 마케팅 캠페인 별도 구글 시트
   mktSheetId: "1SgFVN8aOV7TIz_9PsP3xncnU1HwvquY-i7gCq6XNOno",
@@ -561,7 +557,6 @@ const BOOKS = [];
 // 주차별 판매 데이터
 const WEEK_SALES = {}; // {도서명: [{week, qty}]}
 // 일별 판매 데이터
-const DAY_SALES = {}; // {도서명: [{date, qty}]}
 // 일별 × 서점별 판매 데이터
 const DAY_SALES_STORE = {}; // {도서명: {'YYYY-MM-DD': {교보:n, 예스24:n, 알라딘:n, 영풍:n}}}
 
@@ -889,7 +884,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales, daySalesStore] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
@@ -898,17 +893,13 @@ async function loadSheets() {
       fetchSheet(CFG.gids.channel),   // 05_채널실적
       fetchSheet(CFG.gids.bookList),  // 도서 목록
       fetchSheet(CFG.gids.weekSales), // 판매량_주차별
-      fetchSheet(CFG.gids.daySales),  // 판매량_일별
-      // 선택: 판매량_일별_서점 (미설정이면 빈 배열)
-      CFG.gidsOpt.daySalesStore
-        ? fetchSheet(CFG.gidsOpt.daySalesStore).catch(e => {
-            console.warn('[판매량_일별_서점] 로드 실패 — GID/공유설정 확인:', e);
-            return [];
-          })
-        : Promise.resolve([]),
+      fetchSheet(CFG.gids.daySalesStore).catch(e => {   // 판매량_일별_서점
+        console.warn('[판매량_일별_서점] 로드 실패 — GID/공유설정 확인:', e);
+        return [];
+      }),
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales, daySalesStore });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore });
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -941,7 +932,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySales, daySalesStore }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw, 채널링크 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -1247,23 +1238,6 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     if(merged.length > 0) {
       BOOKS.splice(0, BOOKS.length, ...merged);
     }
-  }
-
-  // ── 판매량_일별 → DAY_SALES 갱신 ──
-  if (daySales && daySales.length > 0) {
-    Object.keys(DAY_SALES).forEach(k => delete DAY_SALES[k]);
-    const stratTitleMapDay = {};
-    BOOKS.filter(b => b.isStrategic).forEach(b => {
-      stratTitleMapDay[b.title.replace(/\s/g, '')] = b.title;
-    });
-    daySales.forEach(r => {
-      const title = r['도서명'] || stratTitleMapDay[(r['ISBN']||'').toString().replace(/\s/g,'')] || '';
-      const date  = r['판매일'] || '';
-      const qty   = toNum(r['판매부수']);
-      if (!title || !date) return;
-      if (!DAY_SALES[title]) DAY_SALES[title] = [];
-      DAY_SALES[title].push({date, qty});
-    });
   }
 
   // ── 판매량_일별_서점 → DAY_SALES_STORE 갱신 ──
@@ -2481,7 +2455,7 @@ function renderCalendar() {
   if (!MKT_BOOKS.length) { renderCalendarEmpty(); return; }
   const book = MKT_BOOKS.find(b=>b.code===calBook) || MKT_BOOKS[0];
   const actions = MKT_ACTIONS[calBook] || [];
-  // 서점별 일별 분해는 아직 미연동 → 판매량_일별(총판매)로 대체
+  // 일별 판매는 daySalesByDate() 가 판매량_일별_서점에서 직접 만든다
   const sales   = null;
 
   // 날짜 범위 계산
@@ -2515,7 +2489,7 @@ function renderCalendar() {
   const today = new Date();
   const daysSincePub = Math.floor((today-pubDate)/86400000);
 
-  // 목표 달성률 — 판매량_일별 실판매 합계 기준
+  // 목표 달성률 — 실판매 합계 기준
   const goalQty = (book.goal && book.goal.qty) || 1;
   const dayMapKPI = daySalesByDate(calBook);
   const currentSales = Object.values(dayMapKPI).reduce((a,b)=>a+b,0);
@@ -2584,7 +2558,7 @@ function renderCalendar() {
 
     <!-- 일별 판매 라인차트 -->
     ${(()=>{
-      // 타임라인 판매량과 동일한 소스를 사용 (서점별 탭 우선 → 없으면 판매량_일별)
+      // 타임라인 판매량과 동일한 소스 사용
       const sorted = dayTotalsFor(calBook);
       if (!sorted.length) return '<div class="card gap" style="color:var(--ink3);padding:20px;text-align:center">일별 판매 데이터 없음</div>';
 
@@ -2789,38 +2763,16 @@ function parseAnyDate(v){
   var d=new Date(t);
   return isNaN(d)?null:d;
 }
-// calBook(캠페인 시트 코드) → 판매량_일별 도서명 매칭
-function getDaySalesFor(code){
-  var keys=Object.keys(DAY_SALES);
-  if(!keys.length) return null;
-  var mb=(typeof MKT_BOOKS!=='undefined') ? MKT_BOOKS.find(function(b){return b.code===code;}) : null;
-  var cands=[];
-  if(mb){ if(mb.name) cands.push(mb.name); if(mb.code) cands.push(mb.code); }
-  if(code) cands.push(code);
-  for(var i=0;i<cands.length;i++){
-    var target=normTitle(cands[i]);
-    if(!target) continue;
-    var hit=keys.find(function(k){ return normTitle(k)===target; });
-    if(hit) return DAY_SALES[hit];
-    hit=keys.find(function(k){
-      var nk=normTitle(k);
-      return nk && (nk.indexOf(target)>=0 || target.indexOf(nk)>=0);
-    });
-    if(hit) return DAY_SALES[hit];
-  }
-  return null;
-}
 // 진단용 — 콘솔에서 mktDiag() 실행
 function mktDiag(){
   var d = window.__mktStoreDiag || {rows:0};
   var out = {
-    '설정된GID': CFG.gidsOpt.daySalesStore || '(비어있음)',
+    '설정된GID': CFG.gids.daySalesStore || '(비어있음)',
     '받은행수': d.rows,
     '시트헤더': d.headers,
     '인식한열': d.mapped,
     '집계된행': d.parsed,
     '서점데이터_도서명': d.titles,
-    '일별데이터_도서명': Object.keys(DAY_SALES),
     '현재선택도서': calBook,
     '매칭결과': daySalesStoreFor(calBook) ? '성공' : '실패'
   };
@@ -2851,24 +2803,15 @@ function daySalesStoreFor(code){
 }
 
 // 일별 총판매 → {YYYY-MM-DD: 부수}
-// 두 시트가 갱신 시점이 달라 어긋나므로, 서점별 탭이 있으면 그것을 합산해 단일 기준으로 삼는다.
+// 판매량_일별_서점 하나만 본다. 총판매는 서점별 값을 합산해서 만든다.
 function daySalesByDate(code){
   var out={};
   var sm = daySalesStoreFor(code);
-  if (sm && Object.keys(sm).length){
-    Object.keys(sm).forEach(function(k){
-      var row=sm[k], t=0;
-      Object.keys(row).forEach(function(st){ t += (Number(row[st])||0); });
-      out[k]=t;
-    });
-    return out;
-  }
-  var arr=getDaySalesFor(code);
-  if(!arr) return out;
-  arr.forEach(function(r){
-    var d=parseAnyDate(r.date), k=ymd(d);
-    if(!k) return;
-    out[k]=(out[k]||0)+(Number(r.qty)||0);
+  if (!sm) return out;
+  Object.keys(sm).forEach(function(k){
+    var row=sm[k], t=0;
+    Object.keys(row).forEach(function(st){ t += (Number(row[st])||0); });
+    out[k]=t;
   });
   return out;
 }
@@ -3035,7 +2978,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
 
   var storeMap = daySalesStoreFor(calBook);
   if (storeMap && Object.keys(storeMap).length) {
-    // ① 판매량_일별_서점 — 서점별 분해
+    // 판매량_일별_서점 — 서점별 분해
     hasStoreBreakdown = true;
     Object.keys(storeMap).forEach(function(k){
       var row = storeMap[k], entry = {};
@@ -3058,7 +3001,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       salesByDate[row.date] = Object.assign({total:total}, row);
     });
   } else {
-    // ② 서점별 분해가 없으면 판매량_일별(총판매)로만 채움
+    // 서점별 데이터가 없으면 총판매만 채움
     var dmap = daySalesByDate(calBook);
     Object.keys(dmap).forEach(function(k){ salesByDate[k] = {total: dmap[k]}; });
   }
@@ -3610,7 +3553,7 @@ function renderData(){
     rows.map(([c,d])=>`<tr><td><b style="font-size:12px">${c}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td></tr>`).join('')}</table>`;
 
   const syncTxt = (document.getElementById('syncTxt')||{}).textContent || '-';
-  const gidCount = Object.keys(CFG.gids).length + Object.values(CFG.gidsOpt).filter(Boolean).length;
+  const gidCount = Object.keys(CFG.gids).length;
 
   document.getElementById('tab-data').innerHTML=`
     <div class="g4 gap">
@@ -3642,7 +3585,7 @@ function renderData(){
           ['03_출고실적','출고 RAW 월별 집계','자동'],
           ['04_마케팅실적','판매량 RAW 월별 집계','자동'],
           ['05_채널실적','채널 지표','수기'],
-          ['판매량_주차별 / _일별 / _일별_서점','판매량 RAW 집계','자동'],
+          ['판매량_주차별 / _일별_서점','판매량 RAW 집계','자동'],
         ].map(([n,d,w])=>`<tr><td><b>${n}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td><td><span class="badge ${w==='자동'?'neutral':w==='붙여넣기'?'info':'acc'}">${w}</span></td></tr>`).join('')}
       </table>
     </div>
