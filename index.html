@@ -2205,7 +2205,7 @@ function renderCalendar() {
       <select onchange="calBook=this.value;renderCalendar()" style="border:1px solid var(--border2);background:var(--surface);color:var(--ink);border-radius:var(--r3);padding:7px 12px;font-family:var(--sans);font-size:13px;font-weight:700;outline:none;cursor:pointer;flex:1;max-width:360px">
         ${MKT_BOOKS.map(b=>`<option value="${b.code}" ${b.code===calBook?'selected':''}>${b.name}</option>`).join('')}
       </select>
-      <span style="font-size:11px;color:var(--ink3)">출간일 ${book.pubDate} · 정가 ${book.price.toLocaleString()}원</span>
+      <span style="font-size:11px;color:var(--ink3)">출간일 ${book.pubDate} · 정가 ${(book.price||0).toLocaleString()}원</span>
     </div>
 
     <!-- 도서 기본정보 -->
@@ -2779,9 +2779,17 @@ function parseMonthDay(str){
   return new Date(2026, parseInt(parts[0])-1, parseInt(parts[1]));
 }
 
+function driveImgUrl(url) {
+  if (!url) return '';
+  const m = url.match(/\/file\/d\/([^\/]+)/);
+  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
+  return url;
+}
+
 function openDetailPanel(a, c, material){
   // 표시할 소재 목록
-  var mats = material ? [material] : (a.materials && a.materials.length ? a.materials : null);
+  var mats = material ? [material] : (a.materials && a.materials.length ? a.materials : 
+    (a.url ? [{type:'image', img: driveImgUrl(a.url), label: a.label||'', desc: a.detail||'', url: a.url}] : null));
 
   // 패널 컨테이너: tab-calendar 마지막에 추가 or 기존 패널 재사용
   var panel = document.getElementById('mkt-detail-panel');
