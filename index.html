@@ -1674,22 +1674,20 @@ function renderSummary(){
     <div class="card">
       <div class="card-title">관리 신간 현황 <small>전략도서 기준</small></div>
       <table>
-        <tr><th>도서명</th><th>출간일</th><th class="right">누적 매출</th><th class="right">누적 판매</th><th class="right">누적 비용</th><th class="right">ROI</th><th class="right">손익</th><th>상태</th></tr>
+        <tr><th>도서명</th><th>출간일</th><th class="right">누적 출고부수</th><th class="right">누적 출고매출</th><th class="right">누적 판매</th><th class="right">판매율</th><th class="right">시중재고</th></tr>
         ${newBooks.length ? newBooks.map(b=>{
-          const cumCost=b.cumMktCost+b.cumPubCost+b.cumComCost;
-          const profit=b.cumSalesPub-cumCost;
-          const roi=cumCost?Math.round(b.cumSalesPub/cumCost*100):0;
+          const sellThru = b.cumShipQty>0 ? Math.round(b.cumSalesQty/b.cumShipQty*100) : 0;
+          const market   = Math.max(0, b.cumShipQty - b.cumSalesQty);
           return `<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
             <td><b>${esc(b.title)}</b></td>
             <td style="font-size:11px;color:var(--ink3)">${b.pubDate}</td>
+            <td class="right">${b.cumShipQty.toLocaleString()}부</td>
             <td class="right">${won(b.cumShipAmt)}</td>
             <td class="right">${b.cumSalesQty.toLocaleString()}부</td>
-            <td class="right">${won(cumCost)}</td>
-            <td class="right"><b style="color:${roi>=150?'var(--good)':roi>=100?'var(--warn)':'var(--bad)'}">${roi}%</b></td>
-            <td class="right"><b style="color:${profit>=0?'var(--good)':'var(--bad)'}">${profit>=0?'+':''}${won(profit)}</b></td>
-            <td><span class="badge ${profit>=0?'good':'bad'}">${profit>=0?'흑자':'적자'}</span></td>
+            <td class="right"><b style="color:${sellThru>=70?'var(--good)':sellThru>=40?'var(--warn)':'var(--ink2)'}">${sellThru}%</b></td>
+            <td class="right">${market.toLocaleString()}부</td>
           </tr>`;
-        }).join('') : `<tr><td colspan="8" class="empty-row">해당 신간 없음</td></tr>`}
+        }).join('') : `<tr><td colspan="7" class="empty-row">해당 신간 없음</td></tr>`}
       </table>
     </div>`;
 }
@@ -2158,13 +2156,12 @@ function renderBooks(){
   const activeCount = BOOKS.filter(b=>(b.r12ShipAmt||0) >= BOOKS_ACTIVE_MIN).length;
   const base = booksShowAll ? BOOKS : BOOKS.filter(b=>(b.r12ShipAmt||0) >= BOOKS_ACTIVE_MIN);
   const rows=base.map(b=>{
-    const cumCost=b.cumMktCost+b.cumPubCost+b.cumComCost;
-    const profit=b.cumSalesPub-cumCost;
-    const roas=b.cumMktCost?Math.round(b.cumSalesPub/b.cumMktCost*100):0;
-    const roi =cumCost?Math.round(b.cumSalesPub/cumCost*100):0;
-    return {...b, cumCost, profit, roas, roi};
+    // 판매율 = 실판매 / 출고, 시중재고 = 출고 - 실판매
+    const sellThru = b.cumShipQty>0 ? Math.round(b.cumSalesQty/b.cumShipQty*100) : 0;
+    const market   = Math.max(0, b.cumShipQty - b.cumSalesQty);
+    return {...b, sellThru, market};
   });
-  const sorted=sortRows(rows,'books',['r12ShipAmt','cumShipQty','cumShipAmt','cumSalesQty','cumSalesPub','cumMktCost','cumCost','roas','roi','profit']);
+  const sorted=sortRows(rows,'books',['r12ShipAmt','cumShipQty','cumShipAmt','cumSalesQty','sellThru','market']);
 
   document.getElementById('tab-books').innerHTML=`
     <div class="card gap">
@@ -2185,12 +2182,8 @@ function renderBooks(){
           ${thS('books','cumShipQty','누적 출고부수','right')}
           ${thS('books','cumShipAmt','누적 출고매출','right')}
           ${thS('books','cumSalesQty','누적 판매부수','right')}
-          ${thS('books','cumSalesPub','누적 판매액','right')}
-          ${thS('books','cumMktCost','누적 마케팅비','right')}
-          ${thS('books','roas','ROAS','right')}
-          ${thS('books','cumCost','누적 총비용','right')}
-          ${thS('books','roi','ROI','right')}
-          ${thS('books','profit','최종 손익','right')}
+          ${thS('books','sellThru','판매율','right')}
+          ${thS('books','market','시중재고','right')}
         </tr>
         ${sorted.map(b=>`<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
           <td><b>${esc(b.title)}</b></td>
@@ -2201,12 +2194,8 @@ function renderBooks(){
           <td class="right">${b.cumShipQty.toLocaleString()}부</td>
           <td class="right">${won(b.cumShipAmt)}</td>
           <td class="right">${b.cumSalesQty.toLocaleString()}부</td>
-          <td class="right">${won(b.cumSalesPub)}</td>
-          <td class="right">${won(b.cumMktCost)}</td>
-          <td class="right"><b style="color:${b.roas>=200?'var(--good)':b.roas>=100?'var(--warn)':'var(--bad)'}">${b.roas}%</b></td>
-          <td class="right">${won(b.cumCost)}</td>
-          <td class="right"><b style="color:${b.roi>=150?'var(--good)':b.roi>=100?'var(--warn)':'var(--bad)'}">${b.roi}%</b></td>
-          <td class="right"><b style="color:${b.profit>=0?'var(--good)':'var(--bad)'}">${b.profit>=0?'+':''}${won(b.profit)}</b></td>
+          <td class="right"><b style="color:${b.sellThru>=70?'var(--good)':b.sellThru>=40?'var(--warn)':'var(--ink2)'}">${b.sellThru}%</b></td>
+          <td class="right">${b.market.toLocaleString()}부</td>
         </tr>`).join('')}
       </table>
     </div>`;
@@ -3272,8 +3261,6 @@ function openDrawer(id){
           <span class="badge neutral">공급가 ${b.supply.toLocaleString()}원</span>
           <span class="badge ${b.field==='IMC1'?'acc':b.field==='IMC2'?'info':'good'}">${b.field}</span>
           <span class="badge neutral">마케터 ${esc(b.mkt)}</span>
-
-          <span class="badge ${profit>=0?'good':'bad'}">${profit>=0?'흑자':'적자'}</span>
         </div>
       </div>
       <button class="drawer-close" onclick="closeDrawer()">×</button>
@@ -3306,7 +3293,6 @@ function openDrawer(id){
         <div class="card-title">판매 실적 (SCM)</div>
         <table>
           <tr><td style="color:var(--ink2);font-size:12px">누적 판매 부수</td><td class="right"><b>${b.cumSalesQty.toLocaleString()}부</b></td></tr>
-          <tr><td style="color:var(--ink2);font-size:12px">누적 판매액</td><td class="right"><b>${won(b.cumSalesPub)}</b></td></tr>
           ${Object.entries(b.stores||{}).map(([k,v])=>{const labels={kyobo:'교보문고',yes:'예스24',aladin:'알라딘',naver:'네이버',others:'기타'};return `<tr><td style="color:var(--ink3);font-size:11px">└ ${labels[k]||k}</td><td class="right" style="font-size:12px">${v.toLocaleString()}부</td></tr>`}).join('')}
         </table>
       </div>
@@ -3338,20 +3324,21 @@ function openDrawer(id){
         </table></div>`:''}
     </div>
 
-    <!-- 최종 손익 -->
-    <div class="sec-label">최종 손익 현황</div>
+    <!-- 판매 현황 -->
+    <div class="sec-label">판매 현황</div>
     <div class="card">
-      <div class="card-title">손익 요약</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-        ${[['누적 판매액',b.cumSalesPub,''],['누적 총 비용',cumCost,''],['ROAS',roas+'%',''],['ROI',roi+'%','']].map(([l,v,hint])=>`
-          <div style="text-align:center;background:var(--surface2);border-radius:var(--r3);padding:10px 6px">
-            <div style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
-            <div style="font-size:16px;font-weight:900;color:var(--ink)">${typeof v==='number'?won(v):v}</div>
-          </div>`).join('')}
-      </div>
-      <div style="padding:14px;border-radius:var(--r2);background:${profit>=0?'var(--good-dim)':'var(--bad-dim)'};border:1px solid ${profit>=0?'rgba(30,122,56,.2)':'rgba(176,32,32,.2)'};text-align:center">
-        <div style="font-size:10px;color:${profit>=0?'var(--good)':'var(--bad)'};font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">최종 손익</div>
-        <div style="font-size:28px;font-weight:900;color:${profit>=0?'var(--good)':'var(--bad)'}">${profit>=0?'+':''}${won(profit)}</div>
+      <div class="card-title">출고 대비 실판매</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${(()=>{
+          const sellThru = b.cumShipQty>0 ? Math.round(b.cumSalesQty/b.cumShipQty*100) : 0;
+          const market   = Math.max(0, b.cumShipQty - b.cumSalesQty);
+          return [['누적 출고',b.cumShipQty.toLocaleString()+'부'],['누적 실판매',b.cumSalesQty.toLocaleString()+'부'],
+                  ['판매율',sellThru+'%'],['시중재고',market.toLocaleString()+'부']].map(([l,v])=>`
+            <div style="text-align:center;background:var(--surface2);border-radius:var(--r3);padding:10px 6px">
+              <div style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
+              <div style="font-size:16px;font-weight:900;color:var(--ink)">${v}</div>
+            </div>`).join('');
+        })()}
       </div>
     </div>`;
 
