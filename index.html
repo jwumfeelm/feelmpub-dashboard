@@ -660,18 +660,25 @@ async function loadMktSheets() {
         const info = {};
         const subTargets = [], subCopies = [];
 
-        // 구글 시트 CSV 특성상 첫 행이 헤더로 잡힘
-        // 헤더 값과 1행 데이터가 합쳐질 수 있어 무조건 첫/두번째 컬럼으로 파싱
-        const allRows = rows;
-        // 헤더 행도 데이터로 포함 (첫 컬럼 키가 실제 항목명일 수 있음)
-        const colKeys = Object.keys(allRows[0] || {});
+        // 구글 시트 CSV: 헤더 행(1행)에 실제 데이터가 합쳐질 수 있음
+        // 헤더 키의 첫 번째 공백 이전 토큰을 항목명, 값 컬럼의 첫 번째 공백 이전 토큰을 값으로 추출
+        const colKeys = Object.keys(rows[0] || {});
         const col0 = colKeys[0] || '';
         const col1 = colKeys[1] || '';
 
-        // A1이 '#'이면 헤더 행을 버리고 데이터 행만 사용
-        // col0이 '#'이거나 헤더가 합쳐진 경우 헤더 행 스킵
+        // 헤더에서 합쳐진 데이터 파싱
+        // '항목 저자 분야' → ['항목','저자','분야'], '값 짐 콜린스 경제경영' → ['값','짐 콜린스','경제경영']
+        // 단 첫 토큰(항목/값/#)은 실제 헤더 식별자이므로 건너뜀
+        // 나머지 토큰을 순서대로 키-값 쌍으로 매핑
+        const keyTokens = col0.split(/\s+/).slice(1); // '항목' 제거
+        const valStr = col1.split(/\s+/).slice(1).join(' '); // '값' 제거 후 나머지
+        // keyTokens: ['저자','분야'] → 각각 독립 항목
+        // valStr: '짐 콜린스 경제경영' → 저자='짐 콜린스', 분야='경제경영' 분리 불가
+        // → 단순히 저자=valStr 전체로 처리하기 어려움
+        // → 대신 fetchMktSheet raw text를 직접 파싱하는 방식으로 전환
 
-        allRows.forEach(r => {
+        // rows의 각 행: 첫번째 컬럼=항목명, 두번째 컬럼=값 (1행 이후부터)
+        rows.forEach(r => {
           const k = (Object.values(r)[0] || '').trim();
           const v = (Object.values(r)[1] || '').trim();
           if (!k) return;
@@ -679,6 +686,42 @@ async function loadMktSheets() {
           else if (/^서브.?카피|^Sub.?Copy/i.test(k)) { if(v) subCopies.push(v); }
           else info[k] = v;
         });
+
+        // 헤더에 합쳐진 저자/분야 복원
+        // col0 예: '항목 저자 분야', col1 예: '값 짐 콜린스 경제경영'
+        // 구분: col0에서 알려진 단어 키 찾기
+        const knownKeys = ['저자','분야','Author','Genre'];
+        const headerParts = col0.split(/\s+/);
+        const headerVals  = col1.split(/\s+/);
+        // '항목'/'값'/'#' 같은 식별자 제거
+        const skipWords = ['항목','값','#',''];
+        let vi = 0;
+        headerParts.forEach((k,i) => {
+          if (skipWords.includes(k)) { vi++; return; }
+          if (!info[k]) {
+            // 해당 키의 값: headerVals에서 남은 부분 조합
+            // 단순히 해당 인덱스의 값 사용
+            const v = (headerVals[i] || '').trim();
+            if (v && !skipWords.includes(v)) info[k] = v;
+          }
+        });
+        // 저자가 '짐'만 들어갔다면 뒤 이어지는 단어들도 포함
+        // col0 헤더 파싱 후 col1 전체에서 저자값 재추출
+        if (info['저자'] && info['저자'].split(/\s+/).length === 1) {
+          // col1에서 '값' 이후 공백 전까지가 저자
+          const afterVal = col1.replace(/^값\s*/,'');
+          // 분야가 있다면 분야 앞까지가 저자
+          const branchIdx = headerParts.findIndex(k => k === '분야');
+          if (branchIdx > 0) {
+            const genreVal = headerVals[branchIdx] || '';
+            // 저자 = afterVal에서 genreVal 앞까지
+            const gIdx = afterVal.lastIndexOf(genreVal);
+            if (gIdx > 0) {
+              info['저자'] = afterVal.slice(0, gIdx).trim();
+              info['분야'] = genreVal;
+            }
+          }
+        }
 
         const getInfo = (...keys) => { for(const k of keys){ if(info[k]) return info[k]; } return ''; };
 
