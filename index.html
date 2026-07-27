@@ -1251,10 +1251,19 @@ function renderTabs(){
     return `<button class="tab-btn ${activeTab===t.id?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`;
   }).join('');
 }
+// 상단 KPI 바 / 월별 추이 차트를 숨길 탭
+const HIDE_PILLS = ['books','data'];
+const HIDE_TREND = ['channel','calendar','books','data'];
+function applyTopVisibility(){
+  const pillEl  = document.querySelector('.pill-bar-wrap');
+  const trendEl = document.getElementById('trend-chart');
+  if(pillEl)  pillEl.style.display  = HIDE_PILLS.includes(activeTab) ? 'none' : '';
+  if(trendEl) trendEl.parentElement.style.display = HIDE_TREND.includes(activeTab) ? 'none' : '';
+}
+
 function setTab(id){
   activeTab=id;
-  const trendEl = document.getElementById('trend-chart');
-  if(trendEl) trendEl.style.display = (id==='channel' || id==='calendar') ? 'none' : '';
+  applyTopVisibility();
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   renderTabs(); renderActive();
@@ -1289,8 +1298,7 @@ function renderPills(){
     <div class="pill"><div class="pill-lbl">연 매출 달성률</div><div class="pill-val ${achPct>=100?'ok':''}">${achPct}%</div><div class="pill-sub">${m+1}개월 누적</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 비용</div><div class="pill-val">${won(cumCost)}</div><div class="pill-sub">마케팅+출판+경상비</div></div>
     <div class="pill"><div class="pill-lbl">연 누적 손익</div><div class="pill-val ${cumProfit>=0?'ok':'dn'}">${cumProfit>=0?'+':''}${won(cumProfit)}</div><div class="pill-sub">순매출 기준</div></div>`;
-  const trendEl = document.getElementById('trend-chart');
-  if(trendEl) trendEl.style.display = activeTab === 'channel' ? 'none' : '';
+  applyTopVisibility();
   renderTrendChart(m);
 }
 
@@ -3199,33 +3207,114 @@ function renderCalendarEmpty(){
 }
 
 function renderData(){
+  const rule = (n,t) => `<tr><td style="width:22px;color:var(--ink3);font-size:11px;font-weight:800">${n}</td><td style="font-size:12px;color:var(--ink2);line-height:1.7">${t}</td></tr>`;
+  const card = (title, sub, body) => `
+    <div class="card gap2">
+      <div class="card-title">${title}${sub?` <small>${sub}</small>`:''}</div>
+      ${body}
+    </div>`;
+  const cols = rows => `<table><tr><th style="width:150px">열</th><th>입력 내용</th></tr>${
+    rows.map(([c,d])=>`<tr><td><b style="font-size:12px">${c}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td></tr>`).join('')}</table>`;
+
   document.getElementById('tab-data').innerHTML=`
     <div class="card gap">
-      <div class="card-title">🔗 구글 시트 실시간 연동 설정</div>
-      <div style="background:var(--info-dim);border:1px solid rgba(26,82,138,.2);border-radius:var(--r2);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--info)">
-        📊 아래 가이드대로 설정하면 구글 시트 저장 시 대시보드가 자동 갱신됩니다 (${CFG.autoRefreshMin}분 간격)
-      </div>
-      <div style="font-size:13px;line-height:2.2;color:var(--ink2)">
-        <b style="color:var(--ink)">1단계</b> &nbsp; 구글 시트를 <b>링크 있는 모든 사용자 → 뷰어</b>로 공유<br>
-        <b style="color:var(--ink)">2단계</b> &nbsp; 공유 URL의 <code style="background:var(--surface2);padding:1px 6px;border-radius:3px">/d/<b>[시트ID]</b>/edit</code> 에서 시트ID 복사<br>
-        <b style="color:var(--ink)">3단계</b> &nbsp; 대시보드 코드 상단 <code style="background:var(--surface2);padding:1px 6px;border-radius:3px">CFG.sheetId</code>에 붙여넣기<br>
-        <b style="color:var(--ink)">4단계</b> &nbsp; 저장 후 새로고침 → 연동 완료
-      </div>
-    </div>
-    <div class="card gap2">
-      <div class="card-title">📋 구글 시트 탭 구성</div>
+      <div class="card-title">입력 3원칙 <small>이것만 지키면 대부분의 오류가 안 생깁니다</small></div>
       <table>
-        <tr><th>시트 탭</th><th>설명</th><th>입력 주체</th></tr>
-        ${[
-          ['00_설정','연 목표·비밀번호·전략도서 설정','팀장'],
-          ['01_월별실적','월별 출고·반품·비용 입력','팀 전체'],
-          ['02_도서기본','도서명·저자·정가·공급가·담당 등','기획팀'],
-          ['03_마케팅비용','건별 마케팅 비용 입력 (날짜·도서·항목·금액)','마케팅팀'],
-          ['04_출판비용','건별 출판 비용 입력 (인세·제작·외주)','출판팀'],
-          ['05_채널실적','채널별 도달·저장·팔로워·수익 입력','IMC파트'],
-          ['06_집계(자동)','수식 기반 자동 집계 → 대시보드 소스','(자동)'],
-        ].map(([n,d,w])=>`<tr><td><b>${n}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td><td><span class="badge neutral">${w}</span></td></tr>`).join('')}
+        ${rule(1,'<b style="color:var(--ink)">도서는 ISBN으로 연결됩니다.</b> 도서명이 아닙니다. 신간은 <b>도서 목록</b> 탭에 먼저 등록해야 다른 탭 데이터가 붙습니다.')}
+        ${rule(2,'<b style="color:var(--ink)">표기가 다르면 별칭을 등록합니다.</b> 출고 데이터의 도서명이 도서 목록과 다르면(리커버·절판·진중문고 등) 도서 목록 <b>N열(출고표기명)</b>에 그 표기를 적습니다. 여러 개면 쉼표로 구분합니다.')}
+        ${rule(3,'<b style="color:var(--ink)">회색 탭은 건드리지 않습니다.</b> 아래 표에서 <span class="badge neutral">자동</span> 표시된 탭은 수식으로 만들어집니다. 값을 직접 입력하면 수식이 지워집니다.')}
       </table>
+    </div>
+
+    <div class="sec-label gap2">대시보드 시트</div>
+    <div class="card gap">
+      <table>
+        <tr><th>탭</th><th>역할</th><th>입력</th></tr>
+        ${[
+          ['도서 목록','전 도서 마스터. 모든 연결의 기준','수기'],
+          ['출고 RAW','서점별 출고·반품 원천 데이터','붙여넣기'],
+          ['판매량 RAW','서점별 실판매 원천 데이터','붙여넣기'],
+          ['02_비용원장','비용 건별 입력','수기'],
+          ['00_설정','연 목표·비밀번호·채널 링크','수기'],
+          ['03_출고실적','출고 RAW 월별 집계','자동'],
+          ['04_마케팅실적','판매량 RAW 월별 집계','자동'],
+          ['05_채널실적','채널 지표','수기'],
+          ['판매량_주차별 / _일별 / _일별_서점','판매량 RAW 집계','자동'],
+        ].map(([n,d,w])=>`<tr><td><b>${n}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td><td><span class="badge ${w==='자동'?'neutral':w==='붙여넣기'?'info':'acc'}">${w}</span></td></tr>`).join('')}
+      </table>
+    </div>
+
+    ${card('도서 목록', '신간이 나오면 여기부터', cols([
+      ['A · ISBN','13자리. <b>비우면 안 됩니다.</b> 이 값으로 모든 탭이 연결됩니다'],
+      ['B · 도서명','대시보드에 표시되는 이름'],
+      ['C · 내부 관리 코드','공백 없는 식별용 코드'],
+      ['F · 출간일','YYYY. M. D'],
+      ['H · 정가','숫자만'],
+      ['I · 전략도서 여부','TRUE / FALSE. TRUE인 도서만 본부 종합의 관리 신간에 표시'],
+      ['J~M · 과거출고/판매','<b>2024년 이전 출간 도서만</b> 입력. 2025년 이후 출간 도서는 비워두세요. 채우면 실적이 두 번 더해집니다'],
+      ['N · 출고표기명','출고 데이터에서 다르게 쓰이는 이름. 여러 개는 쉼표 구분'],
+    ]))}
+
+    ${card('출고 RAW / 판매량 RAW', '매월 붙여넣기', `
+      <table>
+        ${rule('','원천 파일을 <b>마지막 행 아래에 이어서</b> 붙여넣습니다. 기존 행을 덮어쓰지 마세요')}
+        ${rule('','붙여넣은 뒤 <b>S열(ISBN)</b> 수식이 마지막 행까지 채워졌는지 확인합니다')}
+        ${rule('','S열을 <b>미매칭</b>으로 필터링해서 걸리는 도서가 있으면, 도서 목록에 신간 등록이 빠졌거나 표기가 다른 경우입니다')}
+      </table>`)}
+
+    ${card('02_비용원장', '도서별 손익을 보려면 여기가 핵심', cols([
+      ['구분','지급 / 예정'],
+      ['귀속팀','마케팅 / 출판 / 기타. 본부 단위 비용 집계 기준'],
+      ['귀속월','비용이 속하는 월'],
+      ['대구분·소구분','001.인세 / 002.제작 / 003.외주 / 004.제휴 / 005.광고 / 006.서점 / 007.물류 / 008.기타'],
+      ['도서명','<b style="color:var(--bad)">도서 목록의 도서명과 정확히 일치</b>해야 도서별 비용이 집계됩니다. 지금처럼 전부 “기타”로 두면 도서별 ROAS·손익을 볼 수 없습니다'],
+      ['비용','숫자만'],
+    ]))}
+
+    <div class="sec-label gap2">마케팅 캠페인 시트</div>
+
+    ${card('00_설정', '어떤 도서를 캠페인 탭에 노출할지', cols([
+      ['도서코드','탭 이름과 <b>정확히 동일</b>하게'],
+      ['도서명','드롭다운에 표시될 이름'],
+      ['노출여부','Y인 도서만 대시보드에 나타납니다'],
+    ]))}
+
+    ${card('도서별 탭', 'A 기본정보 · B 액션 플랜', `
+      <div style="font-size:12px;color:var(--ink2);line-height:1.8;margin-bottom:12px">
+        <b style="color:var(--ink)">1행은 항목명, 2행은 값</b>입니다. 저자·분야·출간일·정가·배본부수·타깃·카피·목표를 2행에 입력합니다.<br>
+        <b style="color:var(--ink)">3행부터가 마케팅 액션</b>입니다. 한 줄에 한 건씩 아래로 이어서 씁니다.
+      </div>
+      ${cols([
+        ['A · 날짜','YYYY-MM-DD. 액션 시작일'],
+        ['B · 레인','서점광고 / 메타광고 / 구글광고 / 제휴·유튜브 / 인스타그램 / 블로그 / 이벤트 중 하나. <b>철자가 정확해야</b> 색이 입혀집니다'],
+        ['C · 액션명','타임라인 막대에 표시됩니다. <b>짧을수록 좋습니다.</b> 하루짜리 액션은 약 8자까지만 보입니다'],
+        ['D · 기간(일)','비우면 1일'],
+        ['E · 비용(원)','숫자만. 없으면 0'],
+        ['F · 비용 대분류','비용원장 대분류와 동일하게'],
+        ['G · status','confirmed / planned / done'],
+        ['H · 소재 URL','구글드라이브 링크. <b>공유 설정을 “링크가 있는 모든 사용자”로</b> 해야 이미지가 보입니다'],
+        ['I · 소재 설명','막대 클릭 시 상세 패널에 표시'],
+      ])}`)}
+
+    ${card('잘 안 될 때', '', `
+      <table>
+        <tr><th style="width:230px">증상</th><th>확인할 것</th></tr>
+        ${[
+          ['특정 도서가 목록에 없음','도서 목록에 등록됐는지, ISBN이 비어있지 않은지'],
+          ['출고는 있는데 도서가 안 잡힘','출고 RAW S열이 “미매칭”인지 → 도서 목록 N열에 표기 추가'],
+          ['타임라인 막대가 비어 있음','캠페인 시트 C열(액션명)이 비었는지'],
+          ['소재 이미지가 안 보임','구글드라이브 공유 범위 확인'],
+          ['판매량이 안 붙음','브라우저 콘솔에서 <code>mktDiag()</code> 실행'],
+          ['도서별 비용·ROAS가 0','비용원장 도서명이 “기타”로 되어 있음'],
+        ].map(([a,b])=>`<tr><td style="font-size:12px"><b>${a}</b></td><td style="font-size:12px;color:var(--ink2)">${b}</td></tr>`).join('')}
+      </table>`)}
+
+    <div class="card gap2">
+      <div class="card-title">갱신 주기</div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.9">
+        시트를 저장하면 대시보드가 <b>${CFG.autoRefreshMin}분 이내</b>에 자동 반영됩니다. 바로 확인하려면 브라우저를 새로고침하세요.<br>
+        상단 우측의 연동 상태 표시로 마지막 동기화 시각을 확인할 수 있습니다.
+      </div>
     </div>`;
 }
 
