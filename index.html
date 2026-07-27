@@ -2781,7 +2781,7 @@ function parseMonthDay(str){
 
 function driveImgUrl(url) {
   if (!url) return '';
-  const m = url.match(/\/file\/d\/([^\/]+)/);
+  const m = url.match(/\/file\/d\/([^\/\?]+)/);
   if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
   return url;
 }
