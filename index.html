@@ -2258,7 +2258,6 @@ function renderSummary(){
       const bs = inMonth(MEMBERS.map(m=>({...m, md:m.birth})));
       const as = inMonth(MEMBERS.filter(m=>m.joinYear).map(m=>({...m, md:m.joinedMD})))
                    .filter(m=>+(document.getElementById('monthPicker').value||'').slice(0,4) > +m.joinYear);
-      if(!bs.length && !as.length) return '';
       const row = (m, sub) => {
         const today = m.md === nowMD;
         return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px">
