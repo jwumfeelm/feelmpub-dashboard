@@ -3732,13 +3732,13 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     var narrow = spanCells <= 2;
     var txt = document.createElement('span');
     if(narrow){
-      txt.style.cssText='padding:1px 1px;font-size:10px;line-height:1.1;font-weight:700;color:'+c.text+';'
+      txt.style.cssText='padding:1px 1px;font-size:10px;line-height:1.25;font-weight:500;letter-spacing:-.01em;color:'+c.text+';'
         +'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;'
         +'overflow:hidden;word-break:break-all;text-align:center;pointer-events:none;'
         +'flex:1;min-width:0;';
     } else {
       var fs = Math.max(9, Math.min(11, Math.floor((spanW-28)/6)));
-      txt.style.cssText='padding:0 6px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';'
+      txt.style.cssText='padding:0 6px;font-size:'+fs+'px;font-weight:500;letter-spacing:-.005em;color:'+c.text+';'
         +'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;'
         +'pointer-events:none;flex:1;min-width:0;';
     }
