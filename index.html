@@ -411,7 +411,6 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
   box-shadow:0 2px 8px rgba(0,0,0,.25);
 }
 
-.tl-chip-wrap:hover .tl-tooltip { opacity:1; }
 .tl-chip-wrap { position:absolute; }
 </style>
 </head>
@@ -3134,6 +3133,38 @@ function clearChartHighlight(){
   if(DC_LINK && DC_LINK.band) DC_LINK.band.style.display='none';
 }
 
+// 액션 칩 툴팁 — body 직속 싱글턴.
+// 타임라인 안에 두면 overflow 에 잘리고, .section 의 animation(transform) 때문에
+// position:fixed 기준점이 뷰포트가 아니라 섹션이 되어 엉뚱한 곳에 뜬다.
+var CHIP_TIP = null;
+function chipTipEl(){
+  if (CHIP_TIP && document.body.contains(CHIP_TIP)) return CHIP_TIP;
+  CHIP_TIP = document.createElement('div');
+  CHIP_TIP.className = 'tl-tooltip';
+  document.body.appendChild(CHIP_TIP);
+  return CHIP_TIP;
+}
+function showChipTip(html, ev){
+  var t = chipTipEl();
+  t.innerHTML = html;
+  t.style.opacity = '1';
+  moveChipTip(ev);
+}
+function moveChipTip(ev){
+  var t = CHIP_TIP; if(!t) return;
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var tw = t.offsetWidth, th = t.offsetHeight;
+  var tx = ev.clientX + 14;
+  if (tx + tw > vw - 8) tx = ev.clientX - tw - 14;
+  if (tx < 8) tx = 8;
+  var ty = ev.clientY - th - 12;        // 커서 위가 기본
+  if (ty < 8) ty = ev.clientY + 18;     // 위가 좁으면 아래
+  if (ty + th > vh - 8) ty = Math.max(8, vh - th - 8);
+  t.style.left = tx + 'px';
+  t.style.top  = ty + 'px';
+}
+function hideChipTip(){ if(CHIP_TIP) CHIP_TIP.style.opacity = '0'; }
+
 function highlightTimelineDate(iso){
   if(!TL_LINK || !TL_LINK.overlay) return;
   var i = TL_LINK.dates.indexOf(iso);
@@ -3389,9 +3420,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
 
     // ── 호버 툴팁 — 집행 기간의 판매 성과를 함께 보여준다 ──
     // 타임라인이 길어지면 위 그래프가 화면 밖으로 밀리므로, 답을 여기서 바로 준다.
-    var tip=document.createElement('div');
-    tip.className='tl-tooltip';
-    tip.innerHTML=(function(){
+    var tipHTML = (function(){
       var st=parseAnyDate(a.date);
       var span=Math.max(1, parseInt(a.days,10)||1);
       var head='<div style="font-weight:800;font-size:12px;margin-bottom:2px">'+esc(a.label||a.lane)+'</div>';
@@ -3472,23 +3501,10 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
         + '같은 날 '+sameDay+'건이 함께 집행되어 개별 귀속은 불가합니다</div>';
       return out+'</div>';
     })();
-    wrap2.appendChild(tip);
 
-    // 커서 위치에 맞춰 뷰포트 안으로 배치 (타임라인 스크롤 영역에 잘리지 않도록)
-    var placeTip = function(ev){
-      var vw = window.innerWidth, vh = window.innerHeight;
-      var tw = tip.offsetWidth, th = tip.offsetHeight;
-      var tx = ev.clientX + 14;
-      if (tx + tw > vw - 8) tx = ev.clientX - tw - 14;
-      if (tx < 8) tx = 8;
-      var ty = ev.clientY - th - 12;          // 기본은 커서 위
-      if (ty < 8) ty = ev.clientY + 18;       // 위가 좁으면 아래로
-      if (ty + th > vh - 8) ty = Math.max(8, vh - th - 8);
-      tip.style.left = tx + 'px';
-      tip.style.top  = ty + 'px';
-    };
-    wrap2.addEventListener('mouseenter', placeTip);
-    wrap2.addEventListener('mousemove', placeTip);
+    wrap2.addEventListener('mouseenter', function(ev){ showChipTip(tipHTML, ev); });
+    wrap2.addEventListener('mousemove',  moveChipTip);
+    wrap2.addEventListener('mouseleave', hideChipTip);
 
     if(isExpandable){
       var arrow=document.createElement('span');
