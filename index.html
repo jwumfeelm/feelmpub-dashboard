@@ -2545,14 +2545,11 @@ function renderCalendar() {
       })))
     : null;
 
-  // 끝: 오늘 +2주까지만 본다. 출간 직후 도서에 빈 칸 90일이 깔리는 걸 막는다.
-  const today0 = new Date(); today0.setHours(0,0,0,0);
-  let finalEnd = new Date(today0); finalEnd.setDate(finalEnd.getDate() + 14);
+  // 끝: 출간 후 89일(총 100일)을 기본 창으로 잡는다.
+  // 계획 수립용 여백이 필요하므로 데이터가 없어도 창은 유지한다.
+  let finalEnd = new Date(pubDate); finalEnd.setDate(finalEnd.getDate() + 89);
+  // 데이터나 액션이 그보다 뒤까지 있으면 잘리지 않게 확장
   if (lastSales && lastSales > finalEnd) finalEnd = new Date(lastSales);
-  // 다만 출간 100일 창을 넘기지는 않는다 (오래된 도서가 무한히 길어지는 것 방지)
-  const cap = new Date(pubDate); cap.setDate(cap.getDate() + 89);
-  if (finalEnd > cap) finalEnd = cap;
-  // 계획된 액션이 그보다 뒤까지 있으면 잘리지 않게 확장
   if (maxActDate && maxActDate > finalEnd) finalEnd = maxActDate;
   // 최소 폭 보장 (시작일보다 앞서는 경우 방지)
   if (finalEnd < startDate) { finalEnd = new Date(startDate); finalEnd.setDate(finalEnd.getDate() + 20); }
