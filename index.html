@@ -542,7 +542,7 @@ const M_MKT_COST    = Array(12).fill(0); // 마케팅비
 const M_PUB_COST    = Array(12).fill(0); // 출판비
 const M_COM_COST    = Array(12).fill(0); // 공통비
 const M_TOTAL_COST  = Array(12).fill(0);
-// 계획(미집행) 비용 — 확정과 섞지 않고 따로 담는다
+// 계획(미지급) 비용 — 지급분과 섞지 않고 따로 담는다
 // 01_월별실적 수식이 계획을 포함하도록 고쳐졌는지에 따라 계산이 달라지므로,
 // 두 상태 모두에서 맞게 나오도록 여기서 판정한다.
 function costSplit(i){
@@ -1194,9 +1194,9 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
                        || bookByTitle.get(String(r['도서명']||'').replace(/\s/g,''))
                        || null;
 
-    // ── 02_비용원장 → 월별 계획(미집행) 비용 ──
+    // ── 02_비용원장 → 월별 계획(미지급) 비용 ──
     // 대부분 익월말 지급이라 당월은 계속 '계획' 상태다.
-    // 확정만 보면 당월 비용이 0으로 보이므로, 계획을 따로 담아 함께 표시한다.
+    // 지급분만 보면 당월 비용이 0으로 보이므로, 계획을 따로 담아 함께 표시한다.
     (function(){
       const yy = String(yr);
       const mk = Array(12).fill(0), pb = Array(12).fill(0), cm = Array(12).fill(0);
@@ -1232,7 +1232,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       if (am && am < pm) COST_BY_PAY[pm].fromPrev += amt;   // 이전 달 귀속분
     });
 
-    // ── 귀속팀 x 대구분 집계 (기준월까지) ──
+    // ── 귀속팀 x 대구분 집계 (귀속 기준, 기준월까지) ──
     Object.keys(COST_BY_CAT).forEach(k => delete COST_BY_CAT[k]);
     (function(){
       const upto = document.getElementById('monthPicker').value.slice(0,7);
@@ -1267,7 +1267,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     });
     COST_NOBOOK.배분시작 = _firstAssigned;
 
-    // ── 02_비용원장 → 도서별 누적 비용 (확정만)
+    // ── 02_비용원장 → 도서별 누적 비용 (지급분만)
     cost.forEach(r => {
       if ((r['구분']||'').trim() !== '지급') return;
       const bookName = r['도서명'] || '';
@@ -1983,8 +1983,8 @@ function renderSummary(){
       <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
       <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
       <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
-      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `확정 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
-      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(확정+계획) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
+      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `지급 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
+      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지급+계획) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
     </div>
 
     <!-- 중단: 항목별 매출 추이 + 이슈 -->
@@ -2406,11 +2406,11 @@ function renderCost(){
     const rows = Object.keys(src).map(k => ({
       name:k, fixed:src[k].fixed, plan:src[k].plan, total:src[k].fixed+src[k].plan
     })).sort((x,y)=>y.total-x.total);
-    if(!rows.length) return `<div class="empty-row">해당 기간 집행 내역이 없습니다</div>`;
+    if(!rows.length) return `<div class="empty-row">해당 기간 귀속된 비용이 없습니다</div>`;
     const sum = rows.reduce((a,g)=>a+g.total,0) || 1;
     const hasPlan = rows.some(g=>g.plan>0);
     return `<table>
-      <tr><th>항목</th><th class="right">확정</th>${hasPlan?'<th class="right">계획</th>':''}<th class="right">합계</th><th class="right" style="width:96px">비중</th></tr>
+      <tr><th>항목</th><th class="right">지급</th>${hasPlan?'<th class="right">계획</th>':''}<th class="right">합계</th><th class="right" style="width:96px">비중</th></tr>
       ${rows.map(g=>{
         const r = Math.round(g.total/sum*100);
         return `<tr>
@@ -2432,7 +2432,7 @@ function renderCost(){
   document.getElementById('tab-cost').innerHTML=`
     <!-- 상단 당월 KPI -->
     <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal + (M_TOTAL_PLAN[m]||0))}</div><div class="kpi-sub">${(M_TOTAL_PLAN[m]||0) > 0 ? `확정 ${won(mTotal)} · <span style="color:var(--warn)">계획 ${won(M_TOTAL_PLAN[m])}</span>` : '마케팅·출판 + 경상비'}</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal + (M_TOTAL_PLAN[m]||0))}</div><div class="kpi-sub">${(M_TOTAL_PLAN[m]||0) > 0 ? `지급 ${won(mTotal)} · <span style="color:var(--warn)">계획 ${won(M_TOTAL_PLAN[m])}</span>` : '마케팅·출판 + 경상비'}</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 마케팅팀</div><div class="kpi-val">${won(mMkt)}</div><div class="kpi-sub">비중 ${pct(mMkt,mTotal)}%</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 출판팀</div><div class="kpi-val">${won(mPub)}</div><div class="kpi-sub">비중 ${pct(mPub,mTotal)}%</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 공통 비용</div><div class="kpi-val">${won(mCom)}</div><div class="kpi-sub">물류·택배 등</div></div>
@@ -2451,18 +2451,18 @@ function renderCost(){
         + `<div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--ink);margin-top:10px">${won(val)}</div>`
         + `<div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.6">${detail}</div></div>`;
       return `<div class="card gap">
-        <div class="card-title">당월 비용 — 두 가지 관점 <small>귀속월과 지급월은 시점이 다릅니다</small></div>
+        <div class="card-title">당월 비용 — 귀속 기준 / 지급 기준 <small>비용이 귀속되는 달과 돈이 나가는 달은 다릅니다</small></div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">`
-        + box('귀속 기준 · 손익', ym + ' 에 발생한 비용', cs.total,
-            cs.plan > 0 ? `확정 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '전액 확정')
+        + box('귀속 기준 · 손익', ym + ' 에 귀속된 비용', cs.total,
+            cs.plan > 0 ? `지급 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '전액 지급')
         + box('지급 기준 · 자금', ym + ' 에 실제로 나가는 돈', payTot,
-            [ pay.fromPrev > 0 ? `이전 달 귀속 ${won(pay.fromPrev)}` : null,
-              (payTot - pay.fromPrev) > 0 ? `당월 귀속 ${won(payTot - pay.fromPrev)}` : null,
-              pay.plan > 0 ? `<span style="color:var(--warn)">미집행 ${won(pay.plan)}</span>` : null
+            [ pay.fromPrev > 0 ? `이전 달 귀속분 ${won(pay.fromPrev)}` : null,
+              (payTot - pay.fromPrev) > 0 ? `당월 귀속분 ${won(payTot - pay.fromPrev)}` : null,
+              pay.plan > 0 ? `<span style="color:var(--warn)">계획 ${won(pay.plan)}</span>` : null
             ].filter(Boolean).join(' · '))
         + `</div>
         <div style="font-size:11px;color:var(--ink3);margin-top:12px;line-height:1.6">
-          손익 지표는 <b>귀속 기준</b>을 씁니다. 대부분 익월말 지급이라 당월 귀속분은 월중 내내 계획 상태로 남습니다.</div>
+          손익 지표는 모두 <b>귀속 기준</b>을 씁니다. 대부분 익월말 지급이라 당월 귀속분은 월중 내내 계획 상태로 남습니다.</div>
       </div>`;
     })()}
 
@@ -2490,7 +2490,7 @@ function renderCost(){
         ${progBar('경상비',     cumCom, cumTotal, '#96A1AE')}
         <div style="margin-top:12px;padding:12px;background:var(--surface2);border-radius:var(--r2);display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
           ${(()=>{const pl=M_TOTAL_PLAN.slice(0,m+1).reduce((a,b)=>a+b,0);
-            return [['확정 집행',cumTotal-pl],['계획(미집행)',pl],['누적 합계',cumTotal]];})().map(([l,v])=>`
+            return [['지급',cumTotal-pl],['계획',pl],['합계',cumTotal]];})().map(([l,v])=>`
             <div style="text-align:center">
               <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
               <div style="font-size:15px;font-weight:900;color:var(--ink)">${won(v)}</div>
@@ -2500,7 +2500,7 @@ function renderCost(){
     </div>
 
     <!-- 하단: 항목별 상세 -->
-    <div class="sec-label gap2">항목별 집행 구성 <small style="font-weight:500;color:var(--ink3)">기준월까지 누적 · 비용원장 대구분 기준</small></div>
+    <div class="sec-label gap2">항목별 비용 구성 <small style="font-weight:500;color:var(--ink3)">기준월까지 귀속 기준 누적 · 비용원장 대구분</small></div>
     <div class="g2">
       <div class="card">
         <div class="card-title">마케팅팀</div>
@@ -4233,9 +4233,9 @@ function renderData(){
       ['귀속팀','마케팅 / 출판 / 기타. 본부 단위 비용 집계 기준'],
       ['귀속월','비용이 속하는 월'],
       ['대구분·소구분','001.인세 / 002.제작 / 003.외주 / 004.제휴 / 005.광고 / 006.서점 / 007.물류 / 008.기타'],
-      ['구분','<b>계획</b>으로 미리 넣고, 실제 집행되면 <b>지급</b>으로 바꿉니다. 대시보드는 둘 다 읽되 <b>확정(지급)</b>과 <b>계획</b>을 나눠서 표시합니다'],
-      ['귀속월','<b style="color:var(--bad)">비용이 발생한 달</b>을 넣습니다. 익월말 지급이어도 귀속월은 발생한 달입니다. 대시보드 월별 집계는 이 열 기준입니다'],
-      ['지급월','실제 돈이 나가는 달. 자금 일정용이며 대시보드 집계에는 쓰지 않습니다'],
+      ['구분','<b>계획</b>으로 미리 넣고, 실제로 나가면 <b>지급</b>으로 바꿉니다. 대시보드는 둘 다 읽되 나눠서 표시합니다'],
+      ['귀속월','<b style="color:var(--bad)">비용이 귀속되는 달.</b> 익월말 지급이어도 여기는 비용이 생긴 달을 넣습니다.<br>손익 지표(월별 비용·손익·도서별 비용)는 전부 이 열 기준입니다'],
+      ['지급월','<b>돈이 실제로 나가는 달.</b> 대부분 귀속월의 익월입니다. 비용 탭의 <b>지급 기준</b> 카드에서만 씁니다'],
       ['도서명','<b>도서 목록의 도서명과 정확히 일치</b>해야 도서별 비용이 집계됩니다.<br>특정 도서에 안 붙는 비용은 <b>기타</b>, 도서를 알 수 없는 과거 비용은 <b>미상</b>으로 적습니다. 둘 다 도서별 집계에서는 빠지고 비용 탭에 따로 표시됩니다'],
       ['비용','숫자만'],
     ]))}
