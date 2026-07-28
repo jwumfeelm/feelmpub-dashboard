@@ -1382,9 +1382,21 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
 function initApp(){
   renderTabs(); renderPills(); renderActive();
   stampConfNote();
+
+  // 조작 중 판정 — 마지막 마우스 움직임 이후 20초간은 '사용 중'으로 본다
+  var _idleT = null;
+  document.addEventListener('mousemove', function(){
+    window.__userActive = true;
+    clearTimeout(_idleT);
+    _idleT = setTimeout(function(){ window.__userActive = false; }, 20000);
+  }, {passive:true});
   loadSheets();
   if(CFG.autoRefreshMin > 0) {
-    setInterval(loadSheets, CFG.autoRefreshMin * 60 * 1000);
+    // 자동 새로고침이 보고 있던 위치를 되돌리지 않도록, 마우스가 화면 위에 있으면 건너뛴다
+    setInterval(function(){
+      if (window.__userActive) return;      // 조작 중이면 다음 주기로 미룸
+      loadSheets();
+    }, CFG.autoRefreshMin * 60 * 1000);
   }
 }
 function onMonthChange(){ renderPills(); renderActive(); }
@@ -2520,21 +2532,38 @@ function renderCalendar() {
   // 일별 판매는 daySalesByDate() 가 판매량_일별_서점에서 직접 만든다
   const sales   = null;
 
-  // 날짜 범위 계산
-  const pubDate   = new Date(book.pubDate);
+  // ── 날짜 범위 계산 ──
+  // 판매 데이터가 있는 마지막 날 (없으면 null)
+  const _salesKeys = Object.keys(daySalesByDate(calBook)).sort();
+  const lastSales  = _salesKeys.length ? parseAnyDate(_salesKeys[_salesKeys.length-1]) : null;
+
+  // 출간일이 비어 있으면 데이터 시작일, 그것도 없으면 오늘을 기준으로
+  let pubDate = parseAnyDate(book.pubDate);
+  if (!pubDate) pubDate = (_salesKeys.length ? parseAnyDate(_salesKeys[0]) : new Date());
+
   // 시작: 항상 출간일 -10일 (예약판매 구간)
   const startDate = new Date(pubDate); startDate.setDate(startDate.getDate()-10);
 
-  const allDates  = actions.map(a=>new Date(a.date));
-  const maxActDate= allDates.length
-    ? new Date(Math.max(...allDates.map(a=>{
-        const d=new Date(a.date); d.setDate(d.getDate()+(a.days||1)-1); return d;
+  // 액션이 끝나는 마지막 날
+  const maxActDate = actions.length
+    ? new Date(Math.max(...actions.map(a=>{
+        const d = parseAnyDate(a.date) || pubDate;
+        const e = new Date(d); e.setDate(e.getDate() + (parseInt(a.days,10)||1) - 1);
+        return e.getTime();
       })))
-    : new Date(pubDate.getTime() + 89*86400000);
+    : null;
 
-  // 최소 출간 후 89일 보장
-  const minEnd   = new Date(pubDate); minEnd.setDate(minEnd.getDate()+89);
-  const finalEnd = maxActDate > minEnd ? maxActDate : minEnd;
+  // 끝: 오늘 +2주까지만 본다. 출간 직후 도서에 빈 칸 90일이 깔리는 걸 막는다.
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  let finalEnd = new Date(today0); finalEnd.setDate(finalEnd.getDate() + 14);
+  if (lastSales && lastSales > finalEnd) finalEnd = new Date(lastSales);
+  // 다만 출간 100일 창을 넘기지는 않는다 (오래된 도서가 무한히 길어지는 것 방지)
+  const cap = new Date(pubDate); cap.setDate(cap.getDate() + 89);
+  if (finalEnd > cap) finalEnd = cap;
+  // 계획된 액션이 그보다 뒤까지 있으면 잘리지 않게 확장
+  if (maxActDate && maxActDate > finalEnd) finalEnd = maxActDate;
+  // 최소 폭 보장 (시작일보다 앞서는 경우 방지)
+  if (finalEnd < startDate) { finalEnd = new Date(startDate); finalEnd.setDate(finalEnd.getDate() + 20); }
 
   // 날짜 배열
   const dates = [];
@@ -2732,7 +2761,7 @@ function renderCalendar() {
           '<line id="dhl-'+calBook+'" x1="0" x2="0" y1="'+PAD.t+'" y2="'+(PAD.t+cH)+'" stroke="#37424F" stroke-width="1" stroke-dasharray="3,3" opacity="0" pointer-events="none"/>'+
           '<rect x="'+PAD.l+'" y="'+PAD.t+'" width="'+cW+'" height="'+cH+'" fill="transparent" id="day-hover-'+calBook+'"/>'+
         '</svg>'+
-        '<div id="'+ttId+'" style="display:none;position:absolute;top:8px;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);font-size:11px;line-height:1.5;padding:10px 13px;border-radius:var(--r2);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--sh-lg);min-width:168px"></div>'+
+        '<div id="'+ttId+'" style="display:none;position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);font-size:11px;line-height:1.5;padding:12px 14px;border-radius:var(--r2);pointer-events:none;box-shadow:var(--sh-lg)"></div>'+ttId+'" style="display:none;position:absolute;top:8px;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);font-size:11px;line-height:1.5;padding:10px 13px;border-radius:var(--r2);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--sh-lg);min-width:168px"></div>'+
         '</div></div>';
     })()}
 
@@ -3005,10 +3034,6 @@ function initDayChartHover() {
     const xp = PAD_L + (n > 1 ? idx/(n-1)*cW : cW/2);
     hl.setAttribute('x1', xp); hl.setAttribute('x2', xp); hl.style.opacity = '1';
     tt.style.display = 'block';
-    // 툴팁이 오른쪽 밖으로 넘치면 커서 왼쪽에 붙인다 (박스 실제 폭 기준)
-    const ttX = xp * (r.width/W);
-    const ttW = tt.offsetWidth || 180;
-    tt.style.left = (ttX + 14 + ttW > r.width ? Math.max(0, ttX - ttW - 14) : ttX + 14) + 'px';
     const d = sorted[idx];
     const row = storeMapH[d.date] || null;
     const dt  = parseAnyDate(d.date);
@@ -3035,26 +3060,42 @@ function initDayChartHover() {
       }).join('');
     }
 
-    // 그날 집행된 마케팅 액션 — 타임라인까지 시선을 옮기지 않아도 되도록 여기서 함께 보여준다
+    // 그날 집행된 마케팅 액션 — 세로로 이어 붙이면 툴팁이 화면을 넘겨서 2단으로 배치
     const acts = (TL_LINK && TL_LINK.actByDate) ? (TL_LINK.actByDate[d.date] || []) : [];
+    let actHtml = '';
     if (acts.length) {
-      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">'
-        + '<div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--ink3);'
-        + 'text-transform:uppercase;margin-bottom:5px">집행 액션 ' + acts.length + '건</div>'
-        + acts.slice(0,5).map(a => {
+      actHtml = '<div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--ink3);'
+        + 'text-transform:uppercase;margin-bottom:6px">집행 액션 ' + acts.length + '건</div>'
+        + acts.map(a => {
             const c = LANE_COLORS[a.lane] || {bg:'#CDD4DE', border:'#B7C0CA'};
-            const dayTag = a.span > 1 ? ' <span style="color:var(--ink3);font-weight:500">'+a.day+'/'+a.span+'일차</span>' : '';
-            return '<div style="display:flex;align-items:center;gap:8px;line-height:1.8">'
-              + '<span style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+c.bg
+            const dayTag = a.span > 1 ? ' <span style="color:var(--ink3);font-weight:500">'+a.day+'/'+a.span+'</span>' : '';
+            return '<div style="display:flex;align-items:center;gap:7px;line-height:1.75;white-space:nowrap">'
+              + '<span style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:'+c.bg
               + ';border:1px solid '+c.border+'"></span>'
               + '<span style="color:var(--ink);font-weight:700">'+esc(a.label||a.lane)+'</span>'
               + dayTag + '</div>';
-          }).join('')
-        + (acts.length > 5 ? '<div style="color:var(--ink3);margin-top:3px">외 '+(acts.length-5)+'건</div>' : '')
-        + '</div>';
+          }).join('');
     }
 
-    tt.innerHTML = html;
+    tt.innerHTML = actHtml
+      ? '<div style="display:flex;gap:18px;align-items:flex-start">'
+        + '<div>' + html + '</div>'
+        + '<div style="border-left:1px solid var(--border);padding-left:16px">' + actHtml + '</div>'
+        + '</div>'
+      : html;
+
+    // 커서 기준으로 뷰포트 안에 들어오도록 배치 (페이지를 밀어내지 않는다)
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const tw = tt.offsetWidth, th = tt.offsetHeight;
+    let tx = e.clientX + 16;
+    if (tx + tw > vw - 8) tx = e.clientX - tw - 16;
+    if (tx < 8) tx = 8;
+    let ty = e.clientY - th / 2;
+    if (ty + th > vh - 8) ty = vh - th - 8;
+    if (ty < 8) ty = 8;
+    tt.style.left = tx + 'px';
+    tt.style.top  = ty + 'px';
+
     // 타임라인의 같은 날짜 열을 함께 표시
     highlightTimelineDate(d.date);
   });
