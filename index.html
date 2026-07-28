@@ -799,6 +799,22 @@ async function fetchMktSheet(gid) {
   }).filter(r => Object.values(r).some(v => v !== ''));
 }
 
+// '26년' 같은 연도 열과 '01/14' 같은 월일 값을 조합한다.
+// 출간 기획 시트는 배본일이 연도 없이 표시되는 경우가 있다.
+function dateWithYear(v, yearHint){
+  var d = parseAnyDate(v);
+  if (d) return d;
+  var t = String(v == null ? '' : v).trim();
+  var m = t.match(/^(\d{1,2})\s*[\/.\-월]\s*(\d{1,2})/);
+  if (!m) return null;
+  var ym = String(yearHint || '').match(/(\d{2,4})/);
+  if (!ym) return null;
+  var y = +ym[1]; if (y < 100) y += 2000;
+  var mo = +m[1], dd = +m[2];
+  if (mo < 1 || mo > 12 || dd < 1 || dd > 31) return null;
+  return new Date(y, mo - 1, dd);
+}
+
 // ── 출판팀 시트 ──
 // 탭마다 제목 행이 위에 있어 헤더 위치가 다르므로, 알려진 열 이름으로 헤더 행을 찾는다.
 async function fetchPubGrid(gid) {
@@ -831,13 +847,14 @@ async function loadPubSheets() {
     if (hi < 0) throw new Error('헤더 행(도서명·배본일)을 찾지 못했습니다');
     const rows = grid.slice(hi + 1).filter(r => String(r[4]||'').trim());
     const books = rows.map(r => {
-      const stages = PUB_STAGES.map(st => ({key: st.key, date: parseAnyDate(r[st.col])}))
+      const stages = PUB_STAGES.map(st => ({key: st.key, date: dateWithYear(r[st.col], String(r[0]||''))}))
                                .filter(x => x.date);
-      const ship = parseAnyDate(r[3]) || parseAnyDate(r[2]);
+      const yr0 = String(r[0]||'').trim();
+      const ship = dateWithYear(r[3], yr0) || dateWithYear(r[2], yr0);
       return {
         year:   String(r[0]||'').trim(),
         month:  String(r[1]||'').trim(),
-        inDate: parseAnyDate(r[2]),
+        inDate: dateWithYear(r[2], yr0),
         ship:   ship,
         title:  String(r[4]||'').trim(),
         author: String(r[5]||'').trim(),
@@ -1633,8 +1650,8 @@ function renderTabs(){
   }).join('');
 }
 // 상단 KPI 바 / 월별 추이 차트를 숨길 탭
-const HIDE_PILLS = ['books','data'];
-const HIDE_TREND = ['channel','calendar','books','data'];
+const HIDE_PILLS = ['books','data','publish'];
+const HIDE_TREND = ['channel','calendar','books','data','publish'];
 function applyTopVisibility(){
   const pillEl  = document.querySelector('.pill-bar-wrap');
   const trendEl = document.getElementById('trend-chart');
@@ -3299,17 +3316,27 @@ function ymd(d){
   return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
 }
 function parseAnyDate(v){
-  if(v instanceof Date) return isNaN(v)?null:v;
-  if(v==null || v==='') return null;
-  var t=String(v).trim();
-  var p=t.replace(/[.\/]/g,'-').replace(/\s/g,'').split('-').filter(function(x){return x!=='';});
-  if(p.length>=3){
-    var y=parseInt(p[0],10), m=parseInt(p[1],10), dd=parseInt(p[2],10);
-    if(y&&m&&dd) return new Date(y,m-1,dd);
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (v == null || v === '') return null;
+  var t = String(v).trim();
+  // "2026-01-14 00:00:00" / "2026-01-14T09:30" 처럼 시간이 붙은 값 → 시간 부분 제거.
+  // 안 벗기면 '1400' 이 일(日)로 먹혀 엉뚱한 날짜가 나온다.
+  t = t.replace(/[T\s]+\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*(Z|[+-]\d{2}:?\d{2})?$/i, '').trim();
+  var p = t.replace(/[.\/]/g, '-').replace(/\s/g, '').split('-').filter(function(x){ return x !== ''; });
+  if (p.length >= 3) {
+    var y = +p[0], m = +p[1], d = +p[2];
+    if (p[0].length <= 2 && y < 100) y += 2000;          // 26-01-14
+    if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return new Date(y, m - 1, d);
+    return null;
   }
-  var d=new Date(t);
-  return isNaN(d)?null:d;
+  // 연도 없는 MM/DD 는 브라우저가 2001년 등으로 해석하므로 버린다.
+  // (연도를 아는 쪽에서 pubDateOf 같은 헬퍼로 조합해야 한다)
+  if (p.length === 2 && +p[0] <= 31 && +p[1] <= 31) return null;
+  var d2 = new Date(t);
+  if (isNaN(d2)) return null;
+  return d2.getFullYear() < 2000 ? null : d2;
 }
+
 // 진단용 — 콘솔에서 mktDiag() 실행
 function mktDiag(){
   var d = window.__mktStoreDiag || {rows:0};
