@@ -634,6 +634,8 @@ const won = n => {
   return n.toLocaleString()+'원';
 };
 const wonFull = n => (n<0?'-':'') + Math.abs(n).toLocaleString()+'원';
+// 축 라벨용 축약 표기 (전역)
+const fmtAmt = v => v >= 100000000 ? (v/100000000).toFixed(1)+'억' : v >= 10000 ? Math.round(v/10000)+'만' : Math.round(v);
 const pct  = (a,b)=> b?Math.round(a/b*100):0;
 const esc  = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const getM = ()=>Number(document.getElementById('monthPicker').value.split('-')[1]||new Date().getMonth()+1)-1; // 0-indexed
@@ -1983,8 +1985,8 @@ function renderSummary(){
       <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
       <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
       <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
-      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `지급 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
-      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지급+계획) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
+      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
+      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지출+예정) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
     </div>
 
     <!-- 중단: 항목별 매출 추이 + 이슈 -->
@@ -2384,87 +2386,157 @@ function initWeeklyChartHover() {
 ───────────────────────────────────── */
 function renderCost(){
   const m=getM();
-  const mMkt=M_MKT_COST[m]||0, mPub=M_PUB_COST[m]||0, mCom=M_COM_COST[m]||0, mTotal=mMkt+mPub+mCom;
-  const cumMkt=M_MKT_COST.slice(0,m+1).reduce((a,b)=>a+b,0);
-  const cumPub=M_PUB_COST.slice(0,m+1).reduce((a,b)=>a+b,0);
-  const cumCom=M_COM_COST.slice(0,m+1).reduce((a,b)=>a+b,0);
-  const cumTotal=cumMkt+cumPub+cumCom;
+  const ym=document.getElementById('monthPicker').value.slice(0,7);
+  const mMkt=M_MKT_COST[m]||0, mPub=M_PUB_COST[m]||0, mCom=M_COM_COST[m]||0;
+  const cs=costSplit(m);
+  const mNet=M_NET_SALES[m]||0;
+  const cumTotal=M_TOTAL_COST.slice(0,m+1).reduce((a,b)=>a+b,0);
+  const cumNet  =M_NET_SALES.slice(0,m+1).reduce((a,b)=>a+b,0);
+  const cumPlan =M_TOTAL_PLAN.slice(0,m+1).reduce((a,b)=>a+b,0);
 
-  // 월별 비용 구성 추이
-  const costSegs=[
-    {label:"마케팅팀",color:"#3A5BD9"},
-    {label:"출판팀",  color:"#37424F"},
-    {label:"경상비",    color:"#96A1AE"},
-  ];
-  const costRows=MONTHS.slice(0,m+1).map((_,i)=>({
-    label:MONTHS[i], vals:[M_MKT_COST[i],M_PUB_COST[i],M_COM_COST[i]]
-  }));
+  // 비용률 = 총비용 / 순매출. 절대 금액은 매출 따라 커지므로 효율은 이 비율로 본다.
+  const rate = i => (M_NET_SALES[i]>0) ? (M_TOTAL_COST[i]+(M_TOTAL_PLAN[i]||0))/M_NET_SALES[i]*100 : null;
+  const curRate=rate(m), prvRate=m>0?rate(m-1):null;
+  const profit = mNet - cs.total;
 
-  // 예산 데이터가 없으므로 '항목별 집행 구성'으로 대신한다
-  function catTable(team){
-    const src = COST_BY_CAT[team] || {};
-    const rows = Object.keys(src).map(k => ({
-      name:k, fixed:src[k].fixed, plan:src[k].plan, total:src[k].fixed+src[k].plan
-    })).sort((x,y)=>y.total-x.total);
-    if(!rows.length) return `<div class="empty-row">해당 기간 귀속된 비용이 없습니다</div>`;
-    const sum = rows.reduce((a,g)=>a+g.total,0) || 1;
-    const hasPlan = rows.some(g=>g.plan>0);
-    return `<table>
-      <tr><th>항목</th><th class="right">지급</th>${hasPlan?'<th class="right">계획</th>':''}<th class="right">합계</th><th class="right" style="width:96px">비중</th></tr>
-      ${rows.map(g=>{
-        const r = Math.round(g.total/sum*100);
-        return `<tr>
-          <td><b>${esc(g.name)}</b></td>
-          <td class="right">${won(g.fixed)}</td>
-          ${hasPlan?`<td class="right" style="color:var(--warn)">${g.plan>0?won(g.plan):'—'}</td>`:''}
-          <td class="right"><b>${won(g.total)}</b></td>
-          <td class="right">
-            <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
-              <div style="flex:1;height:5px;background:var(--ink5);border-radius:var(--r5);overflow:hidden;min-width:34px">
-                <div class="bar-grow" style="--w:${r}%;height:5px;background:var(--accent);border-radius:var(--r5)"></div>
-              </div><span style="width:30px;text-align:right">${r}%</span>
-            </div></td>
-        </tr>`;
-      }).join('')}
-    </table>`;
+  /* ── 비용률 추이 : 순매출 막대 + 비용률 라인 (이중 축) ── */
+  function rateChart(){
+    const idx=MONTHS.map((_,i)=>i).filter(i=>M_NET_SALES[i]>0||M_TOTAL_COST[i]>0);
+    if(idx.length<2) return `<div class="empty-row">표시할 월이 없습니다</div>`;
+    const W=1000,H=230,P={t:18,r:52,b:30,l:56};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b;
+    const maxAmt=Math.max(...idx.map(i=>Math.max(M_NET_SALES[i], M_TOTAL_COST[i]+(M_TOTAL_PLAN[i]||0))),1);
+    const rates=idx.map(rate).filter(v=>v!=null);
+    const maxR=Math.max(...rates,10)*1.25;
+    const bw=Math.min(46, cW/idx.length*0.5);
+    const xc=k=>P.l+(k+0.5)*(cW/idx.length);
+    const yA=v=>P.t+cH-(v/maxAmt)*cH;
+    const yR=v=>P.t+cH-(v/maxR)*cH;
+
+    const grid=[0,.25,.5,.75,1].map(f=>{
+      const y=P.t+cH-f*cH;
+      return `<line x1="${P.l}" x2="${P.l+cW}" y1="${y}" y2="${y}" stroke="#0F162010"/>`
+        +`<text x="${P.l-8}" y="${y+4}" fill="#96A1AE" font-size="10" text-anchor="end">${fmtAmt(maxAmt*f)}</text>`
+        +`<text x="${P.l+cW+8}" y="${y+4}" fill="#96A1AE" font-size="10">${Math.round(maxR*f)}%</text>`;
+    }).join('');
+
+    const bars=idx.map((i,k)=>{
+      const net=M_NET_SALES[i]||0, cost=M_TOTAL_COST[i]+(M_TOTAL_PLAN[i]||0);
+      const isCur=i===m;
+      return `<rect x="${xc(k)-bw/2}" y="${yA(net)}" width="${bw}" height="${Math.max(0,cH-(yA(net)-P.t))}" rx="2"
+                fill="${isCur?'#DCE3FD':'#EDF0F4'}"/>`
+           + `<rect x="${xc(k)-bw/2}" y="${yA(cost)}" width="${bw}" height="${Math.max(0,cH-(yA(cost)-P.t))}" rx="2"
+                fill="${isCur?'#3A5BD9':'#B7C0CA'}"/>`;
+    }).join('');
+
+    const pts=idx.map((i,k)=>rate(i)==null?null:`${xc(k)},${yR(rate(i))}`).filter(Boolean).join('L');
+    const dots=idx.map((i,k)=>rate(i)==null?'':
+      `<circle cx="${xc(k)}" cy="${yR(rate(i))}" r="${i===m?4:2.8}" fill="#FFF" stroke="#0F1620" stroke-width="${i===m?2.4:1.6}"/>`).join('');
+    const labels=idx.map((i,k)=>
+      `<text x="${xc(k)}" y="${P.t+cH+18}" fill="${i===m?'#0F1620':'#96A1AE'}" font-size="10"
+         font-weight="${i===m?800:400}" text-anchor="middle">${MONTHS[i]}</text>`).join('');
+    const rateTags=idx.map((i,k)=>rate(i)==null?'':
+      `<text x="${xc(k)}" y="${yR(rate(i))-10}" fill="${i===m?'#0F1620':'#77808D'}" font-size="10"
+         font-weight="${i===m?800:600}" text-anchor="middle">${Math.round(rate(i))}%</text>`).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:230px;display:block">
+      ${grid}${bars}
+      <path d="M${pts}" fill="none" stroke="#0F1620" stroke-width="2" stroke-linejoin="round"/>
+      ${dots}${rateTags}${labels}</svg>`;
   }
 
+  /* ── 대구분 구성 : 가로 막대 (지출/예정 스택) ── */
+  function catBars(team){
+    const src=COST_BY_CAT[team]||{};
+    const rows=Object.keys(src).map(k=>({name:k, paid:src[k].fixed, plan:src[k].plan, total:src[k].fixed+src[k].plan}))
+      .filter(r=>r.total>0).sort((x,y)=>y.total-x.total);
+    if(!rows.length) return `<div class="empty-row">해당 기간 귀속된 비용이 없습니다</div>`;
+    const mx=rows[0].total||1, sum=rows.reduce((a,r)=>a+r.total,0)||1;
+    return rows.map((r,i)=>{
+      const wPaid=r.paid/mx*100, wPlan=r.plan/mx*100;
+      return `<div style="display:flex;align-items:center;gap:12px;padding:7px 0${i?';border-top:1px solid var(--border)':''}">
+        <div style="width:74px;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink)">${esc(r.name.replace(/^\d+\./,''))}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;height:14px;border-radius:var(--r5);overflow:hidden;background:var(--surface3)">
+            <div class="bar-grow" style="--w:${wPaid}%;--d:${i*50}ms;background:var(--accent)"></div>
+            <div class="bar-grow" style="--w:${wPlan}%;--d:${i*50}ms;background:repeating-linear-gradient(45deg,#8AA0EE,#8AA0EE 4px,#C6D2F7 4px,#C6D2F7 8px)"></div>
+          </div>
+        </div>
+        <div style="width:82px;text-align:right;font-size:12px;font-weight:800;color:var(--ink);flex-shrink:0">${won(r.total)}</div>
+        <div style="width:34px;text-align:right;font-size:11px;color:var(--ink3);flex-shrink:0">${Math.round(r.total/sum*100)}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── 지급 스케줄 : 지급월별 나가는 돈 ── */
+  function paySchedule(){
+    const keys=Object.keys(COST_BY_PAY).filter(k=>k>=ym.slice(0,4)+'-01').sort();
+    if(!keys.length) return `<div class="empty-row">지급월이 입력된 건이 없습니다</div>`;
+    const mx=Math.max(...keys.map(k=>COST_BY_PAY[k].fixed+COST_BY_PAY[k].plan),1);
+    return `<div style="display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px">
+      ${keys.map(k=>{
+        const d=COST_BY_PAY[k], tot=d.fixed+d.plan;
+        const h=Math.max(3, tot/mx*112);
+        const isCur=k===ym, future=k>ym;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0">
+          <div style="font-size:10px;font-weight:${isCur?800:600};color:${isCur?'var(--ink)':'var(--ink3)'};white-space:nowrap">${won(tot)}</div>
+          <div class="bar-grow" style="--w:100%;height:${h}px;width:100%;border-radius:var(--r4) var(--r4) 0 0;
+            background:${future?'repeating-linear-gradient(45deg,#8AA0EE,#8AA0EE 4px,#C6D2F7 4px,#C6D2F7 8px)':(isCur?'var(--accent)':'var(--border2)')}"></div>
+          <div style="font-size:10px;font-weight:${isCur?800:400};color:${isCur?'var(--ink)':'var(--ink3)'}">${k.slice(5)}월</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  const rateDelta = (curRate!=null && prvRate!=null) ? (curRate-prvRate) : null;
+
   document.getElementById('tab-cost').innerHTML=`
-    <!-- 상단 당월 KPI -->
     <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal + (M_TOTAL_PLAN[m]||0))}</div><div class="kpi-sub">${(M_TOTAL_PLAN[m]||0) > 0 ? `지급 ${won(mTotal)} · <span style="color:var(--warn)">계획 ${won(M_TOTAL_PLAN[m])}</span>` : '마케팅·출판 + 경상비'}</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 마케팅팀</div><div class="kpi-val">${won(mMkt)}</div><div class="kpi-sub">비중 ${pct(mMkt,mTotal)}%</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 출판팀</div><div class="kpi-val">${won(mPub)}</div><div class="kpi-sub">비중 ${pct(mPub,mTotal)}%</div></div>
-      <div class="kpi"><div class="kpi-lbl">당월 공통 비용</div><div class="kpi-val">${won(mCom)}</div><div class="kpi-sub">물류·택배 등</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 비용</div>
+        <div class="kpi-val">${won(cs.total)}</div>
+        <div class="kpi-sub">${cs.plan>0?`지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>`:'전액 지출 완료'}</div>
+        ${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>
+      <div class="kpi"><div class="kpi-lbl">비용률</div>
+        <div class="kpi-val">${curRate!=null?curRate.toFixed(1):'—'}<span style="font-size:19px;font-weight:700">%</span></div>
+        <div class="kpi-sub">${rateDelta!=null
+          ? `전월 ${prvRate.toFixed(1)}% <span style="color:${rateDelta<=0?'var(--good)':'var(--bad)'};font-weight:700">${rateDelta<=0?'▼':'▲'} ${Math.abs(rateDelta).toFixed(1)}p</span>`
+          : '순매출 대비 총비용'}</div>
+        ${spark(MONTHS.map((_,i)=>rate(i)||0),m,{color:'var(--ink3)'})}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 순손익</div>
+        <div class="kpi-val ${profit>=0?'good':'bad'}">${profit>=0?'+':''}${won(profit)}</div>
+        <div class="kpi-sub">순매출 ${won(mNet)} − 비용 ${won(cs.total)}</div>
+        ${spark(M_PROFIT,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">미지급 잔액</div>
+        <div class="kpi-val">${won(cumPlan)}</div>
+        <div class="kpi-sub">${cumPlan>0?'계획 상태로 남은 금액':'전액 지출 완료'}</div>
+        ${spark(M_TOTAL_PLAN,m,{color:'var(--warn)'})}</div>
     </div>
 
-    ${(()=>{
-      const ym = document.getElementById('monthPicker').value.slice(0,7);
-      const cs = costSplit(m);
-      const pay = COST_BY_PAY[ym] || {fixed:0, plan:0, fromPrev:0};
-      const payTot = pay.fixed + pay.plan;
-      if (cs.total === 0 && payTot === 0) return '';
-      const box = (lbl, sub, val, detail) =>
-        `<div style="flex:1;min-width:220px;padding:16px 20px;background:var(--surface2);border-radius:var(--r2)">`
-        + `<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">${lbl}</div>`
-        + `<div style="font-size:11px;color:var(--ink3);margin-top:2px">${sub}</div>`
-        + `<div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--ink);margin-top:10px">${won(val)}</div>`
-        + `<div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.6">${detail}</div></div>`;
-      return `<div class="card gap">
-        <div class="card-title">당월 비용 — 귀속 기준 / 지급 기준 <small>비용이 귀속되는 달과 돈이 나가는 달은 다릅니다</small></div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">`
-        + box('귀속 기준 · 손익', ym + ' 에 귀속된 비용', cs.total,
-            cs.plan > 0 ? `지급 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '전액 지급')
-        + box('지급 기준 · 자금', ym + ' 에 실제로 나가는 돈', payTot,
-            [ pay.fromPrev > 0 ? `이전 달 귀속분 ${won(pay.fromPrev)}` : null,
-              (payTot - pay.fromPrev) > 0 ? `당월 귀속분 ${won(payTot - pay.fromPrev)}` : null,
-              pay.plan > 0 ? `<span style="color:var(--warn)">계획 ${won(pay.plan)}</span>` : null
-            ].filter(Boolean).join(' · '))
-        + `</div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:12px;line-height:1.6">
-          손익 지표는 모두 <b>귀속 기준</b>을 씁니다. 대부분 익월말 지급이라 당월 귀속분은 월중 내내 계획 상태로 남습니다.</div>
-      </div>`;
-    })()}
+    <div class="card gap">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+        <div class="card-title" style="margin:0">비용률 추이 <small>막대 = 순매출 · 진한 막대 = 총비용 · 선 = 비용률</small></div>
+        <div style="font-size:11px;color:var(--ink3)">연 누적 순매출 ${won(cumNet)} · 총비용 ${won(cumTotal)} · 비용률 ${cumNet>0?(cumTotal/cumNet*100).toFixed(1):'—'}%</div>
+      </div>
+      ${rateChart()}
+    </div>
+
+    <div class="g2 gap">
+      <div class="card">
+        <div class="card-title">비용 구성 추이 <small>팀별</small></div>
+        ${stackedBarChart(costRowsFor(m), [
+          {label:"마케팅팀",color:"#3A5BD9"},{label:"출판팀",color:"#37424F"},{label:"경상비",color:"#96A1AE"}])}
+      </div>
+      <div class="card">
+        <div class="card-title">지급 스케줄 <small>빗금 = 아직 안 나간 금액</small></div>
+        ${paySchedule()}
+      </div>
+    </div>
+
+    <div class="sec-label gap2">항목별 비용 구성 <small style="font-weight:500;color:var(--ink3)">기준월까지 귀속 기준 누적 · 실선 = 지출, 빗금 = 예정</small></div>
+    <div class="g2">
+      <div class="card"><div class="card-title">마케팅팀</div>${catBars('마케팅')}</div>
+      <div class="card"><div class="card-title">출판팀</div>${catBars('출판')}</div>
+    </div>
 
     ${(COST_NOBOOK.미상 + COST_NOBOOK.기타) > 0 ? `
     <div class="card gap2" style="border-left:3px solid var(--border2)">
@@ -2474,43 +2546,12 @@ function renderCost(){
         ${COST_NOBOOK.미상 > 0 ? `<tr><td><b style="font-size:12px">미상</b></td><td class="right"><b>${won(COST_NOBOOK.미상)}</b></td><td style="font-size:12px;color:var(--ink2)">도서별 기록이 없어 소급 배분이 불가한 비용</td></tr>` : ''}
         ${COST_NOBOOK.기타 > 0 ? `<tr><td><b style="font-size:12px">기타</b></td><td class="right"><b>${won(COST_NOBOOK.기타)}</b></td><td style="font-size:12px;color:var(--ink2)">본부 브랜딩·채널 운영 등 특정 도서에 귀속되지 않는 비용</td></tr>` : ''}
       </table>
-    </div>` : ''}
+    </div>` : ''}`;
+}
 
-    <!-- 누적 비용 상세 -->
-    <div class="sec-label gap2">누적 비용 상세</div>
-    <div class="g2e">
-      <div class="card">
-        <div class="card-title">월별 비용 구성 추이</div>
-        ${stackedBarChart(costRows, costSegs)}
-      </div>
-      <div class="card">
-        <div class="card-title">누적 비용 구성</div>
-        ${progBar('마케팅팀', cumMkt, cumTotal, '#3A5BD9')}
-        ${progBar('출판팀',   cumPub, cumTotal, '#37424F')}
-        ${progBar('경상비',     cumCom, cumTotal, '#96A1AE')}
-        <div style="margin-top:12px;padding:12px;background:var(--surface2);border-radius:var(--r2);display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          ${(()=>{const pl=M_TOTAL_PLAN.slice(0,m+1).reduce((a,b)=>a+b,0);
-            return [['지급',cumTotal-pl],['계획',pl],['합계',cumTotal]];})().map(([l,v])=>`
-            <div style="text-align:center">
-              <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
-              <div style="font-size:15px;font-weight:900;color:var(--ink)">${won(v)}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>
-
-    <!-- 하단: 항목별 상세 -->
-    <div class="sec-label gap2">항목별 비용 구성 <small style="font-weight:500;color:var(--ink3)">기준월까지 귀속 기준 누적 · 비용원장 대구분</small></div>
-    <div class="g2">
-      <div class="card">
-        <div class="card-title">마케팅팀</div>
-        ${catTable('마케팅')}
-      </div>
-      <div class="card">
-        <div class="card-title">출판팀</div>
-        ${catTable('출판')}
-      </div>
-    </div>`;
+// 월별 비용 구성 추이용 행
+function costRowsFor(m){
+  return MONTHS.slice(0,m+1).map((_,i)=>({label:MONTHS[i], vals:[M_MKT_COST[i],M_PUB_COST[i],M_COM_COST[i]]}));
 }
 
 /* ─────────────────────────────────────
