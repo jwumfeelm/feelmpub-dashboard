@@ -462,6 +462,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
     <div id="tab-mkt"      class="section"></div>
     <div id="tab-cost"     class="section"></div>
     <div id="tab-channel"  class="section"></div>
+    <div id="tab-publish"  class="section"></div>
     <div id="tab-books"    class="section"></div>
     <div id="tab-data"     class="section"></div>
 
@@ -503,6 +504,14 @@ const CFG = {
   mktGids: {
     setting:  "648690654",    // 00_설정 (노출 관리)
     // 도서 탭 GID는 00_설정의 GID 열에서 읽는다 (신간 추가 시 코드 수정 불필요)
+  },
+
+  // 출판팀 — 출간 기획 및 제작 현황
+  pubSheetId: "1fbLmOxOgFkAyC23WgTw1dkZScfvJq1z05nyGPNzTeE4",
+  pubGids: {
+    plan:   "1068912334",   // 출간 관리 New
+    rights: "1098489953",   // 외서 계약
+    export: "619861282",    // 판권 수출
   }
 };
 
@@ -518,6 +527,7 @@ const TABS = [
   {id:"channel",  label:"채널"},
   {div:true},
   {id:"calendar", label:"마케팅 캠페인"},
+  {id:"publish",  label:"출간 관리"},
   {id:"books",    label:"도서 DB"},
   {div:true},
   {id:"data",     label:"입력 가이드"},
@@ -567,6 +577,17 @@ const COST_BY_CAT = {};
 // 지급월 기준 집계 — '이번 달 실제로 나가는 돈'. 귀속월(손익)과 시점이 다르다.
 // {지급월: {fixed, plan, fromPrev}}  fromPrev = 이전 달 귀속분 금액
 const COST_BY_PAY = {};
+// 출판팀 — 출간 기획/제작 현황
+const PUB_BOOKS  = [];   // 출간 예정·진행 도서
+const PUB_RIGHTS = [];   // 외서 계약
+const PUB_EXPORT = [];   // 판권 수출
+// 제작 공정 순서 (열 위치 기준 — '디자인'이 담당자/단계 두 곳에 있어 이름으로 못 찾는다)
+const PUB_STAGES = [
+  {key:'킥오프',   col:22}, {key:'제목회의', col:23}, {key:'조판',   col:18},
+  {key:'PC교',    col:17}, {key:'1교',     col:19}, {key:'2교',   col:20},
+  {key:'3교',     col:21}, {key:'표지회의', col:24}, {key:'디자인', col:25},
+  {key:'발주',    col:26}, {key:'입고',    col:27},
+];
 const M_PROFIT      = Array(12).fill(0);
 const M_TARGET      = Array(12).fill(0);
 
@@ -778,6 +799,88 @@ async function fetchMktSheet(gid) {
   }).filter(r => Object.values(r).some(v => v !== ''));
 }
 
+// ── 출판팀 시트 ──
+// 탭마다 제목 행이 위에 있어 헤더 위치가 다르므로, 알려진 열 이름으로 헤더 행을 찾는다.
+async function fetchPubGrid(gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${CFG.pubSheetId}/export?format=csv&gid=${gid}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseCSVGrid(await res.text());
+}
+function findHeaderRow(grid, keys) {
+  for (let i = 0; i < Math.min(grid.length, 8); i++) {
+    const j = (grid[i] || []).map(v => String(v||'').replace(/\s/g,'')).join('|');
+    if (keys.every(k => j.indexOf(k.replace(/\s/g,'')) >= 0)) return i;
+  }
+  return -1;
+}
+function gridToObjs(grid, hdrIdx) {
+  const hdr = (grid[hdrIdx] || []).map(v => String(v||'').trim());
+  return grid.slice(hdrIdx + 1).map(r => {
+    const o = {_raw: r};
+    hdr.forEach((h, i) => { if (h && !(h in o)) o[h] = r[i] || ''; });
+    return o;
+  });
+}
+
+async function loadPubSheets() {
+  // 출간 관리
+  try {
+    const grid = await fetchPubGrid(CFG.pubGids.plan);
+    const hi = findHeaderRow(grid, ['도서명','배본일']);
+    if (hi < 0) throw new Error('헤더 행(도서명·배본일)을 찾지 못했습니다');
+    const rows = grid.slice(hi + 1).filter(r => String(r[4]||'').trim());
+    const books = rows.map(r => {
+      const stages = PUB_STAGES.map(st => ({key: st.key, date: parseAnyDate(r[st.col])}))
+                               .filter(x => x.date);
+      const ship = parseAnyDate(r[3]) || parseAnyDate(r[2]);
+      return {
+        year:   String(r[0]||'').trim(),
+        month:  String(r[1]||'').trim(),
+        inDate: parseAnyDate(r[2]),
+        ship:   ship,
+        title:  String(r[4]||'').trim(),
+        author: String(r[5]||'').trim(),
+        genre:  String(r[6]||'').trim(),
+        team:   String(r[7]||'').trim(),
+        status: String(r[8]||'').trim(),     // 원고 진행도
+        plan:   String(r[11]||'').trim(),    // 기획
+        editor: String(r[12]||'').trim(),    // 편집  ((구)편집은 쓰지 않는다)
+        design: String(r[14]||'').trim(),
+        mkter:  String(r[15]||'').trim(),
+        stages: stages,
+      };
+    });
+    PUB_BOOKS.splice(0, PUB_BOOKS.length, ...books);
+  } catch(e) {
+    console.warn('[출간 관리] 로드 실패:', e);
+  }
+
+  // 외서 계약 (GID 미입력이면 건너뜀)
+  if (CFG.pubGids.rights) {
+    try {
+      const grid = await fetchPubGrid(CFG.pubGids.rights);
+      const hi = findHeaderRow(grid, ['도서명','종료일']);
+      if (hi >= 0) {
+        const objs = gridToObjs(grid, hi).filter(o => String(o['도서명']||'').trim());
+        PUB_RIGHTS.splice(0, PUB_RIGHTS.length, ...objs);
+      }
+    } catch(e) { console.warn('[외서 계약] 로드 실패:', e); }
+  }
+
+  // 판권 수출 (GID 미입력이면 건너뜀)
+  if (CFG.pubGids.export) {
+    try {
+      const grid = await fetchPubGrid(CFG.pubGids.export);
+      const hi = findHeaderRow(grid, ['도서명','국가']);
+      if (hi >= 0) {
+        const objs = gridToObjs(grid, hi).filter(o => String(o['도서명']||'').trim());
+        PUB_EXPORT.splice(0, PUB_EXPORT.length, ...objs);
+      }
+    } catch(e) { console.warn('[판권 수출] 로드 실패:', e); }
+  }
+}
+
 async function loadMktSheets() {
   try {
     // 00_설정 (노출 관리)
@@ -975,6 +1078,9 @@ async function loadSheets() {
     renderActive();
 
     window.__mktMissingGid = [];
+    // 출판팀 시트 비동기 로드
+    loadPubSheets().then(() => { if (activeTab==='publish') renderPublish(); });
+
     // 마케팅 캠페인 시트 비동기 로드
     loadMktSheets().then(() => {
       if (activeTab === 'calendar') renderCalendar();
@@ -1580,6 +1686,7 @@ function renderActive(){
   else if(activeTab==='mkt')     renderMkt();
   else if(activeTab==='cost')    renderCost();
   else if(activeTab==='channel') renderChannel();
+  else if(activeTab==='publish') renderPublish();
   else if(activeTab==='books')    renderBooks();
   else if(activeTab==='calendar') renderCalendar();
   else if(activeTab==='data')    renderData();
@@ -2021,6 +2128,29 @@ function renderSummary(){
           </div>`).join('')}</div>
       </div>
     </div>
+
+    ${(()=>{
+      if(!PUB_EXPORT.length) return '';
+      const cnt = PUB_EXPORT.length;
+      const titles = new Set(PUB_EXPORT.map(r=>String(r['도서명']||'').trim()).filter(Boolean));
+      const nations = new Set(PUB_EXPORT.map(r=>String(r['국가']||'').trim()).filter(Boolean));
+      const done = PUB_EXPORT.filter(r=>/출간완료/.test(String(r['진행현황']||''))).length;
+      const box = (v,u,l) => `<div style="flex:1;min-width:110px">
+        <div style="font-size:28px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1">${v}<span style="font-size:15px;font-weight:700">${u}</span></div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:5px">${l}</div></div>`;
+      const byNation = {};
+      PUB_EXPORT.forEach(r=>{ const n=String(r['국가']||'').trim(); if(n) byNation[n]=(byNation[n]||0)+1; });
+      const top = Object.keys(byNation).sort((a,b)=>byNation[b]-byNation[a]).slice(0,6);
+      return `<div class="card gap2">
+        <div class="card-title">판권 수출 <small>누적 · 출판팀 시트</small></div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+          ${box(cnt,'건','계약')}${box(titles.size,'종','도서')}${box(nations.size,'개국','수출국')}${box(done,'건','출간 완료')}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${top.map(n=>`<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);border-radius:var(--rp);padding:4px 11px;font-size:11px;font-weight:700;color:var(--ink2)">
+            ${esc(n)}<span style="color:var(--ink3);font-weight:500">${byNation[n]}</span></span>`).join('')}
+        </div></div>`;
+    })()}
 
     <!-- 중하단: TOP 10 -->
     <div class="sec-label gap2">당월 출고·판매 TOP 10</div>
@@ -4249,6 +4379,144 @@ function openDetailPanel(a, c, material){
 
 function renderCalendarEmpty(){
   document.getElementById('tab-calendar').innerHTML=`<div class="card gap"><div class="empty-row">마케팅 캠페인 시트에 연동된 도서가 없습니다<br><span style="font-size:11px;color:var(--ink3)">캠페인 시트 00_설정에서 노출여부를 Y로 설정하세요</span></div></div>`;
+}
+
+/* ─────────────────────────────────────
+   출간 관리 (출판팀)
+───────────────────────────────────── */
+function renderPublish(){
+  const el = document.getElementById('tab-publish');
+  if (!PUB_BOOKS.length) {
+    el.innerHTML = `<div class="card gap"><div class="card-title">출간 관리</div>
+      <div class="empty-row">출간 기획 시트를 불러오지 못했습니다. 시트 공유 설정과 GID를 확인해 주세요.</div></div>`;
+    return;
+  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dday = d => d ? Math.round((d - today)/86400000) : null;
+  const ym   = document.getElementById('monthPicker').value.slice(0,7);
+
+  // 진행 중 = 배본일이 아직 안 지난 도서
+  const live = PUB_BOOKS.filter(b => b.ship && b.ship >= today).sort((a,b)=>a.ship-b.ship);
+  const thisMonth = PUB_BOOKS.filter(b => b.ship && ymd(b.ship).slice(0,7) === ym);
+  const yearBooks = PUB_BOOKS.filter(b => b.ship && String(b.ship.getFullYear()) === ym.slice(0,4));
+  const soon = live.filter(b => dday(b.ship) <= 21);
+
+  // 현재 단계 = 오늘 이전 마지막 완료 단계
+  const stageOf = b => {
+    const done = b.stages.filter(s => s.date <= today);
+    const next = b.stages.filter(s => s.date > today);
+    return {done: done.length ? done[done.length-1] : null, next: next.length ? next[0] : null, cnt: done.length};
+  };
+
+  /* 공정 진행 스텝 — 11단계 중 어디까지 왔는지 */
+  function stepBar(b){
+    const total = PUB_STAGES.length;
+    const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
+    return `<div style="display:flex;gap:2px;align-items:center">
+      ${PUB_STAGES.map(st=>{
+        const d = set[st.key];
+        const state = !d ? 'none' : (d <= today ? 'done' : 'plan');
+        const bg = state==='done' ? 'var(--accent)' : (state==='plan' ? '#C6D2F7' : 'var(--surface3)');
+        return `<span title="${st.key}${d?' · '+ymd(d).slice(5):''}"
+          style="width:11px;height:5px;border-radius:1px;background:${bg};flex-shrink:0"></span>`;
+      }).join('')}
+    </div>`;
+  }
+
+  /* 담당자별 부하 */
+  function loadBars(field, label){
+    const cnt = {};
+    live.forEach(b => {
+      String(b[field]||'').split(/[,·]/).map(x=>x.trim()).filter(Boolean)
+        .forEach(n => { cnt[n] = (cnt[n]||0)+1; });
+    });
+    const rows = Object.keys(cnt).map(k=>({name:k, n:cnt[k]})).sort((a,b)=>b.n-a.n);
+    if(!rows.length) return `<div class="empty-row">진행 중인 배정이 없습니다</div>`;
+    const mx = rows[0].n;
+    return rows.map((r,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:6px 0${i?';border-top:1px solid var(--border)':''}">
+      <div style="width:64px;font-size:12px;font-weight:700;color:var(--ink);flex-shrink:0">${esc(r.name)}</div>
+      <div style="flex:1;height:12px;background:var(--surface3);border-radius:var(--r5);overflow:hidden">
+        <div class="bar-grow" style="--w:${r.n/mx*100}%;--d:${i*45}ms;height:12px;background:var(--accent)"></div>
+      </div>
+      <div style="width:32px;text-align:right;font-size:12px;font-weight:800;color:var(--ink)">${r.n}종</div>
+    </div>`).join('');
+  }
+
+  /* 외서 계약 만료 임박 */
+  function rightsCard(){
+    if(!CFG.pubGids.rights) return `<div class="card gap2" style="border-left:3px solid var(--border2)">
+      <div class="card-title">외서 계약 <small>연동 대기</small></div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.7">
+        코드의 <b>pubGids.rights</b> 에 외서 계약 탭의 GID를 넣으면 계약 만료 임박 건이 여기에 표시됩니다.</div></div>`;
+    const rows = PUB_RIGHTS.map(r=>({
+      title: String(r['도서명']||'').trim(),
+      agency: String(r['에이전시']||'').trim(),
+      pic: String(r['담당자']||'').trim(),
+      end: parseAnyDate(r['종료일']),
+    })).filter(r=>r.end);
+    const expired = rows.filter(r=>dday(r.end) < 0).length;
+    const near = rows.filter(r=>dday(r.end) >= 0 && dday(r.end) <= 180).sort((a,b)=>a.end-b.end);
+    if(!near.length && !expired) return '';
+    return `<div class="card gap2" style="border-left:3px solid ${near.length?'var(--bad)':'var(--border2)'}">
+      <div class="card-title">외서 계약 만료 임박 <small>재계약 검토가 필요한 건</small></div>
+      ${near.length ? `<table>
+        <tr><th style="width:80px">남은 기간</th><th>도서명</th><th style="width:150px">에이전시</th><th class="right" style="width:110px">종료일</th></tr>
+        ${near.slice(0,8).map(r=>{
+          const d = dday(r.end);
+          const col = d<=30 ? 'var(--bad)' : (d<=90 ? 'var(--warn)' : 'var(--ink2)');
+          return `<tr><td><b style="color:${col};font-size:12px">D-${d}</b></td>
+            <td style="font-size:12px"><b>${esc(r.title)}</b></td>
+            <td style="font-size:12px;color:var(--ink2)">${esc(r.agency)}${r.pic?' · '+esc(r.pic):''}</td>
+            <td class="right" style="font-size:12px;color:var(--ink2)">${ymd(r.end)}</td></tr>`;
+        }).join('')}
+      </table>` : ''}
+      ${expired ? `<div style="font-size:11px;color:var(--ink3);margin-top:10px">이미 만료된 계약 ${expired}건 — 시트에서 정리 필요</div>` : ''}
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="g4 gap">
+      <div class="kpi"><div class="kpi-lbl">${ym.slice(0,4)}년 출간</div>
+        <div class="kpi-val">${yearBooks.length}<span style="font-size:19px;font-weight:700">종</span></div>
+        <div class="kpi-sub">배본일 기준</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 배본</div>
+        <div class="kpi-val">${thisMonth.length}<span style="font-size:19px;font-weight:700">종</span></div>
+        <div class="kpi-sub">${ym}</div></div>
+      <div class="kpi"><div class="kpi-lbl">제작 진행 중</div>
+        <div class="kpi-val">${live.length}<span style="font-size:19px;font-weight:700">종</span></div>
+        <div class="kpi-sub">배본 예정 도서</div></div>
+      <div class="kpi"><div class="kpi-lbl">배본 임박</div>
+        <div class="kpi-val ${soon.length?'bad':''}">${soon.length}<span style="font-size:19px;font-weight:700">종</span></div>
+        <div class="kpi-sub">3주 이내</div></div>
+    </div>
+
+    <div class="card gap">
+      <div class="card-title">제작 진행 현황 <small>배본일 순 · 진행 막대는 킥오프부터 입고까지 11단계</small></div>
+      ${live.length ? `<table>
+        <tr><th style="width:70px">D-day</th><th>도서명</th><th style="width:150px">진행</th>
+            <th style="width:120px">현재 단계</th><th style="width:150px">담당</th></tr>
+        ${live.slice(0,25).map(b=>{
+          const st = stageOf(b), d = dday(b.ship);
+          const col = d<=7 ? 'var(--bad)' : (d<=21 ? 'var(--warn)' : 'var(--ink2)');
+          const who = [b.editor, b.design].filter(Boolean).join(' · ');
+          return `<tr>
+            <td><b style="color:${col};font-size:12px">D-${d}</b><div style="font-size:10px;color:var(--ink3)">${ymd(b.ship).slice(5)}</div></td>
+            <td><b style="font-size:12px">${esc(b.title)}</b><div style="font-size:10px;color:var(--ink3)">${esc(b.author)}${b.genre?' · '+esc(b.genre):''}</div></td>
+            <td>${stepBar(b)}<div style="font-size:10px;color:var(--ink3);margin-top:3px">${st.cnt}/${PUB_STAGES.length}</div></td>
+            <td style="font-size:12px">${st.done?esc(st.done.key):'<span style="color:var(--ink3)">미착수</span>'}
+              ${st.next?`<div style="font-size:10px;color:var(--ink3)">다음 ${esc(st.next.key)} ${ymd(st.next.date).slice(5)}</div>`:''}</td>
+            <td style="font-size:11px;color:var(--ink2)">${esc(who)||'<span style="color:var(--ink3)">미배정</span>'}</td>
+          </tr>`;
+        }).join('')}
+      </table>` : `<div class="empty-row">배본 예정 도서가 없습니다</div>`}
+    </div>
+
+    <div class="g2 gap">
+      <div class="card"><div class="card-title">편집 담당 부하 <small>진행 중 도서 기준</small></div>${loadBars('editor')}</div>
+      <div class="card"><div class="card-title">디자인 담당 부하 <small>진행 중 도서 기준</small></div>${loadBars('design')}</div>
+    </div>
+
+    ${rightsCard()}`;
 }
 
 function renderData(){
