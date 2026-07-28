@@ -561,6 +561,9 @@ const M_TOTAL_PLAN  = Array(12).fill(0);
 // 도서에 붙지 않은 비용 — 사유를 구분해서 담는다
 // 미상: 상반기 소급 불가 / 기타: 특정 도서에 귀속되지 않는 공통 비용
 const COST_NOBOOK = {미상:0, 기타:0, 배분시작:''};
+// 귀속팀 x 대구분 집계 — 예산 데이터가 없으므로 '어디에 얼마 쓰는지'를 대신 보여준다
+// {팀: {대구분: {fixed, plan}}}
+const COST_BY_CAT = {};
 const M_PROFIT      = Array(12).fill(0);
 const M_TARGET      = Array(12).fill(0);
 
@@ -586,7 +589,6 @@ const DAY_SALES_STORE = {}; // {도서명: {'YYYY-MM-DD': {교보:n, 예스24:n,
 const EXPENSES = [];
 
 // 예산 — 시트에서 동적으로 채워짐
-const BUDGET = [];
 
 // 채널 — 시트(05_채널실적)에서 동적으로 채워짐
 const CHANNELS = [];
@@ -1197,6 +1199,25 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       M_PUB_PLAN.splice(0,12,...pb);
       M_COM_PLAN.splice(0,12,...cm);
       M_TOTAL_PLAN.splice(0,12,...mk.map((v,i)=>v+pb[i]+cm[i]));
+    })();
+
+    // ── 귀속팀 x 대구분 집계 (기준월까지) ──
+    Object.keys(COST_BY_CAT).forEach(k => delete COST_BY_CAT[k]);
+    (function(){
+      const upto = document.getElementById('monthPicker').value.slice(0,7);
+      cost.forEach(r => {
+        const g = (r['구분']||'').trim();
+        if (g !== '지급' && g !== '계획') return;
+        const ym = String(r['귀속월']||'').trim().slice(0,7);
+        if (!ym || ym.slice(0,4) !== String(yr) || ym > upto) return;
+        const team = (r['귀속팀']||'기타').trim() || '기타';
+        const cat  = (r['대구분']||'미분류').trim() || '미분류';
+        const amt  = toNum(r['비용']);
+        if (!COST_BY_CAT[team]) COST_BY_CAT[team] = {};
+        if (!COST_BY_CAT[team][cat]) COST_BY_CAT[team][cat] = {fixed:0, plan:0};
+        if (g === '지급') COST_BY_CAT[team][cat].fixed += amt;
+        else              COST_BY_CAT[team][cat].plan  += amt;
+      });
     })();
 
     // ── 도서 미배분 비용 집계 ──
@@ -2338,14 +2359,7 @@ function renderCost(){
   const cumCom=M_COM_COST.slice(0,m+1).reduce((a,b)=>a+b,0);
   const cumTotal=cumMkt+cumPub+cumCom;
 
-  // 팀별 예산
-  const mktBudget=BUDGET.filter(g=>g.team==='마케팅팀');
-  const pubBudget=BUDGET.filter(g=>g.team==='출판팀');
-  const comBudget=BUDGET.filter(g=>g.team==='공통');
-  const totalBudget=BUDGET.reduce((a,g)=>a+g.budget,0);
-  const totalActual=BUDGET.reduce((a,g)=>a+g.actual,0);
-
-  // 월별 팀 비용 추이
+  // 월별 비용 구성 추이
   const costSegs=[
     {label:"마케팅팀",color:"#3A5BD9"},
     {label:"출판팀",  color:"#37424F"},
@@ -2355,15 +2369,31 @@ function renderCost(){
     label:MONTHS[i], vals:[M_MKT_COST[i],M_PUB_COST[i],M_COM_COST[i]]
   }));
 
-  function budgetTable(items){
+  // 예산 데이터가 없으므로 '항목별 집행 구성'으로 대신한다
+  function catTable(team){
+    const src = COST_BY_CAT[team] || {};
+    const rows = Object.keys(src).map(k => ({
+      name:k, fixed:src[k].fixed, plan:src[k].plan, total:src[k].fixed+src[k].plan
+    })).sort((x,y)=>y.total-x.total);
+    if(!rows.length) return `<div class="empty-row">해당 기간 집행 내역이 없습니다</div>`;
+    const sum = rows.reduce((a,g)=>a+g.total,0) || 1;
+    const hasPlan = rows.some(g=>g.plan>0);
     return `<table>
-      <tr><th>항목</th><th class="right">예산</th><th class="right">집행</th><th class="right">잔여</th><th class="right">소진율</th><th>상태</th></tr>
-      ${items.map(g=>{
-        const d=g.budget-g.actual, r=pct(g.actual,g.budget);
-        const st=g.actual>g.budget?'bad':r>=90?'warn':'good';
-        return `<tr><td><b>${g.name}</b></td><td class="right">${won(g.budget)}</td><td class="right">${won(g.actual)}</td>
-          <td class="right" style="color:${d>=0?'var(--good)':'var(--bad)'}">${d>=0?'+':''}${won(d)}</td>
-          <td class="right">${r}%</td><td><span class="badge ${st}">${g.actual>g.budget?'초과':r>=90?'주의':'정상'}</span></td></tr>`;
+      <tr><th>항목</th><th class="right">확정</th>${hasPlan?'<th class="right">계획</th>':''}<th class="right">합계</th><th class="right" style="width:96px">비중</th></tr>
+      ${rows.map(g=>{
+        const r = Math.round(g.total/sum*100);
+        return `<tr>
+          <td><b>${esc(g.name)}</b></td>
+          <td class="right">${won(g.fixed)}</td>
+          ${hasPlan?`<td class="right" style="color:var(--warn)">${g.plan>0?won(g.plan):'—'}</td>`:''}
+          <td class="right"><b>${won(g.total)}</b></td>
+          <td class="right">
+            <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+              <div style="flex:1;height:5px;background:var(--ink5);border-radius:var(--r5);overflow:hidden;min-width:34px">
+                <div class="bar-grow" style="--w:${r}%;height:5px;background:var(--accent);border-radius:var(--r5)"></div>
+              </div><span style="width:30px;text-align:right">${r}%</span>
+            </div></td>
+        </tr>`;
       }).join('')}
     </table>`;
   }
@@ -2371,7 +2401,7 @@ function renderCost(){
   document.getElementById('tab-cost').innerHTML=`
     <!-- 상단 당월 KPI -->
     <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal + (M_TOTAL_PLAN[m]||0))}</div><div class="kpi-sub">${(M_TOTAL_PLAN[m]||0) > 0 ? `확정 ${won(mTotal)} · <span style="color:var(--warn)">계획 ${won(M_TOTAL_PLAN[m])}</span>` : '3개 팀 합산'}</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal + (M_TOTAL_PLAN[m]||0))}</div><div class="kpi-sub">${(M_TOTAL_PLAN[m]||0) > 0 ? `확정 ${won(mTotal)} · <span style="color:var(--warn)">계획 ${won(M_TOTAL_PLAN[m])}</span>` : '마케팅·출판 + 경상비'}</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 마케팅팀</div><div class="kpi-val">${won(mMkt)}</div><div class="kpi-sub">비중 ${pct(mMkt,mTotal)}%</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 출판팀</div><div class="kpi-val">${won(mPub)}</div><div class="kpi-sub">비중 ${pct(mPub,mTotal)}%</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 공통 비용</div><div class="kpi-val">${won(mCom)}</div><div class="kpi-sub">물류·택배 등</div></div>
@@ -2391,7 +2421,7 @@ function renderCost(){
     <div class="sec-label gap2">누적 비용 상세</div>
     <div class="g2e">
       <div class="card">
-        <div class="card-title">월별 팀 비용 추이</div>
+        <div class="card-title">월별 비용 구성 추이</div>
         ${stackedBarChart(costRows, costSegs)}
       </div>
       <div class="card">
@@ -2400,7 +2430,8 @@ function renderCost(){
         ${progBar('출판팀',   cumPub, cumTotal, '#37424F')}
         ${progBar('경상비',     cumCom, cumTotal, '#96A1AE')}
         <div style="margin-top:12px;padding:12px;background:var(--surface2);border-radius:var(--r2);display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          ${[['총 예산',totalBudget],['총 집행',totalActual],['잔여 예산',totalBudget-totalActual]].map(([l,v])=>`
+          ${(()=>{const pl=M_TOTAL_PLAN.slice(0,m+1).reduce((a,b)=>a+b,0);
+            return [['확정 집행',cumTotal-pl],['계획(미집행)',pl],['누적 합계',cumTotal]];})().map(([l,v])=>`
             <div style="text-align:center">
               <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
               <div style="font-size:15px;font-weight:900;color:var(--ink)">${won(v)}</div>
@@ -2409,16 +2440,16 @@ function renderCost(){
       </div>
     </div>
 
-    <!-- 하단: 팀별 상세 -->
-    <div class="sec-label gap2">월별 팀 단위 비용 상세</div>
+    <!-- 하단: 항목별 상세 -->
+    <div class="sec-label gap2">항목별 집행 구성 <small style="font-weight:500;color:var(--ink3)">기준월까지 누적 · 비용원장 대구분 기준</small></div>
     <div class="g2">
       <div class="card">
-        <div class="card-title">마케팅팀 <small>메타·구글·틱톡·서점 등</small></div>
-        ${budgetTable(mktBudget)}
+        <div class="card-title">마케팅팀</div>
+        ${catTable('마케팅')}
       </div>
       <div class="card">
-        <div class="card-title">출판팀 <small>인세·제작·번역 등</small></div>
-        ${budgetTable(pubBudget)}
+        <div class="card-title">출판팀</div>
+        ${catTable('출판')}
       </div>
     </div>`;
 }
@@ -4300,7 +4331,7 @@ function openDrawer(id){
         <tr style="background:var(--surface2)"><td><b>합계</b></td><td class="right"><b>${won(cumCost)}</b></td><td class="right"><b>100%</b></td></tr>
       </table>
       ${bxp.length?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--ink3);font-weight:800;margin-bottom:8px">비용 원장 (건별)</div>
-        <table><tr><th>날짜</th><th>팀</th><th>항목</th><th>세부</th><th class="right">금액</th></tr>
+        <table><tr><th>날짜</th><th>귀속팀</th><th>항목</th><th>세부</th><th class="right">금액</th></tr>
         ${bxp.map(e=>`<tr><td style="font-size:10px;color:var(--ink3)">${e.date}</td><td><span class="badge neutral" style="font-size:10px">${e.team}</span></td><td style="font-size:12px">${e.type}</td><td style="font-size:11px;color:var(--ink3)">${e.sub}</td><td class="right">${won(e.amount)}</td></tr>`).join('')}
         </table></div>`:''}
     </div>
