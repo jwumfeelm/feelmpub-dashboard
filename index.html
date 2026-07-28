@@ -542,6 +542,25 @@ const M_MKT_COST    = Array(12).fill(0); // 마케팅비
 const M_PUB_COST    = Array(12).fill(0); // 출판비
 const M_COM_COST    = Array(12).fill(0); // 공통비
 const M_TOTAL_COST  = Array(12).fill(0);
+// 계획(미집행) 비용 — 확정과 섞지 않고 따로 담는다
+// 01_월별실적 수식이 계획을 포함하도록 고쳐졌는지에 따라 계산이 달라지므로,
+// 두 상태 모두에서 맞게 나오도록 여기서 판정한다.
+function costSplit(i){
+  const sheet = M_TOTAL_COST[i] || 0;   // 01_월별실적 값
+  const plan  = M_TOTAL_PLAN[i] || 0;   // 비용원장에서 직접 센 계획
+  // 시트 값이 계획보다 작으면 수식이 아직 '지급'만 걸러내고 있다는 뜻
+  const planIncluded = sheet >= plan && plan > 0 ? (sheet - plan) >= 0 : false;
+  if (plan === 0) return {total: sheet, fixed: sheet, plan: 0};
+  if (sheet < plan) return {total: sheet + plan, fixed: sheet, plan: plan};  // 수식 미수정
+  return {total: sheet, fixed: sheet - plan, plan: plan};                    // 수식 수정 완료
+}
+const M_MKT_PLAN    = Array(12).fill(0);
+const M_PUB_PLAN    = Array(12).fill(0);
+const M_COM_PLAN    = Array(12).fill(0);
+const M_TOTAL_PLAN  = Array(12).fill(0);
+// 도서에 붙지 않은 비용 — 사유를 구분해서 담는다
+// 미상: 상반기 소급 불가 / 기타: 특정 도서에 귀속되지 않는 공통 비용
+const COST_NOBOOK = {미상:0, 기타:0, 배분시작:''};
 const M_PROFIT      = Array(12).fill(0);
 const M_TARGET      = Array(12).fill(0);
 
@@ -1156,8 +1175,47 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
                        || bookByTitle.get(String(r['도서명']||'').replace(/\s/g,''))
                        || null;
 
-    // 03_마케팅비용 → 도서별 누적 마케팅비
-    // ── 02_비용원장 → 도서별 누적 비용
+    // ── 02_비용원장 → 월별 계획(미집행) 비용 ──
+    // 대부분 익월말 지급이라 당월은 계속 '계획' 상태다.
+    // 확정만 보면 당월 비용이 0으로 보이므로, 계획을 따로 담아 함께 표시한다.
+    (function(){
+      const yy = String(yr);
+      const mk = Array(12).fill(0), pb = Array(12).fill(0), cm = Array(12).fill(0);
+      cost.forEach(r => {
+        if ((r['구분']||'').trim() !== '계획') return;
+        const ym = String(r['귀속월']||'').trim();
+        if (ym.slice(0,4) !== yy) return;
+        const i = parseInt(ym.slice(5,7),10) - 1;
+        if (isNaN(i) || i < 0 || i > 11) return;
+        const amt = toNum(r['비용']);
+        const team = (r['귀속팀'] || '').trim();
+        if (team === '마케팅') mk[i] += amt;
+        else if (team === '출판') pb[i] += amt;
+        else cm[i] += amt;
+      });
+      M_MKT_PLAN.splice(0,12,...mk);
+      M_PUB_PLAN.splice(0,12,...pb);
+      M_COM_PLAN.splice(0,12,...cm);
+      M_TOTAL_PLAN.splice(0,12,...mk.map((v,i)=>v+pb[i]+cm[i]));
+    })();
+
+    // ── 도서 미배분 비용 집계 ──
+    COST_NOBOOK.미상 = 0; COST_NOBOOK.기타 = 0;
+    let _firstAssigned = '';
+    cost.forEach(r => {
+      if ((r['구분']||'').trim() !== '지급') return;
+      const nm = String(r['도서명']||'').trim();
+      const amt = toNum(r['비용']);
+      const ym = String(r['귀속월']||'').trim().slice(0,7);
+      if (nm === '미상')      COST_NOBOOK.미상 += amt;
+      else if (nm === '기타') COST_NOBOOK.기타 += amt;
+      else if (nm && ym) {     // 실제 도서에 붙은 첫 달 = 배분 시작 시점
+        if (!_firstAssigned || ym < _firstAssigned) _firstAssigned = ym;
+      }
+    });
+    COST_NOBOOK.배분시작 = _firstAssigned;
+
+    // ── 02_비용원장 → 도서별 누적 비용 (확정만)
     cost.forEach(r => {
       if ((r['구분']||'').trim() !== '지급') return;
       const bookName = r['도서명'] || '';
@@ -1837,7 +1895,9 @@ function renderSummary(){
   const issues=[
     {type:achPct>=100?'good':'warn', val:`${achPct}%`,    label:'목표 달성률', sub:`목표 ${won(mTarget)} / 실적 ${won(mShip)}`},
     {type:retPct>=15?'bad':'warn',   val:`${retPct}%`,    label:'반품률',      sub:`반품액 ${won(mRet)} · ${retPct>=15?'위험':'정상 범위'}`},
-    {type:mProfit>=0?'good':'bad',   val:`${mProfit>=0?'+':''}${won(mProfit)}`, label:'예상 손익', sub:`순매출 ${won(mNet)} · 비용 ${won(mCost)}`},
+    (()=>{ const cs=costSplit(m), pf=mNet-cs.total;
+      return {type:pf>=0?'good':'bad', val:`${pf>=0?'+':''}${won(pf)}`, label:'예상 손익',
+              sub:`순매출 ${won(mNet)} · 비용 ${won(cs.total)}${cs.plan>0?` (계획 ${won(cs.plan)} 포함)`:''}`}; })(),
     (()=>{
       // 재고 소진 임박 도서 — 실데이터 기준 (시중재고 / 월평균 실판매)
       const cands = BOOKS.filter(b=>b.isStrategic).map(b=>{
@@ -1871,8 +1931,8 @@ function renderSummary(){
       <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
       <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
       <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mCost)}</div><div class="kpi-sub">마케팅+출판+경상비</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${mProfit>=0?'good':'bad'}">${mProfit>=0?'+':''}${won(mProfit)}</div><div class="kpi-sub">순매출 − 총 비용</div>${spark(M_PROFIT,m)}</div>
+      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `확정 ${won(cs.fixed)} · <span style="color:var(--warn)">계획 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
+      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(확정+계획) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
     </div>
 
     <!-- 중단: 항목별 매출 추이 + 이슈 -->
@@ -2311,11 +2371,21 @@ function renderCost(){
   document.getElementById('tab-cost').innerHTML=`
     <!-- 상단 당월 KPI -->
     <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal)}</div><div class="kpi-sub">3개 팀 합산</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(mTotal + (M_TOTAL_PLAN[m]||0))}</div><div class="kpi-sub">${(M_TOTAL_PLAN[m]||0) > 0 ? `확정 ${won(mTotal)} · <span style="color:var(--warn)">계획 ${won(M_TOTAL_PLAN[m])}</span>` : '3개 팀 합산'}</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 마케팅팀</div><div class="kpi-val">${won(mMkt)}</div><div class="kpi-sub">비중 ${pct(mMkt,mTotal)}%</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 출판팀</div><div class="kpi-val">${won(mPub)}</div><div class="kpi-sub">비중 ${pct(mPub,mTotal)}%</div></div>
       <div class="kpi"><div class="kpi-lbl">당월 공통 비용</div><div class="kpi-val">${won(mCom)}</div><div class="kpi-sub">물류·택배 등</div></div>
     </div>
+
+    ${(COST_NOBOOK.미상 + COST_NOBOOK.기타) > 0 ? `
+    <div class="card gap2" style="border-left:3px solid var(--border2)">
+      <div class="card-title">도서에 배분되지 않은 비용 <small>도서별 손익·ROAS 집계에서 제외됩니다</small></div>
+      <table>
+        <tr><th style="width:110px">구분</th><th class="right" style="width:140px">금액</th><th>설명</th></tr>
+        ${COST_NOBOOK.미상 > 0 ? `<tr><td><b style="font-size:12px">미상</b></td><td class="right"><b>${won(COST_NOBOOK.미상)}</b></td><td style="font-size:12px;color:var(--ink2)">도서별 기록이 없어 소급 배분이 불가한 비용</td></tr>` : ''}
+        ${COST_NOBOOK.기타 > 0 ? `<tr><td><b style="font-size:12px">기타</b></td><td class="right"><b>${won(COST_NOBOOK.기타)}</b></td><td style="font-size:12px;color:var(--ink2)">본부 브랜딩·채널 운영 등 특정 도서에 귀속되지 않는 비용</td></tr>` : ''}
+      </table>
+    </div>` : ''}
 
     <!-- 누적 비용 상세 -->
     <div class="sec-label gap2">누적 비용 상세</div>
@@ -2516,7 +2586,7 @@ function renderBooks(){
     <div class="card gap">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
         <div class="card-title" style="margin:0">도서별 종합 실적
-          <small>${booksShowAll ? `전체 ${BOOKS.length}종` : `관리 대상 ${activeCount}종 · 최근 12개월 출고 1,000만원 이상`} · 컬럼 클릭 시 정렬 · 행 클릭 시 상세</small>
+          <small>${booksShowAll ? `전체 ${BOOKS.length}종` : `관리 대상 ${activeCount}종 · 최근 12개월 출고 1,000만원 이상`} · 컬럼 클릭 시 정렬 · 행 클릭 시 상세${COST_NOBOOK.배분시작 ? ` · 도서별 비용은 ${COST_NOBOOK.배분시작}부터 집계` : ''}</small>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <input id="bookSearch" value="${esc(bookQuery)}" oninput="onBookSearch(this.value)" placeholder="도서명 · ISBN 검색  ( / )"
@@ -4070,11 +4140,13 @@ function renderData(){
       </table>`)}
 
     ${card('02_비용원장', '도서별 손익을 보려면 여기가 핵심', cols([
-      ['구분','지급 / 예정'],
       ['귀속팀','마케팅 / 출판 / 기타. 본부 단위 비용 집계 기준'],
       ['귀속월','비용이 속하는 월'],
       ['대구분·소구분','001.인세 / 002.제작 / 003.외주 / 004.제휴 / 005.광고 / 006.서점 / 007.물류 / 008.기타'],
-      ['도서명','<b style="color:var(--bad)">도서 목록의 도서명과 정확히 일치</b>해야 도서별 비용이 집계됩니다. 지금처럼 전부 “기타”로 두면 도서별 ROAS·손익을 볼 수 없습니다'],
+      ['구분','<b>계획</b>으로 미리 넣고, 실제 집행되면 <b>지급</b>으로 바꿉니다. 대시보드는 둘 다 읽되 <b>확정(지급)</b>과 <b>계획</b>을 나눠서 표시합니다'],
+      ['귀속월','<b style="color:var(--bad)">비용이 발생한 달</b>을 넣습니다. 익월말 지급이어도 귀속월은 발생한 달입니다. 대시보드 월별 집계는 이 열 기준입니다'],
+      ['지급월','실제 돈이 나가는 달. 자금 일정용이며 대시보드 집계에는 쓰지 않습니다'],
+      ['도서명','<b>도서 목록의 도서명과 정확히 일치</b>해야 도서별 비용이 집계됩니다.<br>특정 도서에 안 붙는 비용은 <b>기타</b>, 도서를 알 수 없는 과거 비용은 <b>미상</b>으로 적습니다. 둘 다 도서별 집계에서는 빠지고 비용 탭에 따로 표시됩니다'],
       ['비용','숫자만'],
     ]))}
 
