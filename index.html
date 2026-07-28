@@ -392,32 +392,25 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 
 /* ── 타임라인 칩 툴팁 ── */
 .tl-tooltip {
-  position:absolute;
-  bottom:calc(100% + 6px);
-  left:50%;
-  transform:translateX(-50%);
+  /* 타임라인이 overflow:auto 라 absolute 로 두면 잘린다. 뷰포트 기준으로 띄운다 */
+  position:fixed;
+  left:0; top:0;
   background:var(--ink);
   color:#fff;
   font-size:11px;
   font-weight:600;
   white-space:nowrap;
-  padding:5px 9px;
-  border-radius:var(--r3);
+  min-width:190px;
+  padding:9px 12px;
+  border-radius:var(--r2);
+  text-align:left;
   pointer-events:none;
   opacity:0;
   transition:opacity .15s;
   z-index:999;
   box-shadow:0 2px 8px rgba(0,0,0,.25);
 }
-.tl-tooltip::after {
-  content:'';
-  position:absolute;
-  top:100%;
-  left:50%;
-  transform:translateX(-50%);
-  border:5px solid transparent;
-  border-top-color:var(--ink);
-}
+
 .tl-chip-wrap:hover .tl-tooltip { opacity:1; }
 .tl-chip-wrap { position:absolute; }
 </style>
@@ -3394,11 +3387,108 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       wrap2.addEventListener('mouseleave', function(){ clearChartHighlight(); });
     })();
 
-    // 호버 툴팁 (공통)
+    // ── 호버 툴팁 — 집행 기간의 판매 성과를 함께 보여준다 ──
+    // 타임라인이 길어지면 위 그래프가 화면 밖으로 밀리므로, 답을 여기서 바로 준다.
     var tip=document.createElement('div');
     tip.className='tl-tooltip';
-    tip.textContent=a.label+(a.detail?' — '+a.detail:'')+(a.cost&&a.cost>0?' ('+won(a.cost)+')':'');
+    tip.innerHTML=(function(){
+      var st=parseAnyDate(a.date);
+      var span=Math.max(1, parseInt(a.days,10)||1);
+      var head='<div style="font-weight:800;font-size:12px;margin-bottom:2px">'+esc(a.label||a.lane)+'</div>';
+      var sub=[];
+      if(a.detail) sub.push(esc(a.detail));
+      if(a.cost>0) sub.push(won(a.cost));
+      if(sub.length) head+='<div style="opacity:.62;font-weight:500;margin-bottom:7px">'+sub.join(' · ')+'</div>';
+      if(!st) return head;
+
+      var map=daySalesByDate(calBook);
+      if(!map || !Object.keys(map).length) return head;
+
+      var dayAt=function(k){ return new Date(st.getFullYear(), st.getMonth(), st.getDate()+k); };
+      var row=function(l,v,dim){ return '<div style="display:flex;justify-content:space-between;gap:18px;line-height:1.7'
+        +(dim?';opacity:.62':'')+'">'
+        +'<span style="opacity:.62">'+l+'</span><span style="font-weight:700">'+v+'</span></div>'; };
+
+      // 기준선 — 집행 직전 동일 일수 평균
+      var bSum=0,bCnt=0;
+      for(var k=1;k<=span;k++){ var v=map[ymd(dayAt(-k))]; if(v!==undefined){ bSum+=v; bCnt++; } }
+      var base=bCnt? bSum/bCnt : 0;
+
+      // 같은 날 다른 액션이 함께 돌면 효과 귀속이 불가능하다 — 그 사실을 표시한다
+      var sameDay = 0;
+      if (TL_LINK && TL_LINK.actByDate) {
+        var lst = TL_LINK.actByDate[ymd(st)] || [];
+        sameDay = Math.max(0, lst.length - 1);
+      }
+      var out=head+'<div style="border-top:1px solid rgba(255,255,255,.16);padding-top:7px">';
+
+      // 짧은 액션(2일 이하)은 효과가 다음날 이후로 밀리는 경우가 잦아
+      // 하나의 숫자로 뭉치지 않고 D+0부터 날짜별로 펼쳐 보여준다.
+      if(span<=2){
+        var win=span+2;
+        out+='<div style="opacity:.5;font-size:10px;letter-spacing:.06em;margin-bottom:4px">'
+           + '집행 ' + ymd(st).slice(5).replace('-','/') + ' · 관측 D+0~D+'+(win-1)+'</div>';
+        if(bCnt) out+=row('직전 '+span+'일 평균', Math.round(base).toLocaleString()+'부', true);
+        var any=false, wTot=0;
+        for(var k=0;k<win;k++){
+          var d=dayAt(k), v=map[ymd(d)];
+          if(v===undefined) continue;
+          any=true; wTot+=v;
+          var pct = base>0 ? Math.round((v/base-1)*100) : null;
+          var col2 = pct===null ? '' : (pct>0 ? '#8FE3C0' : (pct<0 ? '#F0A0B0' : ''));
+          var tag  = pct===null ? '' : ' <span style="color:'+col2+'">'+(pct>0?'+':'')+pct+'%</span>';
+          out+=row('D+'+k+' ('+ymd(d).slice(5).replace('-','/')+')', v.toLocaleString()+'부'+tag);
+        }
+        if(!any) return head+'<div style="opacity:.62">기간 내 판매 데이터 없음</div>';
+        if(a.cost>0 && wTot>0) out+=row('부당 비용', Math.round(a.cost/wTot).toLocaleString()+'원');
+        out+='<div style="opacity:.42;font-size:10px;line-height:1.5;margin-top:6px">'
+           + '업로드 시각에 따라 효과가 다음 날로 밀릴 수 있어 며칠치를 함께 표시합니다'
+           + (sameDay ? '<br>같은 날 '+sameDay+'건이 함께 집행되어 개별 귀속은 불가합니다' : '')
+           + '</div>';
+        return out+'</div>';
+      }
+
+      // 기간이 긴 액션은 합계로.
+      var dSum=0,dCnt=0;
+      for(var k=0;k<span;k++){ var v2=map[ymd(dayAt(k))]; if(v2!==undefined){ dSum+=v2; dCnt++; } }
+      if(!dCnt) return head+'<div style="opacity:.62">기간 내 판매 데이터 없음</div>';
+      var avgD=dSum/dCnt;
+      var diff=base>0 ? Math.round((avgD/base-1)*100) : null;
+
+      out+='<div style="opacity:.5;font-size:10px;letter-spacing:.06em;margin-bottom:4px">'
+         + ymd(st).slice(5).replace('-','/') + ' ~ ' + ymd(dayAt(span-1)).slice(5).replace('-','/')
+         + ' (' + span + '일)</div>'
+         + row('기간 판매', dSum.toLocaleString()+'부')
+         + row('일평균', Math.round(avgD).toLocaleString()+'부');
+      if(bCnt){
+        out += row('직전 '+span+'일 평균', Math.round(base).toLocaleString()+'부', true);
+        if(diff!==null){
+          var col3 = diff>0 ? '#8FE3C0' : (diff<0 ? '#F0A0B0' : 'rgba(255,255,255,.7)');
+          out += row('증감', '<span style="color:'+col3+'">'+(diff>0?'+':'')+diff+'%</span>');
+        }
+      }
+      if(a.cost>0 && dSum>0) out += row('부당 비용', Math.round(a.cost/dSum).toLocaleString()+'원');
+      if(sameDay) out += '<div style="opacity:.42;font-size:10px;line-height:1.5;margin-top:6px">'
+        + '같은 날 '+sameDay+'건이 함께 집행되어 개별 귀속은 불가합니다</div>';
+      return out+'</div>';
+    })();
     wrap2.appendChild(tip);
+
+    // 커서 위치에 맞춰 뷰포트 안으로 배치 (타임라인 스크롤 영역에 잘리지 않도록)
+    var placeTip = function(ev){
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var tw = tip.offsetWidth, th = tip.offsetHeight;
+      var tx = ev.clientX + 14;
+      if (tx + tw > vw - 8) tx = ev.clientX - tw - 14;
+      if (tx < 8) tx = 8;
+      var ty = ev.clientY - th - 12;          // 기본은 커서 위
+      if (ty < 8) ty = ev.clientY + 18;       // 위가 좁으면 아래로
+      if (ty + th > vh - 8) ty = Math.max(8, vh - th - 8);
+      tip.style.left = tx + 'px';
+      tip.style.top  = ty + 'px';
+    };
+    wrap2.addEventListener('mouseenter', placeTip);
+    wrap2.addEventListener('mousemove', placeTip);
 
     if(isExpandable){
       var arrow=document.createElement('span');
