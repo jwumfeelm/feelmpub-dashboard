@@ -2699,6 +2699,10 @@ function renderCalendar() {
             '<stop offset="100%" stop-color="#37424F" stop-opacity="0"/>'+
           '</linearGradient></defs>'+
           grid + vGrid + xLabels +
+          // 타임라인 액션 호버 시 해당 집행 기간을 덮는 밴드
+          '<rect id="dcb-'+calBook+'" y="'+PAD.t+'" height="'+cH+'" x="0" width="0" '+
+            'fill="rgba(58,91,217,.10)" stroke="var(--accent)" stroke-width="1" '+
+            'style="display:none" pointer-events="none"/>'+
           '<path d="'+area+'" fill="url(#dg1)"/>'+
           SERIES.slice().reverse().map(sr => '<path d="'+pathOf(sr)+'" fill="none" stroke="'+sr.color+
             '" stroke-width="'+sr.w+'" stroke-linejoin="round" stroke-linecap="round"'+
@@ -2950,6 +2954,8 @@ function initDayChartHover() {
   if (!sorted.length) return;
   const n = sorted.length;
 
+  // 역방향 연동 — 타임라인 액션 호버 시 이 차트의 기간을 표시하기 위한 기하 정보
+  DC_LINK = null;
   const storeMapH = daySalesStoreFor(calBook) || {};
   const STORES_H = ['교보','예스24','알라딘','영풍'];
   // 차트 선과 완전히 동일한 색·선형태를 툴팁 표식에도 쓴다
@@ -3006,11 +3012,96 @@ function initDayChartHover() {
           + '<span style="color:var(--ink3);font-weight:500;margin-left:8px">' + sh + '%</span></span></div>';
       }).join('');
     }
+
+    // 그날 집행된 마케팅 액션 — 타임라인까지 시선을 옮기지 않아도 되도록 여기서 함께 보여준다
+    const acts = (TL_LINK && TL_LINK.actByDate) ? (TL_LINK.actByDate[d.date] || []) : [];
+    if (acts.length) {
+      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--ink3);'
+        + 'text-transform:uppercase;margin-bottom:5px">집행 액션 ' + acts.length + '건</div>'
+        + acts.slice(0,5).map(a => {
+            const c = LANE_COLORS[a.lane] || {bg:'#CDD4DE', border:'#B7C0CA'};
+            const dayTag = a.span > 1 ? ' <span style="color:var(--ink3);font-weight:500">'+a.day+'/'+a.span+'일차</span>' : '';
+            return '<div style="display:flex;align-items:center;gap:8px;line-height:1.8">'
+              + '<span style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+c.bg
+              + ';border:1px solid '+c.border+'"></span>'
+              + '<span style="color:var(--ink);font-weight:700">'+esc(a.label||a.lane)+'</span>'
+              + dayTag + '</div>';
+          }).join('')
+        + (acts.length > 5 ? '<div style="color:var(--ink3);margin-top:3px">외 '+(acts.length-5)+'건</div>' : '')
+        + '</div>';
+    }
+
     tt.innerHTML = html;
+    // 타임라인의 같은 날짜 열을 함께 표시
+    highlightTimelineDate(d.date);
   });
+  // 날짜 → x좌표 매핑을 등록해 두면 타임라인 쪽에서 구간을 칠할 수 있다
+  DC_LINK = {
+    band:  document.getElementById('dcb-'+calBook),
+    dates: sorted.map(d => d.date),
+    xOf:   i => PAD_L + (n > 1 ? i/(n-1)*cW : cW/2),
+  };
+
   ha.addEventListener('mouseleave', function() {
     hl.style.opacity = '0'; tt.style.display = 'none';
+    clearTimelineHighlight();
   });
+}
+
+// ── 일별 추이 ↔ 마케팅 타임라인 연동 ──
+// 차트에서 특정 날짜를 호버하면 타임라인의 같은 열을 표시하고,
+// 그 열이 화면 밖이면 가로 스크롤로 끌어온다.
+var TL_LINK = null;
+var TL_LAST_IDX = -1;
+
+var DC_LINK = null;
+
+// 타임라인 액션 → 차트 구간 표시
+function highlightChartRange(fromIso, toIso){
+  if(!DC_LINK || !DC_LINK.band) return;
+  const ds = DC_LINK.dates;
+  // 구간에 걸치는 첫/마지막 데이터 지점을 찾는다 (데이터가 없는 날은 건너뜀)
+  let a = -1, b = -1;
+  for(let i=0;i<ds.length;i++){
+    if(ds[i] >= fromIso && ds[i] <= toIso){ if(a<0) a=i; b=i; }
+  }
+  const band = DC_LINK.band;
+  if(a < 0){ band.style.display='none'; return; }
+  const x1 = DC_LINK.xOf(a), x2 = DC_LINK.xOf(b);
+  const pad = 5;
+  band.setAttribute('x', Math.max(0, x1 - pad));
+  band.setAttribute('width', Math.max(2, (x2 - x1) + pad*2));
+  band.style.display = 'block';
+}
+function clearChartHighlight(){
+  if(DC_LINK && DC_LINK.band) DC_LINK.band.style.display='none';
+}
+
+function highlightTimelineDate(iso){
+  if(!TL_LINK || !TL_LINK.overlay) return;
+  var i = TL_LINK.dates.indexOf(iso);
+  var hl = TL_LINK.overlay;
+  if(i < 0){ hl.style.display='none'; TL_LAST_IDX=-1; return; }
+  hl.style.display='block';
+  hl.style.left  = (TL_LINK.LBL_W + i*TL_LINK.CELL_W) + 'px';
+  hl.style.width = TL_LINK.CELL_W + 'px';
+
+  // 열이 보이는 영역 밖이면 가운데로 끌어온다 (인덱스가 바뀔 때만)
+  if(i !== TL_LAST_IDX){
+    TL_LAST_IDX = i;
+    var w = TL_LINK.wrap, x = TL_LINK.LBL_W + i*TL_LINK.CELL_W;
+    var leftEdge = w.scrollLeft + TL_LINK.LBL_W;
+    var rightEdge = w.scrollLeft + w.clientWidth - TL_LINK.CELL_W;
+    if(x < leftEdge || x > rightEdge){
+      try { w.scrollTo({left: Math.max(0, x - w.clientWidth/2), behavior:'smooth'}); }
+      catch(e){ w.scrollLeft = Math.max(0, x - w.clientWidth/2); }
+    }
+  }
+}
+function clearTimelineHighlight(){
+  if(TL_LINK && TL_LINK.overlay) TL_LINK.overlay.style.display='none';
+  TL_LAST_IDX = -1;
 }
 
 function renderTimeline(dates, pubDate, today, actions, sales) {
@@ -3084,6 +3175,27 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     bgLayer.appendChild(col);
   });
   inner.appendChild(bgLayer);
+
+  // 연동 하이라이트 열 — 배경 위, 콘텐츠 아래
+  var hlCol=document.createElement('div');
+  hlCol.style.cssText='position:absolute;top:0;bottom:0;display:none;pointer-events:none;z-index:0;'
+    +'background:rgba(58,91,217,.10);border-left:1px solid var(--accent);border-right:1px solid var(--accent);';
+  inner.appendChild(hlCol);
+
+  // 날짜별 액션 색인 — 차트 툴팁에서 그날 집행 내역을 함께 보여주기 위함
+  var actByDate={};
+  (actions||[]).forEach(function(a){
+    var st=parseAnyDate(a.date); if(!st) return;
+    var span=Math.max(1, parseInt(a.days,10)||1);
+    for(var k=0;k<span;k++){
+      var d=new Date(st.getFullYear(), st.getMonth(), st.getDate()+k);
+      var key=ymd(d);
+      (actByDate[key]=actByDate[key]||[]).push({lane:a.lane, label:a.label, cost:a.cost, day:k+1, span:span});
+    }
+  });
+
+  TL_LINK={wrap:wrap, inner:inner, overlay:hlCol, LBL_W:LBL_W, CELL_W:CELL_W,
+           dates:dates.map(ymd), actByDate:actByDate};
 
   // wrap 대신 inner에 행을 추가하도록 appendRow 래퍼
   var _origAppend = null; // makeRow가 inner에 append하도록 아래서 처리
@@ -3208,6 +3320,16 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     }
     txt.textContent=a.label;
     chip.appendChild(txt);
+
+    // ── 역방향 연동: 이 액션에 호버하면 일별 추이에서 집행 기간을 표시 ──
+    (function(){
+      var from = a.date;
+      var st = parseAnyDate(a.date);
+      var span = Math.max(1, parseInt(a.days,10) || 1);
+      var to = st ? ymd(new Date(st.getFullYear(), st.getMonth(), st.getDate()+span-1)) : from;
+      wrap2.addEventListener('mouseenter', function(){ highlightChartRange(from, to); });
+      wrap2.addEventListener('mouseleave', function(){ clearChartHighlight(); });
+    })();
 
     // 호버 툴팁 (공통)
     var tip=document.createElement('div');
