@@ -4450,22 +4450,44 @@ function renderPublish(){
     </div>`;
   }
 
-  /* 담당자별 부하 */
-  function loadBars(field, label){
+  /* 월별 배본 예정 — 특정 달에 몰리면 마케팅 리소스가 분산된다 */
+  function shipByMonth(){
     const cnt = {};
-    live.forEach(b => {
-      String(b[field]||'').split(/[,·]/).map(x=>x.trim()).filter(Boolean)
-        .forEach(n => { cnt[n] = (cnt[n]||0)+1; });
-    });
-    const rows = Object.keys(cnt).map(k=>({name:k, n:cnt[k]})).sort((a,b)=>b.n-a.n);
-    if(!rows.length) return `<div class="empty-row">진행 중인 배정이 없습니다</div>`;
-    const mx = rows[0].n;
-    return rows.map((r,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:6px 0${i?';border-top:1px solid var(--border)':''}">
-      <div style="width:64px;font-size:12px;font-weight:700;color:var(--ink);flex-shrink:0">${esc(r.name)}</div>
+    live.forEach(b => { const k = ymd(b.ship).slice(0,7); cnt[k] = (cnt[k]||0)+1; });
+    const keys = Object.keys(cnt).sort().slice(0,12);
+    if(!keys.length) return `<div class="empty-row">배본 예정이 없습니다</div>`;
+    const mx = Math.max(...keys.map(k=>cnt[k]));
+    return `<div style="display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px">
+      ${keys.map(k=>{
+        const h = Math.max(4, cnt[k]/mx*112);
+        const cur = k === ym;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0">
+          <div style="font-size:11px;font-weight:${cur?800:700};color:${cur?'var(--ink)':'var(--ink2)'}">${cnt[k]}</div>
+          <div class="bar-grow" style="--w:100%;height:${h}px;width:100%;border-radius:var(--r4) var(--r4) 0 0;
+            background:${cur?'var(--accent)':'var(--border2)'}"></div>
+          <div style="font-size:10px;font-weight:${cur?800:400};color:${cur?'var(--ink)':'var(--ink3)'};white-space:nowrap">${k.slice(2).replace('-','.')}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  /* 공정 단계 분포 — 파이프라인이 어디에 몰려 있나 */
+  function stageDist(){
+    const buckets = [
+      {label:'미착수',   test: b => b.stages.filter(s=>s.date<=today).length === 0},
+      {label:'기획·회의', test: b => { const d=b.stages.filter(s=>s.date<=today).map(s=>s.key); return d.length>0 && !d.some(k=>['조판','PC교','1교','2교','3교','발주','입고'].includes(k)); }},
+      {label:'교정 중',   test: b => { const d=b.stages.filter(s=>s.date<=today).map(s=>s.key); return d.some(k=>['조판','PC교','1교','2교','3교'].includes(k)) && !d.includes('발주'); }},
+      {label:'발주·입고', test: b => b.stages.some(s=>s.date<=today && (s.key==='발주'||s.key==='입고'))},
+    ];
+    const rows = buckets.map(bk => ({label:bk.label, n: live.filter(bk.test).length}));
+    const sum = rows.reduce((a,r)=>a+r.n,0) || 1;
+    return rows.map((r,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 0${i?';border-top:1px solid var(--border)':''}">
+      <div style="width:72px;font-size:12px;font-weight:700;color:var(--ink);flex-shrink:0">${r.label}</div>
       <div style="flex:1;height:12px;background:var(--surface3);border-radius:var(--r5);overflow:hidden">
-        <div class="bar-grow" style="--w:${r.n/mx*100}%;--d:${i*45}ms;height:12px;background:var(--accent)"></div>
+        <div class="bar-grow" style="--w:${r.n/sum*100}%;--d:${i*60}ms;height:12px;background:var(--accent)"></div>
       </div>
-      <div style="width:32px;text-align:right;font-size:12px;font-weight:800;color:var(--ink)">${r.n}종</div>
+      <div style="width:34px;text-align:right;font-size:12px;font-weight:800;color:var(--ink)">${r.n}종</div>
+      <div style="width:34px;text-align:right;font-size:11px;color:var(--ink3)">${Math.round(r.n/sum*100)}%</div>
     </div>`).join('');
   }
 
@@ -4521,11 +4543,11 @@ function renderPublish(){
       <div class="card-title">제작 진행 현황 <small>배본일 순 · 진행 막대는 킥오프부터 입고까지 11단계</small></div>
       ${live.length ? `<table>
         <tr><th style="width:70px">D-day</th><th>도서명</th><th style="width:150px">진행</th>
-            <th style="width:120px">현재 단계</th><th style="width:150px">담당</th></tr>
+            <th style="width:120px">현재 단계</th><th style="width:180px">기획 · 마케터 · 디자인</th></tr>
         ${live.slice(0,25).map(b=>{
           const st = stageOf(b), d = dday(b.ship);
           const col = d<=7 ? 'var(--bad)' : (d<=21 ? 'var(--warn)' : 'var(--ink2)');
-          const who = [b.editor, b.design].filter(Boolean).join(' · ');
+          const who = [b.plan, b.mkter, b.design].filter(Boolean).join(' · ');
           return `<tr>
             <td><b style="color:${col};font-size:12px">D-${d}</b><div style="font-size:10px;color:var(--ink3)">${ymd(b.ship).slice(5)}</div></td>
             <td><b style="font-size:12px">${esc(b.title)}</b><div style="font-size:10px;color:var(--ink3)">${esc(b.author)}${b.genre?' · '+esc(b.genre):''}</div></td>
@@ -4539,8 +4561,8 @@ function renderPublish(){
     </div>
 
     <div class="g2 gap">
-      <div class="card"><div class="card-title">편집 담당 부하 <small>진행 중 도서 기준</small></div>${loadBars('editor')}</div>
-      <div class="card"><div class="card-title">디자인 담당 부하 <small>진행 중 도서 기준</small></div>${loadBars('design')}</div>
+      <div class="card"><div class="card-title">월별 배본 예정 <small>한 달에 몰리면 마케팅 리소스가 분산됩니다</small></div>${shipByMonth()}</div>
+      <div class="card"><div class="card-title">공정 단계 분포 <small>진행 중 도서가 어느 구간에 있는지</small></div>${stageDist()}</div>
     </div>
 
     ${rightsCard()}`;
