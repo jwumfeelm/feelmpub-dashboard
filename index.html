@@ -498,6 +498,7 @@ const CFG = {
     bookList: "927629470",    // 도서 목록
     weekSales:"105549750",    // 판매량_주차별
     daySalesStore: "2121676287", // 판매량_일별_서점 (판매일|도서|서점|판매부수)
+    members:       "729104187",  // 구성원 (이름|팀|생일|입사일|노출여부)
   },
   // 마케팅 캠페인 별도 구글 시트
   mktSheetId: "1SgFVN8aOV7TIz_9PsP3xncnU1HwvquY-i7gCq6XNOno",
@@ -581,6 +582,8 @@ const COST_BY_PAY = {};
 const PUB_BOOKS  = [];   // 출간 예정·진행 도서
 const PUB_RIGHTS = [];   // 외서 계약
 const PUB_EXPORT = [];   // 판권 수출
+// 구성원 — 생일·입사일 축하용. 본인이 노출여부를 Y로 둔 사람만 담는다.
+const MEMBERS = [];
 // 제작 공정 순서 (열 위치 기준 — '디자인'이 담당자/단계 두 곳에 있어 이름으로 못 찾는다)
 const PUB_STAGES = [
   {key:'킥오프',   col:22}, {key:'제목회의', col:23}, {key:'조판',   col:18},
@@ -813,6 +816,18 @@ function dateWithYear(v, yearHint){
   var mo = +m[1], dd = +m[2];
   if (mo < 1 || mo > 12 || dd < 1 || dd > 31) return null;
   return new Date(y, mo - 1, dd);
+}
+
+// 'MM-DD' / '3월 14일' / '2019-03-14' 등에서 월·일만 뽑는다 (생년은 쓰지 않는다)
+function mdOf(v){
+  var t = String(v == null ? '' : v).trim();
+  if (!t) return '';
+  var m = t.match(/(\d{1,2})\s*[-\/.월]\s*(\d{1,2})/g);
+  var last = t.match(/(?:^|[^\d])(\d{1,2})\s*[-\/.월]\s*(\d{1,2})\s*일?\s*$/);
+  if (last) return ('0'+last[1]).slice(-2) + '-' + ('0'+last[2]).slice(-2);
+  var d = parseAnyDate(t);
+  if (d) return ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+  return '';
 }
 
 // ── 출판팀 시트 ──
@@ -1107,7 +1122,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore, members] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
@@ -1120,9 +1135,13 @@ async function loadSheets() {
         console.warn('[판매량_일별_서점] 로드 실패 — GID/공유설정 확인:', e);
         return [];
       }),
+      CFG.gids.members
+        ? fetchSheet(CFG.gids.members).catch(e => { console.warn('[구성원] 로드 실패:', e); return []; })
+        : Promise.resolve([]),
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore });
+    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore, members });
+    celebrate();
 
     SD.loaded = true;
     dot.className = 'sync-dot';
@@ -1160,7 +1179,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore }) {
+function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore, members }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw, 채널링크 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -1385,7 +1404,27 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
       M_TOTAL_PLAN.splice(0,12,...mk.map((v,i)=>v+pb[i]+cm[i]));
     })();
 
-    // ── 지급월 기준 집계 ──
+    // ── 구성원 (생일·입사일) ──
+  // 본인이 노출여부를 Y 로 둔 사람만 담는다. 생년은 쓰지 않는다.
+  (function(){
+    MEMBERS.splice(0, MEMBERS.length);
+    (members || []).forEach(function(r){
+      var show = String(r['노출여부'] || '').trim().toUpperCase();
+      if (show !== 'Y') return;
+      var name = String(r['이름'] || '').trim();
+      if (!name) return;
+      MEMBERS.push({
+        name: name,
+        team: String(r['팀'] || '').trim(),
+        birth: mdOf(r['생일']),
+        joined: String(r['입사일'] || '').trim(),
+        joinedMD: mdOf(r['입사일']),
+        joinYear: (String(r['입사일']||'').match(/(20\d{2})/) || [])[1] || '',
+      });
+    });
+  })();
+
+  // ── 지급월 기준 집계 ──
     Object.keys(COST_BY_PAY).forEach(k => delete COST_BY_PAY[k]);
     cost.forEach(r => {
       const g = (r['구분']||'').trim();
@@ -2209,6 +2248,31 @@ function renderSummary(){
           ${top.map(n=>`<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);border-radius:var(--rp);padding:4px 11px;font-size:11px;font-weight:700;color:var(--ink2)">
             ${esc(n)}<span style="color:var(--ink3);font-weight:500">${byNation[n]}</span></span>`).join('')}
         </div></div>`;
+    })()}
+
+    ${(()=>{
+      if(!MEMBERS.length) return '';
+      const mm = (document.getElementById('monthPicker').value||'').slice(5,7);
+      const nowMD = (()=>{const d=new Date();return ('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
+      const inMonth = arr => arr.filter(x=>x.md && x.md.slice(0,2)===mm).sort((a,b)=>a.md.localeCompare(b.md));
+      const bs = inMonth(MEMBERS.map(m=>({...m, md:m.birth})));
+      const as = inMonth(MEMBERS.filter(m=>m.joinYear).map(m=>({...m, md:m.joinedMD})))
+                   .filter(m=>+(document.getElementById('monthPicker').value||'').slice(0,4) > +m.joinYear);
+      if(!bs.length && !as.length) return '';
+      const row = (m, sub) => {
+        const today = m.md === nowMD;
+        return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px">
+          <span style="width:38px;color:${today?'var(--accent-deep)':'var(--ink3)'};font-weight:${today?800:500}">${today?'오늘':m.md.replace('-','/')}</span>
+          <b style="color:var(--ink);font-weight:700">${esc(m.name)}</b>
+          ${m.team?`<span style="color:var(--ink3);font-size:11px">${esc(m.team)}</span>`:''}
+          <span style="margin-left:auto;color:var(--ink3);font-size:11px">${sub}</span></div>`;
+      };
+      return `<div class="g2 gap2">
+        <div class="card"><div class="card-title">이달의 생일</div>
+          ${bs.length ? bs.map(m=>row(m,'')).join('') : '<div class="empty-row">이번 달은 없습니다</div>'}</div>
+        <div class="card"><div class="card-title">입사 기념일</div>
+          ${as.length ? as.map(m=>row(m, (+(document.getElementById('monthPicker').value||'').slice(0,4) - +m.joinYear)+'주년')).join('') : '<div class="empty-row">이번 달은 없습니다</div>'}</div>
+      </div>`;
     })()}
 
     <!-- 중하단: TOP 10 -->
@@ -4904,6 +4968,65 @@ function showSkeleton(){
 function hideSkeleton(){
   var el = document.getElementById('tab-'+activeTab);
   if(el) delete el.dataset.skel;
+}
+
+// ── 생일·입사 기념일 축하 ──
+// 하루에 한 번만. 해당자가 없으면 아무것도 하지 않는다.
+function celebrate(){
+  if (!MEMBERS.length) return;
+  var now = new Date();
+  var md  = ('0'+(now.getMonth()+1)).slice(-2) + '-' + ('0'+now.getDate()).slice(-2);
+  var key = 'feelm-celebrate-' + now.getFullYear() + '-' + md;
+  try { if (localStorage.getItem(key)) return; } catch(e) {}
+
+  var birth = MEMBERS.filter(function(m){ return m.birth === md; });
+  var anniv = MEMBERS.filter(function(m){
+    if (m.joinedMD !== md || !m.joinYear) return false;
+    return now.getFullYear() > +m.joinYear;      // 입사 당해는 제외
+  });
+  if (!birth.length && !anniv.length) return;
+
+  var line = function(m, sub){
+    return '<div style="display:flex;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid var(--border)">'
+      + '<b style="font-size:17px;font-weight:800;color:var(--ink);letter-spacing:-.01em">' + esc(m.name) + '</b>'
+      + (m.team ? '<span style="font-size:12px;color:var(--ink3)">' + esc(m.team) + '</span>' : '')
+      + '<span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent-deep)">' + sub + '</span></div>';
+  };
+
+  var body = '';
+  if (birth.length) body += '<div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-top:14px">생일</div>'
+    + birth.map(function(m){ return line(m, '생일 축하합니다'); }).join('');
+  if (anniv.length) body += '<div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-top:16px">입사 기념일</div>'
+    + anniv.map(function(m){ return line(m, (now.getFullYear() - +m.joinYear) + '주년'); }).join('');
+
+  var wrap = document.createElement('div');
+  wrap.id = 'celebrate';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;'
+    + 'background:rgba(15,22,32,.42);backdrop-filter:blur(3px);animation:fadeIn var(--d-mid) var(--ease) both';
+  wrap.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);'
+    + 'box-shadow:var(--sh-lg);width:min(420px,92vw);padding:26px 28px 22px;animation:riseIn var(--d-mid) var(--ease) both">'
+    + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px">'
+    +   '<span style="width:7px;height:7px;border-radius:50%;background:var(--accent)"></span>'
+    +   '<span style="font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--ink3);text-transform:uppercase">Today</span>'
+    + '</div>'
+    + '<div style="font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.02em;margin-bottom:6px">오늘 축하할 일이 있습니다</div>'
+    + '<div style="font-size:12px;color:var(--ink3);line-height:1.6">콘텐츠사업본부</div>'
+    + body
+    + '<button id="celeClose" style="margin-top:20px;width:100%;border:none;background:var(--accent);color:#FFF;'
+    + 'border-radius:var(--r2);padding:11px;font-family:var(--sans);font-size:13px;font-weight:800;cursor:pointer">확인</button>'
+    + '</div>';
+  document.body.appendChild(wrap);
+
+  var close = function(){
+    try { localStorage.setItem(key, '1'); } catch(e) {}
+    wrap.remove();
+  };
+  document.getElementById('celeClose').addEventListener('click', close);
+  wrap.addEventListener('click', function(e){ if (e.target === wrap) close(); });
+  document.addEventListener('keydown', function esc2(e){
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc2); }
+  });
 }
 
 function stampConfNote(){
