@@ -351,8 +351,8 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
    BOOK MARKETING TIMELINE
 ══════════════════════════════════════ */
 .mkt-timeline-wrap{overflow-x:auto;padding-bottom:8px}
-.tl-chip-wrap>div:not(.tl-tooltip){transition:transform var(--d-fast) var(--ease),box-shadow var(--d-fast) var(--ease)}
-.tl-chip-wrap:hover>div:not(.tl-tooltip){transform:translateY(-1px) scale(1.015);box-shadow:0 2px 8px rgba(15,22,32,.18);z-index:5}
+.tl-chip-wrap>div:not(.tl-tooltip){transition:filter var(--d-fast) linear}
+.tl-chip-wrap:hover>div:not(.tl-tooltip){filter:brightness(.92)}
 .mkt-tl-header{display:flex;align-items:flex-end;margin-bottom:4px}
 .mkt-tl-row{display:flex;align-items:stretch;margin-bottom:4px}
 .mkt-lane-label{width:90px;flex-shrink:0;padding:0 8px 0 10px;display:flex;align-items:center;font-size:10px;font-weight:800;color:var(--ink2);min-height:28px;background:var(--surface2);border-radius:4px 0 0 4px;margin-right:4px}
@@ -3715,32 +3715,28 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
       'z-index:2',
     ].join(';');
 
-    // 비용이 있는 액션은 채운 칩, 무상(시딩 등)은 윤곽선 칩.
-    // 시딩이 수십 건 깔려도 덩어리로 뭉치지 않고 유상 집행이 먼저 읽힌다.
-    var paid = (Number(a.cost)||0) > 0;
+    // 레인 색 단색. 구분은 레인 색 하나로만 하고 다른 장식은 넣지 않는다.
     var chip=document.createElement('div');
     chip.style.cssText=[
       'width:100%','height:100%',
-      paid ? 'background:'+c.bg : 'background:var(--surface)',
-      paid ? 'border:1px solid '+c.border : 'border:1px solid var(--border2)',
-      paid ? '' : 'box-shadow:inset 3px 0 0 '+c.bg,
-      'border-radius:var(--r3)',
+      'background:'+c.bg,
+      'border-radius:var(--r4)',
       'display:flex','align-items:center','justify-content:center',
       'overflow:hidden','box-sizing:border-box','cursor:pointer',
-    ].filter(Boolean).join(';');
+    ].join(';');
 
     // ── 액션명: 칩 안에 표시 (기존 관리 시트와 동일한 방식) ──
     // 좁은 칩(1~2일)은 2줄 줄바꿈, 넓은 칩은 1줄 가운데 정렬
     var narrow = spanCells <= 2;
     var txt = document.createElement('span');
     if(narrow){
-      txt.style.cssText='padding:1px 1px;font-size:10px;line-height:1.1;font-weight:700;color:'+(paid?c.text:'var(--ink)')+';'
+      txt.style.cssText='padding:1px 1px;font-size:10px;line-height:1.1;font-weight:700;color:'+c.text+';'
         +'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;'
         +'overflow:hidden;word-break:break-all;text-align:center;pointer-events:none;'
         +'flex:1;min-width:0;';
     } else {
       var fs = Math.max(9, Math.min(11, Math.floor((spanW-28)/6)));
-      txt.style.cssText='padding:0 6px;font-size:'+fs+'px;font-weight:700;color:'+(paid?c.text:'var(--ink)')+';'
+      txt.style.cssText='padding:0 6px;font-size:'+fs+'px;font-weight:700;color:'+c.text+';'
         +'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;'
         +'pointer-events:none;flex:1;min-width:0;';
     }
@@ -3847,7 +3843,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
 
     if(isExpandable){
       var arrow=document.createElement('span');
-      arrow.style.cssText='font-size:12px;color:'+(paid?c.text:'var(--ink2)')+';padding:0 8px 0 2px;flex-shrink:0;transition:transform .2s;user-select:none;font-weight:900;';
+      arrow.style.cssText='font-size:12px;color:'+c.text+';padding:0 8px 0 2px;flex-shrink:0;transition:transform .2s;user-select:none;font-weight:900;';
       arrow.textContent=window.tlExpanded[a.date+a.lane]?'▲':'▼';
       chip.appendChild(arrow);
       chip.addEventListener('click',function(e){
@@ -3877,9 +3873,10 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     // 라벨: 레인명 + 건수 + 접기 버튼 (한 줄)
     var lblHTML =
       '<span onclick="toggleLane(\''+lane.replace(/'/g,"\\'")+'\')" title="'+(collapsed?'펼치기':'접기')+'"'
-      + ' style="display:flex;align-items:center;gap:5px;width:100%;cursor:pointer;user-select:none">'
-      + '<span style="font-size:9px;color:var(--ink3);width:8px;flex-shrink:0;transition:transform var(--d-fast) linear;'
+      + ' style="display:flex;align-items:center;gap:6px;width:100%;cursor:pointer;user-select:none">'
+      + '<span style="font-size:8px;color:var(--ink3);width:7px;flex-shrink:0;'
       + (collapsed?'':'transform:rotate(90deg);')+'">▶</span>'
+      + '<span style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+c.bg+'"></span>'
       + '<span style="font-size:11px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+lane+'</span>'
       + '<span style="font-size:10px;font-weight:700;color:var(--ink3);flex-shrink:0;margin-left:auto">'+acts.length+'건</span>'
       + '</span>';
