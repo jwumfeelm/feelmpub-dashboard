@@ -22,8 +22,9 @@
   --info:#55606E; --info-dim:#F0F3F7;
   /* 로그인 화면 전용 — 본문은 전부 밝은 표면 한 벌로 간다 */
   --lock-bg:#131A24; --lock-surf:#1B2430; --lock-border:#2A3644;
-  /* 상단 KPI 밴드 — 밝은 표면. 위계는 색 면적이 아니라 타이포로 만든다 */
-  --band-bg:#FAFBFC; --band-border:#E4E8EE;
+  /* 상단 KPI 밴드 — 딥 인디고 네이비. 순검정은 채도가 없어 어두침침해 보인다 */
+  --band-bg:#1C2745; --band-top:#223054; --band-border:#2E3D63;
+  --band-ink:#FFFFFF; --band-ink2:#A8B4CE; --band-ink3:#8593B2;
   --r:8px; --r2:6px; --r3:4px; --r4:3px; --r5:2px; --rp:999px;
   /* 그림자는 얕고 좁게 — 번짐 대신 경계선으로 구분 */
   --sh-sm:0 1px 1px rgba(15,22,32,.04);
@@ -102,17 +103,17 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .tab-div{width:1px;height:18px;background:var(--border);margin:0 6px;flex-shrink:0}
 
 /* PILL BAR */
-.pill-bar-wrap{background:var(--band-bg);border-bottom:1px solid var(--band-border);width:100%}
+.pill-bar-wrap{background:linear-gradient(180deg,var(--band-top),var(--band-bg));border-bottom:1px solid var(--band-border);width:100%}
 .pill-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;min-height:128px}
 .pill{display:flex;flex-direction:column;justify-content:space-between;padding:19px 32px;cursor:default;position:relative;min-width:0}
 /* 구분선은 안쪽 그림자로 — 테두리를 쓰면 셀이 컨테이너보다 커질 때 밖으로 흘러나온다 */
 .pill:not(:last-child){box-shadow:inset -1px 0 0 var(--band-border)}
-.pill-lbl{font-size:10px;color:var(--ink3);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
-.pill-val{font-size:46px;font-weight:800;color:var(--ink);letter-spacing:-.05em;line-height:1;text-align:right;margin-top:auto;font-variant-numeric:tabular-nums}
+.pill-lbl{font-size:10px;color:var(--band-ink3);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.pill-val{font-size:46px;font-weight:800;color:var(--band-ink);letter-spacing:-.05em;line-height:1;text-align:right;margin-top:auto;font-variant-numeric:tabular-nums}
 /* 어두운 배경 위에서는 잉크 대신 브랜드 옐로우로 강조 */
-.pill-val.up,.pill-val.ok{color:var(--accent)}
-.pill-val.dn{color:var(--bad)}
-.pill-sub{font-size:12px;color:var(--ink3);text-align:right;margin-top:8px;letter-spacing:.01em}
+.pill-val.up,.pill-val.ok{color:var(--accent-on-dark)}
+.pill-val.dn{color:#F08098}
+.pill-sub{font-size:12px;color:var(--band-ink2);text-align:right;margin-top:8px;letter-spacing:.01em}
 
 /* 보안 고지 */
 .conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:var(--r4);
@@ -449,7 +450,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">시트 연결 대기</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
-        <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
+        <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--band-border);color:var(--band-ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
     </div>
   </header>
@@ -1508,6 +1509,28 @@ function progBar(label,val,total,color,sub=''){
 /* ─────────────────────────────────────
    TREND CHART (연간 월별 추이)
 ───────────────────────────────────── */
+// 추이 차트 팔레트 — 상단 밴드(딥 네이비) 위에 그려진다.
+// 밴드 색을 바꿀 일이 생기면 이 표만 고치면 된다.
+const TC = {
+  grid:      '#FFFFFF14',   // 가로 그리드
+  gridNow:   '#FFFFFF26',   // 당월 표시선
+  hover:     '#FFFFFF3D',   // 호버 라인
+  barTop:    '#6B8AF0',     // 달성 막대 위
+  barBot:    '#3A5BD9',     // 달성 막대 아래
+  barBadTop: '#F08098',     // 미달 막대 위
+  barBadBot: '#B3243C',     // 미달 막대 아래
+  target:    '#6B8AF0',     // 목표선
+  cost:      '#A8B4CE',     // 비용선
+  ret:       '#F08098',     // 반품률선
+  axis:      '#8593B2',     // 축 라벨
+  axisNow:   '#FFFFFF',     // 당월 축 라벨
+  legend:    '#A8B4CE',     // 범례 텍스트
+  ttBg:      '#223054',     // 툴팁 배경
+  ttBorder:  '#3A4B75',
+  ttMuted:   '#A8B4CE',
+  dotEdge:   '#1C2745',
+};
+
 function renderTrendChart(curM) {
   const el = document.getElementById('trend-chart');
   if (!el) return;
@@ -1552,46 +1575,46 @@ function renderTrendChart(curM) {
 
   el.innerHTML = `
   <div style="display:flex;align-items:center;gap:24px;margin-bottom:16px">
-    <span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#7C8794;text-transform:uppercase">월별 실적 추이</span>
-    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#55606E">
-      <span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,#3A5BD9,#6B8AF0);border-radius:var(--r5)"></span>달성매출
+    <span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:${TC.legend};text-transform:uppercase">월별 실적 추이</span>
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:${TC.legend}">
+      <span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,${TC.barTop},${TC.barBot});border-radius:var(--r5)"></span>달성매출
     </span>
-    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#55606E">
-      <span style="display:inline-block;width:18px;height:1.5px;background:#2A44A8;vertical-align:middle"></span>목표매출
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:${TC.legend}">
+      <span style="display:inline-block;width:18px;height:1.5px;background:${TC.target};vertical-align:middle"></span>목표매출
     </span>
-    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#55606E">
-      <span style="display:inline-block;width:18px;height:1.5px;background:#7C8794;vertical-align:middle;border-top:1.5px dashed #7C8794"></span>총비용
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:${TC.legend}">
+      <span style="display:inline-block;width:18px;height:1.5px;background:${TC.cost};vertical-align:middle;border-top:1.5px dashed ${TC.cost}"></span>총비용
     </span>
-    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:#55606E">
-      <span style="display:inline-block;width:8px;height:8px;background:#B3243C;border-radius:50%"></span>반품률(우)
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:${TC.legend}">
+      <span style="display:inline-block;width:8px;height:8px;background:${TC.ret};border-radius:50%"></span>반품률(우)
     </span>
   </div>
   <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" id="tc-svg" style="overflow:visible">
     <defs>
       <linearGradient id="shipBarGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#3A5BD9" stop-opacity=".95"/>
-        <stop offset="100%" stop-color="#6B8AF0" stop-opacity=".55"/>
+        <stop offset="0%" stop-color="${TC.barTop}" stop-opacity=".95"/>
+        <stop offset="100%" stop-color="${TC.barBot}" stop-opacity=".55"/>
       </linearGradient>
       <linearGradient id="shipBarGradBad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#B3243C" stop-opacity=".9"/>
-        <stop offset="100%" stop-color="#F08098" stop-opacity=".5"/>
+        <stop offset="0%" stop-color="${TC.barBadTop}" stop-opacity=".9"/>
+        <stop offset="100%" stop-color="${TC.barBadBot}" stop-opacity=".5"/>
       </linearGradient>
     </defs>
 
     <!-- 그리드 -->
     ${amtTicks.map(v => `
-      <line x1="${PAD.l}" x2="${PAD.l+cW}" y1="${yAmt(v)}" y2="${yAmt(v)}" stroke="#0F162010" stroke-width="1"/>
-      <text x="${PAD.l-10}" y="${yAmt(v)+4}" fill="#7C8794" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(v)}</text>
+      <line x1="${PAD.l}" x2="${PAD.l+cW}" y1="${yAmt(v)}" y2="${yAmt(v)}" stroke="${TC.grid}" stroke-width="1"/>
+      <text x="${PAD.l-10}" y="${yAmt(v)+4}" fill="${TC.axis}" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(v)}</text>
     `).join('')}
 
     <!-- 우측 반품률 축 -->
     ${retTicks.slice(1).map(v => `
-      <text x="${PAD.l+cW+10}" y="${yRet(v)+4}" fill="#B3243C" font-size="10" font-family="inherit" opacity=".7">${Math.round(v)}%</text>
+      <text x="${PAD.l+cW+10}" y="${yRet(v)+4}" fill="${TC.ret}" font-size="10" font-family="inherit" opacity=".7">${Math.round(v)}%</text>
     `).join('')}
 
     <!-- 월 레이블 -->
     ${months.map((mo,i) => `
-      <text x="${xPos(i)}" y="${PAD.t+cH+22}" fill="${i===curM?'#0F1620':'#7C8794'}" font-size="10" text-anchor="middle" font-weight="${i===curM?700:400}" font-family="inherit">${mo}</text>
+      <text x="${xPos(i)}" y="${PAD.t+cH+22}" fill="${i===curM?TC.axisNow:TC.axis}" font-size="10" text-anchor="middle" font-weight="${i===curM?700:400}" font-family="inherit">${mo}</text>
     `).join('')}
 
     <!-- 달성매출 막대 (목표 초과=파랑, 미달=빨강) -->
@@ -1603,29 +1626,29 @@ function renderTrendChart(curM) {
     </g>
 
     <!-- 목표매출 라인 -->
-    <path id="tc-target" d="${targetPath}" fill="none" stroke="#2A44A8" stroke-width="2" stroke-dasharray="6,3"/>
+    <path id="tc-target" d="${targetPath}" fill="none" stroke="${TC.target}" stroke-width="2" stroke-dasharray="6,3"/>
 
     <!-- 총비용 라인 -->
-    <path id="tc-cost" d="${costPath}" fill="none" stroke="#55606E" stroke-width="1.5" stroke-dasharray="4,3" opacity=".8"/>
+    <path id="tc-cost" d="${costPath}" fill="none" stroke="${TC.cost}" stroke-width="1.5" stroke-dasharray="4,3" opacity=".8"/>
 
     <!-- 반품률 라인 -->
-    <path id="tc-ret" d="${retPath}" fill="none" stroke="#B3243C" stroke-width="1.5" opacity=".8"/>
+    <path id="tc-ret" d="${retPath}" fill="none" stroke="${TC.ret}" stroke-width="1.5" opacity=".8"/>
     <g id="tc-ret-dots">${retData.map((v,i) => v !== null ? `
-      <circle cx="${xPos(i)}" cy="${yRet(v)}" r="3" fill="#B3243C" stroke="#FFFFFF" stroke-width="1.5"/>
+      <circle cx="${xPos(i)}" cy="${yRet(v)}" r="3" fill="${TC.ret}" stroke="${TC.dotEdge}" stroke-width="1.5"/>
     ` : '').join('')}</g>
 
     <!-- 기준월 강조 -->
-    <line x1="${xPos(curM)}" x2="${xPos(curM)}" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="#0F162026" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="${xPos(curM)}" x2="${xPos(curM)}" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="${TC.gridNow}" stroke-width="1" stroke-dasharray="3,3"/>
 
     <!-- 호버 레이어 -->
-    <line id="tc-hover-line" x1="0" x2="0" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="#0F162040" stroke-width="1" opacity="0"/>
+    <line id="tc-hover-line" x1="0" x2="0" y1="${PAD.t}" y2="${PAD.t+cH}" stroke="${TC.hover}" stroke-width="1" opacity="0"/>
     <g id="tc-tooltip" opacity="0">
-      <rect id="tc-tt-bg" rx="8" ry="8" fill="#FFFFFF" stroke="#CDD4DE" stroke-width="1"/>
-      <text id="tc-tt-mo"     fill="#7C8794" font-size="10" font-weight="700" font-family="inherit"/>
+      <rect id="tc-tt-bg" rx="8" ry="8" fill="${TC.ttBg}" stroke="${TC.ttBorder}" stroke-width="1"/>
+      <text id="tc-tt-mo"     fill="${TC.ttMuted}" font-size="10" font-weight="700" font-family="inherit"/>
       <text id="tc-tt-ship"   fill="#3A5BD9" font-size="11" font-family="inherit"/>
-      <text id="tc-tt-target" fill="#2A44A8" font-size="11" font-family="inherit"/>
-      <text id="tc-tt-cost"   fill="#7C8794" font-size="11" font-family="inherit"/>
-      <text id="tc-tt-ret"    fill="#B3243C" font-size="11" font-family="inherit"/>
+      <text id="tc-tt-target" fill="${TC.target}" font-size="11" font-family="inherit"/>
+      <text id="tc-tt-cost"   fill="${TC.ttMuted}" font-size="11" font-family="inherit"/>
+      <text id="tc-tt-ret"    fill="${TC.ret}" font-size="11" font-family="inherit"/>
     </g>
     <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="transparent" id="tc-hover-area"/>
   </svg>`;
@@ -1647,11 +1670,11 @@ function renderTrendChart(curM) {
     const sv = shipData[idx], tv = targetData[idx], cv = costData[idx], rv = retData[idx];
     const achStr = sv != null && tv ? (sv >= tv ? '달성 ' : '미달 ') : null;
     const lines = [
-      ['tc-tt-mo',     months[idx],                                    '#7C8794'],
-      ['tc-tt-ship',   sv  != null ? (achStr + fmtAmt(sv))            : null, sv != null && tv && sv >= tv ? '#3A5BD9' : '#B3243C'],
-      ['tc-tt-target', tv  != null ? '목표  ' + fmtAmt(tv)            : null, '#2A44A8'],
-      ['tc-tt-cost',   cv  != null ? '비용  ' + fmtAmt(cv)            : null, '#7C8794'],
-      ['tc-tt-ret',    rv  != null ? '반품  ' + rv + '%'               : null, '#B3243C'],
+      ['tc-tt-mo',     months[idx],                                    TC.ttMuted],
+      ['tc-tt-ship',   sv  != null ? (achStr + fmtAmt(sv))            : null, sv != null && tv && sv >= tv ? TC.barTop : TC.ret],
+      ['tc-tt-target', tv  != null ? '목표  ' + fmtAmt(tv)            : null, TC.target],
+      ['tc-tt-cost',   cv  != null ? '비용  ' + fmtAmt(cv)            : null, TC.ttMuted],
+      ['tc-tt-ret',    rv  != null ? '반품  ' + rv + '%'               : null, TC.ret],
     ].filter(l => l[1] !== null);
 
     const ttW = 144, lineH = 17, ttPad = 10;
