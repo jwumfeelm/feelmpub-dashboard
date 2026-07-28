@@ -2390,12 +2390,15 @@ function renderCost(){
   const mMkt=M_MKT_COST[m]||0, mPub=M_PUB_COST[m]||0, mCom=M_COM_COST[m]||0;
   const cs=costSplit(m);
   const mNet=M_NET_SALES[m]||0;
-  const cumTotal=M_TOTAL_COST.slice(0,m+1).reduce((a,b)=>a+b,0);
+  const cumTotal=MONTHS.slice(0,m+1).reduce((a,_,i)=>a+costSplit(i).total,0);
   const cumNet  =M_NET_SALES.slice(0,m+1).reduce((a,b)=>a+b,0);
   const cumPlan =M_TOTAL_PLAN.slice(0,m+1).reduce((a,b)=>a+b,0);
 
   // 비용률 = 총비용 / 순매출. 절대 금액은 매출 따라 커지므로 효율은 이 비율로 본다.
-  const rate = i => (M_NET_SALES[i]>0) ? (M_TOTAL_COST[i]+(M_TOTAL_PLAN[i]||0))/M_NET_SALES[i]*100 : null;
+  // 총비용은 반드시 costSplit 을 거친다. 시트 수식이 계획을 포함하면
+  // M_TOTAL_COST 에 이미 들어 있어서 그냥 더하면 이중 계상된다.
+  const costOf = i => costSplit(i).total;
+  const rate = i => (M_NET_SALES[i]>0) ? costOf(i)/M_NET_SALES[i]*100 : null;
   const curRate=rate(m), prvRate=m>0?rate(m-1):null;
   const profit = mNet - cs.total;
 
@@ -2405,7 +2408,7 @@ function renderCost(){
     if(idx.length<2) return `<div class="empty-row">표시할 월이 없습니다</div>`;
     const W=1000,H=230,P={t:18,r:52,b:30,l:56};
     const cW=W-P.l-P.r, cH=H-P.t-P.b;
-    const maxAmt=Math.max(...idx.map(i=>Math.max(M_NET_SALES[i], M_TOTAL_COST[i]+(M_TOTAL_PLAN[i]||0))),1);
+    const maxAmt=Math.max(...idx.map(i=>Math.max(M_NET_SALES[i], costOf(i))),1);
     const rates=idx.map(rate).filter(v=>v!=null);
     const maxR=Math.max(...rates,10)*1.25;
     const bw=Math.min(46, cW/idx.length*0.5);
@@ -2421,13 +2424,21 @@ function renderCost(){
     }).join('');
 
     const bars=idx.map((i,k)=>{
-      const net=M_NET_SALES[i]||0, cost=M_TOTAL_COST[i]+(M_TOTAL_PLAN[i]||0);
+      const net=M_NET_SALES[i]||0, cost=costOf(i);
       const isCur=i===m;
       return `<rect x="${xc(k)-bw/2}" y="${yA(net)}" width="${bw}" height="${Math.max(0,cH-(yA(net)-P.t))}" rx="2"
                 fill="${isCur?'#DCE3FD':'#EDF0F4'}"/>`
            + `<rect x="${xc(k)-bw/2}" y="${yA(cost)}" width="${bw}" height="${Math.max(0,cH-(yA(cost)-P.t))}" rx="2"
                 fill="${isCur?'#3A5BD9':'#B7C0CA'}"/>`;
     }).join('');
+
+    // 기준선: 누적 비용률 (총비용 합계 ÷ 순매출 합계)
+    const sumC=idx.reduce((a,i)=>a+costOf(i),0), sumN=idx.reduce((a,i)=>a+(M_NET_SALES[i]||0),0);
+    const avgR=sumN>0 ? sumC/sumN*100 : null;
+    const avgLine = (avgR==null || avgR>maxR) ? '' :
+      `<line x1="${P.l}" x2="${P.l+cW}" y1="${yR(avgR)}" y2="${yR(avgR)}" stroke="#8AA0EE" stroke-width="1.5" stroke-dasharray="5,4"/>`
+      + `<rect x="${P.l+cW-96}" y="${yR(avgR)-17}" width="92" height="15" rx="3" fill="#EEF1FE"/>`
+      + `<text x="${P.l+cW-50}" y="${yR(avgR)-6}" fill="#2A44A8" font-size="9.5" font-weight="700" text-anchor="middle">누적 평균 ${avgR.toFixed(1)}%</text>`;
 
     const pts=idx.map((i,k)=>rate(i)==null?null:`${xc(k)},${yR(rate(i))}`).filter(Boolean).join('L');
     const dots=idx.map((i,k)=>rate(i)==null?'':
@@ -2440,7 +2451,7 @@ function renderCost(){
          font-weight="${i===m?800:600}" text-anchor="middle">${Math.round(rate(i))}%</text>`).join('');
 
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:230px;display:block">
-      ${grid}${bars}
+      ${grid}${bars}${avgLine}
       <path d="M${pts}" fill="none" stroke="#0F1620" stroke-width="2" stroke-linejoin="round"/>
       ${dots}${rateTags}${labels}</svg>`;
   }
@@ -2514,7 +2525,7 @@ function renderCost(){
 
     <div class="card gap">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
-        <div class="card-title" style="margin:0">비용률 추이 <small>막대 = 순매출 · 진한 막대 = 총비용 · 선 = 비용률</small></div>
+        <div class="card-title" style="margin:0">비용률 추이 <small>막대 = 순매출 · 진한 막대 = 총비용 · 검은 선 = 월 비용률 · 점선 = 누적 평균</small></div>
         <div style="font-size:11px;color:var(--ink3)">연 누적 순매출 ${won(cumNet)} · 총비용 ${won(cumTotal)} · 비용률 ${cumNet>0?(cumTotal/cumNet*100).toFixed(1):'—'}%</div>
       </div>
       ${rateChart()}
