@@ -1987,12 +1987,17 @@ function runCountUps(root){
       if (mode === 'dec')  return v.toFixed(1);
       return String(Math.round(v));
     };
+    // 애니메이션이 어떤 이유로든 중단돼도 값이 0 으로 남지 않게 최종값을 예약해 둔다
+    var done = false;
+    var settle = function(){ if (!done) { done = true; el.textContent = fmt(to); } };
+    setTimeout(settle, dur + 400);
     function step(ts){
+      if (done) return;
       if (!t0) t0 = ts;
       var k = Math.min(1, (ts - t0) / dur);
       el.textContent = fmt(to * ease(k));
       if (k < 1) requestAnimationFrame(step);
-      else el.textContent = fmt(to);
+      else settle();
     }
     requestAnimationFrame(step);
   });
@@ -2622,6 +2627,11 @@ function renderSummary(){
         }).join('') : `<tr><td colspan="7" class="empty-row">해당 신간 없음</td></tr>`}
       </table>
     </div>`;
+
+  // 렌더 직후 숫자 카운트업·선 그리기.
+  // renderActive 를 거치지 않는 호출(시트 지연 로드 등)에서도 동작해야 하므로 여기서 건다.
+  const _sum = document.getElementById('tab-summary');
+  setTimeout(function(){ runCountUps(_sum); drawLines(_sum); }, 0);
 }
 
 /* ─────────────────────────────────────
