@@ -585,12 +585,24 @@ const PUB_EXPORT = [];   // 판권 수출
 // 구성원 — 생일·입사일 축하용. 본인이 노출여부를 Y로 둔 사람만 담는다.
 const MEMBERS = [];
 // 제작 공정 순서 (열 위치 기준 — '디자인'이 담당자/단계 두 곳에 있어 이름으로 못 찾는다)
-const PUB_STAGES = [
-  {key:'킥오프',   col:22}, {key:'제목회의', col:23}, {key:'조판',   col:18},
-  {key:'PC교',    col:17}, {key:'1교',     col:19}, {key:'2교',   col:20},
-  {key:'3교',     col:21}, {key:'표지회의', col:24}, {key:'디자인', col:25},
-  {key:'발주',    col:26}, {key:'입고',    col:27},
+// 회의 3단계 / 제작 7단계로 나눠서 본다
+const PUB_STAGE_GROUPS = [
+  {label:'회의', keys:[
+    {key:'킥오프',   names:['킥오프'],            col:22},
+    {key:'제목회의', names:['제목회의','제목'],    col:23},
+    {key:'표지회의', names:['표지회의','표지'],    col:24},
+  ]},
+  {label:'제작', keys:[
+    {key:'PC교', names:['pc교','PC교'],          col:17},
+    {key:'조판', names:['조판'],                 col:18},
+    {key:'1교',  names:['1교'],                  col:19},
+    {key:'2교',  names:['2교'],                  col:20},
+    {key:'3교',  names:['3교'],                  col:21},
+    {key:'마감', names:['마감','발주'],           col:26},
+    {key:'입고', names:['입고'],                 col:27},
+  ]},
 ];
+const PUB_STAGES = PUB_STAGE_GROUPS.reduce(function(a,g){ return a.concat(g.keys); }, []);
 const M_PROFIT      = Array(12).fill(0);
 const M_TARGET      = Array(12).fill(0);
 
@@ -872,17 +884,19 @@ async function loadPubSheets() {
       }
       return fallback;
     };
+    // 폴백은 현재 시트 배치 기준 (E 도서명 · F 저자명 · G 역자명 · H 분야 …)
     const C = {
-      inDate: colAt(['입고일'], 2),
-      ship:   colAt(['배본일'], 3),
-      title:  colAt(['도서명'], 4),
-      author: colAt(['저자명','저자'], 5),
-      genre:  colAt(['분야'], 6),
-      team:   colAt(['팀'], 7),
-      status: colAt(['원고 진행도','진행도'], 8),
-      plan:   colAt(['기획','기획자'], 11),
-      design: colAt(['디자인','디자이너'], 13),
-      mkter:  colAt(['마케터','마케팅'], 14),
+      inDate: colAt(['입고일'], 2),          // C
+      ship:   colAt(['배본일'], 3),          // D
+      title:  colAt(['도서명'], 4),          // E
+      author: colAt(['저자명','저자'], 5),    // F
+      trans:  colAt(['역자명','역자'], 6),    // G
+      genre:  colAt(['분야'], 7),            // H
+      team:   colAt(['팀'], -1),
+      status: colAt(['원고 진행도','진행도'], 9),
+      plan:   colAt(['기획','기획자'], 12),   // M
+      design: colAt(['디자인','디자이너'], 14),// O
+      mkter:  colAt(['마케터','마케팅'], 15), // P
     };
 
     // 공정 단계 열도 이름으로 찾는다. '디자인'은 담당자 열에도 있으므로
@@ -899,7 +913,7 @@ async function loadPubSheets() {
     };
     const STG = PUB_STAGES.map(st => ({
       key: st.key,
-      col: (()=>{ const i = stageCol([st.key, st.key.toUpperCase(), st.key.toLowerCase()]); return i >= 0 ? i : st.col; })()
+      col: (()=>{ const i = stageCol(st.names || [st.key]); return i >= 0 ? i : st.col; })()
     }));
     console.info('[출간 관리] 열 매핑', C, '공정', STG.map(x=>x.key+':'+x.col).join(' '));
 
@@ -916,8 +930,9 @@ async function loadPubSheets() {
         ship:   ship,
         title:  String(r[C.title]||'').trim(),
         author: String(r[C.author]||'').trim(),
+        trans:  C.trans >= 0 ? String(r[C.trans]||'').trim() : '',
         genre:  String(r[C.genre]||'').trim(),
-        team:   String(r[C.team]||'').trim(),
+        team:   C.team >= 0 ? String(r[C.team]||'').trim() : '',
         status: String(r[C.status]||'').trim(),
         plan:   String(r[C.plan]||'').trim(),     // L 기획
         design: String(r[C.design]||'').trim(),   // O 디자인
@@ -4540,27 +4555,31 @@ function renderPublish(){
     return {done: done.length ? done[done.length-1] : null, next: next.length ? next[0] : null, cnt: done.length};
   };
 
-  /* 공정 트랙 — 11단계를 가로로 펼치고 단계명을 함께 표시 */
-  const STAGE_SHORT = {'킥오프':'킥오프','제목회의':'제목','표지회의':'표지','디자인':'디자인','조판':'조판',
-                       'PC교':'PC교','1교':'1교','2교':'2교','3교':'3교','발주':'발주','입고':'입고'};
+  /* 공정 트랙 — 회의 3단계 / 제작 7단계를 나눠서 표시 */
   function stepBar(b){
     const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
     const doneKeys = b.stages.filter(s => s.date <= today).map(s => s.key);
     const cur = doneKeys.length ? doneKeys[doneKeys.length-1] : null;
-    return `<div style="display:flex;gap:3px;align-items:flex-end">
-      ${PUB_STAGES.map(st=>{
-        const d = set[st.key];
-        const state = !d ? 'none' : (d <= today ? 'done' : 'plan');
-        const isCur = st.key === cur;
-        const bg = state==='done' ? (isCur ? 'var(--accent-deep)' : 'var(--accent)')
-                 : (state==='plan' ? '#C6D2F7' : 'var(--surface3)');
-        const col = isCur ? 'var(--ink)' : (state==='none' ? 'var(--ink3)' : 'var(--ink2)');
-        return `<div title="${st.key}${d?' · '+ymd(d).slice(5):'  미정'}" style="flex:1;min-width:0">
-          <div style="height:${isCur?8:6}px;border-radius:var(--r5);background:${bg}"></div>
-          <div style="font-size:9px;line-height:1.3;margin-top:3px;text-align:center;white-space:nowrap;
-            overflow:hidden;text-overflow:ellipsis;color:${col};font-weight:${isCur?800:500}">${STAGE_SHORT[st.key]||st.key}</div>
-        </div>`;
-      }).join('')}
+    const seg = st => {
+      const d = set[st.key];
+      const state = !d ? 'none' : (d <= today ? 'done' : 'plan');
+      const isCur = st.key === cur;
+      const bg = state==='done' ? (isCur ? 'var(--accent-deep)' : 'var(--accent)')
+               : (state==='plan' ? '#C6D2F7' : 'var(--surface3)');
+      const col = isCur ? 'var(--ink)' : (state==='none' ? 'var(--ink3)' : 'var(--ink2)');
+      return `<div title="${st.key}${d?' · '+ymd(d).slice(5):'  미정'}" style="flex:1;min-width:0">
+        <div style="height:${isCur?8:6}px;border-radius:var(--r5);background:${bg}"></div>
+        <div style="font-size:9px;line-height:1.3;margin-top:3px;text-align:center;white-space:nowrap;
+          overflow:hidden;text-overflow:ellipsis;color:${col};font-weight:${isCur?800:500}">${st.key}</div>
+      </div>`;
+    };
+    return `<div style="display:flex;gap:14px;align-items:flex-end">
+      ${PUB_STAGE_GROUPS.map((g,gi)=>`
+        <div style="flex:${g.keys.length};min-width:0">
+          <div style="display:flex;gap:3px;align-items:flex-end">${g.keys.map(seg).join('')}</div>
+        </div>
+        ${gi < PUB_STAGE_GROUPS.length-1 ? '<div style="width:1px;align-self:stretch;background:var(--border);margin-bottom:14px"></div>' : ''}
+      `).join('')}
     </div>`;
   }
 
@@ -4638,16 +4657,16 @@ function renderPublish(){
   }
 
   el.innerHTML = `
-    <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">${ym.slice(0,4)}년 출간</div>
-        <div class="kpi-val">${yearBooks.length}<span style="font-size:19px;font-weight:700">종</span></div>
-        <div class="kpi-sub">배본일 기준</div></div>
+    <div class="g3 gap">
+      ${(()=>{ const done = yearBooks.filter(b=>b.ship < today).length;
+        const pct = yearBooks.length ? Math.round(done/yearBooks.length*100) : 0;
+        return `<div class="kpi"><div class="kpi-lbl">${ym.slice(0,4)}년 출간</div>
+        <div class="kpi-val">${done}<span style="font-size:19px;font-weight:700">종</span><span style="font-size:19px;font-weight:700;color:var(--ink3)"> / ${yearBooks.length}종</span></div>
+        <div class="kpi-sub">계획 대비 ${pct}% · 배본일 기준</div>
+        <div class="kpi-bar-wrap" style="height:4px;background:var(--ink5);border-radius:2px;margin-top:10px;overflow:hidden"><div class="bar-grow" style="--w:${pct}%;height:4px;background:var(--accent);border-radius:2px"></div></div></div>`; })()}
       <div class="kpi"><div class="kpi-lbl">당월 배본</div>
         <div class="kpi-val">${thisMonth.length}<span style="font-size:19px;font-weight:700">종</span></div>
         <div class="kpi-sub">${ym}</div></div>
-      <div class="kpi"><div class="kpi-lbl">제작 진행 중</div>
-        <div class="kpi-val">${live.length}<span style="font-size:19px;font-weight:700">종</span></div>
-        <div class="kpi-sub">배본 예정 도서</div></div>
       <div class="kpi"><div class="kpi-lbl">배본 임박</div>
         <div class="kpi-val ${soon.length?'bad':''}">${soon.length}<span style="font-size:19px;font-weight:700">종</span></div>
         <div class="kpi-sub">3주 이내</div></div>
@@ -4656,7 +4675,7 @@ function renderPublish(){
     <div class="card gap">
       <div class="card-title">제작 진행 현황 <small>배본일 순 · 진행 막대는 킥오프부터 입고까지 11단계</small></div>
       ${live.length ? `<table>
-        <tr><th style="width:66px">D-day</th><th style="width:210px">도서명</th>
+        <tr><th style="width:74px">배본일</th><th style="width:220px">도서</th>
             <th>진행 · 공정 단계</th><th style="width:190px">담당</th></tr>
         ${live.slice(0,25).map(b=>{
           const st = stageOf(b), d = dday(b.ship);
@@ -4668,10 +4687,12 @@ function renderPublish(){
               + `<b style="color:var(--ink);font-weight:700">${esc(v)}</b></span>`)
             .join('<span style="color:var(--border2);margin:0 5px">·</span>');
           return `<tr>
-            <td style="vertical-align:top"><b style="color:${col};font-size:12px">D-${d}</b>
-              <div style="font-size:10px;color:var(--ink3)">${ymd(b.ship).slice(5)}</div></td>
-            <td style="vertical-align:top"><b style="font-size:12px">${esc(b.title)}</b>
-              <div style="font-size:10px;color:var(--ink3)">${esc(b.author)}${b.genre?' · '+esc(b.genre):''}</div></td>
+            <td style="vertical-align:top"><b style="font-size:13px;color:var(--ink);letter-spacing:-.01em">${ymd(b.ship).slice(5).replace('-','/')}</b>
+              <div style="font-size:10px;font-weight:700;color:${col};margin-top:1px">D-${d}</div></td>
+            <td style="vertical-align:top">
+              <div style="font-size:12px;font-weight:800;color:var(--ink);line-height:1.4">${esc(b.title)}</div>
+              <div style="font-size:11px;color:var(--ink2);line-height:1.5">${esc(b.author)||'<span style="color:var(--ink3)">저자 미정</span>'}${b.trans?`<span style="color:var(--ink3)"> / 역 ${esc(b.trans)}</span>`:''}</div>
+              <div style="font-size:10px;color:var(--ink3);line-height:1.5">${esc(b.genre)}</div></td>
             <td>${stepBar(b)}
               <div style="display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--ink3);margin-top:5px">
                 <span>${st.done ? `진행 <b style="color:var(--ink2)">${esc(st.done.key)}</b>` : '미착수'}</span>
