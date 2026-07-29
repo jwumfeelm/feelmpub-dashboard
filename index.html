@@ -616,12 +616,13 @@ const MEMBERS = [];
 // 재직 명부 — 생일 노출여부와 무관하게 전원. 입사·퇴사일로 시점별 인원을 센다.
 const ROSTER = [];
 // 특정 연·월(0-based) 시점의 재직 인원
-function headcountAt(y, mIdx){
+function headcountAt(y, mIdx, teamRe){
   var start = new Date(y, mIdx, 1);
   var end   = new Date(y, mIdx + 1, 0);
   return ROSTER.filter(function(p){
     if (p.joinD  && p.joinD  > end)   return false;   // 아직 입사 전
     if (p.leaveD && p.leaveD < start) return false;   // 이미 퇴사
+    if (teamRe && !teamRe.test(p.team || '')) return false;
     return true;
   }).length;
 }
@@ -639,11 +640,34 @@ function rosterGapMonths(y, mIdx){
 // 퇴사일이 한 건도 없으면 이력 자체가 없는 것으로 본다
 function rosterHasLeavers(){ return ROSTER.some(function(p){ return !!p.leaveD; }); }
 // 기간 평균 인원 (0~mIdx 월)
-function avgHeadcount(y, mIdx){
+function avgHeadcount(y, mIdx, teamRe){
   var sum = 0, n = 0;
-  for (var i = 0; i <= mIdx; i++){ sum += headcountAt(y, i); n++; }
+  for (var i = 0; i <= mIdx; i++){ sum += headcountAt(y, i, teamRe); n++; }
   return n ? sum / n : 0;
 }
+// 출판 조직 판정 — '출판1팀' '출판팀' 등 표기 흔들림 대비
+var TEAM_PUB = /출판/;
+
+// 진단 — 구성원 시트에서 실제로 무엇이 읽혔는지 콘솔에서 확인
+window.__rosterDiag = function(){
+  var y = +((document.getElementById('monthPicker').value||'').slice(0,4)) || new Date().getFullYear();
+  var teams = {};
+  ROSTER.forEach(function(p){ var t = p.team || '(빈값)'; teams[t] = (teams[t]||0)+1; });
+  var byMonth = [];
+  for (var i = 0; i < 12; i++){
+    byMonth.push(MONTHS[i] + ' 전체 ' + headcountAt(y,i) + ' / 출판 ' + headcountAt(y,i,TEAM_PUB));
+  }
+  return {
+    '명부 행수': ROSTER.length,
+    '팀 값 분포': teams,
+    '출판으로 인식된 인원': ROSTER.filter(function(p){ return TEAM_PUB.test(p.team||''); }).map(function(p){ return p.name+'('+p.team+')'; }),
+    '퇴사일 입력된 행': ROSTER.filter(function(p){ return !!p.leaveD; }).map(function(p){ return p.name+' → '+ymd(p.leaveD); }),
+    '입사일 비어있는 행': ROSTER.filter(function(p){ return !p.joinD; }).map(function(p){ return p.name; }),
+    '월별 인원': byMonth,
+    '출판팀 평균(연초~기준월)': avgHeadcount(y, getM(), TEAM_PUB).toFixed(2),
+    '집계된 출간 종수': PUB_BOOKS.filter(function(b){ return b.ship && String(b.ship.getFullYear())===String(y) && b.ship < new Date(); }).length,
+  };
+};
 function teamCountAt(y, mIdx){
   var start = new Date(y, mIdx, 1), end = new Date(y, mIdx + 1, 0), out = {};
   ROSTER.forEach(function(p){
@@ -1242,7 +1266,10 @@ async function loadSheets() {
 
     window.__mktMissingGid = [];
     // 출판팀 시트 비동기 로드
-    loadPubSheets().then(() => { if (activeTab==='publish') renderPublish(); });
+    loadPubSheets().then(() => {
+      if (activeTab==='publish') renderPublish();
+      if (activeTab==='summary') renderSummary();   // 인당 출간·판권 수출이 뒤늦게 채워진다
+    });
 
     // 마케팅 캠페인 시트 비동기 로드
     loadMktSheets().then(() => {
@@ -2337,6 +2364,9 @@ function renderSummary(){
       const cumCost = MONTHS.slice(0,m+1).reduce((a,_,i)=>a+costSplit(i).total,0);
       const cumProf = cumNet - cumCost;
       const pubCnt  = PUB_BOOKS.filter(b=>b.ship && String(b.ship.getFullYear())===yr4s && b.ship < new Date()).length;
+      // 출간은 출판팀이 만들어내는 산출물이므로 분모도 출판팀 인원으로 본다
+      const avgPub  = avgHeadcount(Y, m, TEAM_PUB);
+      const curPub  = headcountAt(Y, m, TEAM_PUB);
       const tc = teamCountAt(Y, m);
 
       const per = MONTHS.map((_,i)=>{ const h=headcountAt(Y,i); return (h && M_NET_SALES[i]>0) ? M_NET_SALES[i]/h : null; });
@@ -2422,7 +2452,8 @@ function renderSummary(){
               `월평균 ${won(Math.round(cumNet/avgN/months))}` +
               (delta!=null?` · <b style="color:${delta>=0?'var(--good)':'var(--bad)'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}%</b> 전월 대비`:''), true, 0)}
           ${tile('인당 손익', Math.round(cumProf/avgN), 'wonS', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`, false, 80)}
-          ${tile('인당 출간', (pubCnt/avgN).toFixed(1), 'dec', `${yr4s}년 ${pubCnt}종 출간`, false, 160)}
+          ${tile('인당 출간', avgPub ? (pubCnt/avgPub).toFixed(1) : '0.0', 'dec',
+              avgPub ? `출판팀 ${curPub}명 기준 · ${yr4s}년 ${pubCnt}종` : `${yr4s}년 ${pubCnt}종 출간`, false, 160)}
           ${tile('인당 비용', Math.round(cumCost/avgN), 'won', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`, false, 240)}
         </div>
 
