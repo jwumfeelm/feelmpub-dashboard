@@ -615,8 +615,14 @@ const PUB_EXPORT = [];   // 판권 수출
 const MEMBERS = [];
 // 재직 명부 — 생일 노출여부와 무관하게 전원. 입사·퇴사일로 시점별 인원을 센다.
 const ROSTER = [];
+// 01_월별실적의 '인원' 행. 값이 있으면 명부 계산보다 우선한다.
+// 퇴사자 이력이 없는 기간은 명부만으로는 인원이 과소 계상되기 때문.
+const M_HEADCOUNT = Array(12).fill(0);
 // 특정 연·월(0-based) 시점의 재직 인원
 function headcountAt(y, mIdx){
+  // 시트에 직접 입력된 인원이 있으면 그것을 쓴다
+  var manual = M_HEADCOUNT[mIdx] || 0;
+  if (manual > 0) return manual;
   var start = new Date(y, mIdx, 1);
   var end   = new Date(y, mIdx + 1, 0);
   return ROSTER.filter(function(p){
@@ -625,6 +631,8 @@ function headcountAt(y, mIdx){
     return true;
   }).length;
 }
+// 인원 출처 — 화면에 어떤 기준인지 밝히기 위함
+function headcountSource(mIdx){ return (M_HEADCOUNT[mIdx] || 0) > 0 ? 'sheet' : 'roster'; }
 // 기간 평균 인원 (0~mIdx 월)
 function avgHeadcount(y, mIdx){
   var sum = 0, n = 0;
@@ -1324,6 +1332,13 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
 
   const newShip   = getMonthly('총 매출');
   const newReturn = getMonthly('반품액');
+  // 인원 — 없으면 0 이 들어가고 명부 계산으로 넘어간다
+  (function(){
+    const h = getMonthly('인원');
+    const h2 = h.some(v=>v>0) ? h : getMonthly('재직 인원');
+    M_HEADCOUNT.splice(0, 12, ...h2.map(v => Math.round(toNum(v))));
+  })();
+
   const newMkt    = getMonthly('마케팅팀 비용');
   const newPub    = getMonthly('출판팀 비용');
   const newCom    = getMonthly('경상비');
@@ -2400,7 +2415,7 @@ function renderSummary(){
       return `<div class="card gap2">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
           <div class="card-title" style="margin:0">인당 생산성 <small>${yr4s}년 ${months}개월 누적 · 평균 ${avgN.toFixed(1)}명 기준</small></div>
-          <div style="font-size:11px;color:var(--ink3)">${MONTHS[m]} 재직 ${N}명 · ${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')}</div>
+          <div style="font-size:11px;color:var(--ink3)">${MONTHS[m]} 재직 ${N}명${headcountSource(m)==='sheet' ? '' : ` · ${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')}`}</div>
         </div>
         <div style="display:flex;gap:24px;flex-wrap:wrap">
           ${box('인당 순매출', won(Math.round(cumNet/avgN)), '', `월평균 ${won(Math.round(cumNet/avgN/months))}`)}
@@ -2409,6 +2424,11 @@ function renderSummary(){
           ${box('인당 비용', won(Math.round(cumCost/avgN)), '', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`)}
         </div>
         ${trend}
+        ${(()=>{
+          const rosterMonths = MONTHS.slice(0,m+1).map((_,i)=>i).filter(i=>headcountSource(i)!=='sheet');
+          if(!rosterMonths.length) return '';
+          return `<div style="margin-top:14px;padding:10px 12px;background:var(--warn-dim);border-radius:var(--r2);font-size:11px;color:var(--ink2);line-height:1.6"><b>${rosterMonths.map(i=>MONTHS[i]).join(' · ')}</b> 은 구성원 명부로 인원을 셌습니다. 퇴사 이력이 없으면 인원이 실제보다 적게 잡혀 인당 지표가 부풀려집니다.<br><b>01_월별실적</b>에 <b>인원</b> 행을 추가하고 월별 재직 인원을 넣으면 그 값을 우선 사용합니다.</div>`;
+        })()}
       </div>`;
     })()}
 
@@ -4958,6 +4978,13 @@ function renderData(){
           ['판매량이 안 붙음','브라우저 콘솔에서 <code>mktDiag()</code> 실행'],
           ['도서별 비용·ROAS가 0','비용원장 도서명이 “기타”로 되어 있음'],
         ].map(([a,b])=>`<tr><td style="font-size:12px"><b>${a}</b></td><td style="font-size:12px;color:var(--ink2)">${b}</td></tr>`).join('')}
+      </table>`)}
+
+    ${card('01_월별실적 · 인원 행', '인당 생산성 지표의 분모', `
+      <table>
+        <tr><th style="width:150px">항목</th><th>설명</th></tr>
+        <tr><td><b style="font-size:12px">인원</b></td><td style="font-size:12px;color:var(--ink2)">다른 행과 같은 형식으로 <b>항목=인원</b>, 연도, 1~12월에 <b>월별 재직 인원</b>을 넣습니다.<br>이 값이 있으면 구성원 명부보다 <b>우선 사용</b>합니다.</td></tr>
+        <tr><td><b style="font-size:12px">왜 필요한가</b></td><td style="font-size:12px;color:var(--ink2)">구성원 탭에 <b style="color:var(--bad)">퇴사자 이력이 없으면</b> 과거 인원이 실제보다 적게 잡혀 인당 지표가 부풀려집니다.<br>퇴사자를 전부 복원하기 어려우면 이 행에 월별 인원만 넣어도 정확해집니다.</td></tr>
       </table>`)}
 
     ${card('구성원', '생일·입사 기념일 축하와 인당 생산성 지표에 쓰입니다', cols([
