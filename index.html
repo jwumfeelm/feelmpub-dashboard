@@ -4542,11 +4542,13 @@ function renderPublish(){
   const dday = d => d ? Math.round((d - today)/86400000) : null;
   const ym   = document.getElementById('monthPicker').value.slice(0,7);
 
-  // 진행 중 = 배본일이 아직 안 지난 도서
-  const live = PUB_BOOKS.filter(b => b.ship && b.ship >= today).sort((a,b)=>a.ship-b.ship);
-  const thisMonth = PUB_BOOKS.filter(b => b.ship && ymd(b.ship).slice(0,7) === ym);
+  // 제작 관점이므로 입고일을 기준으로 본다. 입고일이 없으면 배본일로 대체.
+  const keyDate = b => b.inDate || b.ship;
+  const live = PUB_BOOKS.filter(b => keyDate(b) && keyDate(b) >= today)
+                        .sort((a,b)=>keyDate(a)-keyDate(b));
+  const thisMonth = PUB_BOOKS.filter(b => keyDate(b) && ymd(keyDate(b)).slice(0,7) === ym);
   const yearBooks = PUB_BOOKS.filter(b => b.ship && String(b.ship.getFullYear()) === ym.slice(0,4));
-  const soon = live.filter(b => dday(b.ship) <= 21);
+  const soon = live.filter(b => dday(keyDate(b)) <= 21);
 
   // 현재 단계 = 오늘 이전 마지막 완료 단계
   const stageOf = b => {
@@ -4583,12 +4585,12 @@ function renderPublish(){
     </div>`;
   }
 
-  /* 월별 배본 예정 — 특정 달에 몰리면 마케팅 리소스가 분산된다 */
+  /* 월별 입고 예정 — 특정 달에 몰리면 제작 리소스가 분산된다 */
   function shipByMonth(){
     const cnt = {};
-    live.forEach(b => { const k = ymd(b.ship).slice(0,7); cnt[k] = (cnt[k]||0)+1; });
+    live.forEach(b => { const k = ymd(keyDate(b)).slice(0,7); cnt[k] = (cnt[k]||0)+1; });
     const keys = Object.keys(cnt).sort().slice(0,12);
-    if(!keys.length) return `<div class="empty-row">배본 예정이 없습니다</div>`;
+    if(!keys.length) return `<div class="empty-row">입고 예정이 없습니다</div>`;
     const mx = Math.max(...keys.map(k=>cnt[k]));
     return `<div style="display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px">
       ${keys.map(k=>{
@@ -4664,21 +4666,22 @@ function renderPublish(){
         <div class="kpi-val">${done}<span style="font-size:19px;font-weight:700">종</span><span style="font-size:19px;font-weight:700;color:var(--ink3)"> / ${yearBooks.length}종</span></div>
         <div class="kpi-sub">계획 대비 ${pct}% · 배본일 기준</div>
         <div class="kpi-bar-wrap" style="height:4px;background:var(--ink5);border-radius:2px;margin-top:10px;overflow:hidden"><div class="bar-grow" style="--w:${pct}%;height:4px;background:var(--accent);border-radius:2px"></div></div></div>`; })()}
-      <div class="kpi"><div class="kpi-lbl">당월 배본</div>
+      <div class="kpi"><div class="kpi-lbl">당월 입고</div>
         <div class="kpi-val">${thisMonth.length}<span style="font-size:19px;font-weight:700">종</span></div>
-        <div class="kpi-sub">${ym}</div></div>
-      <div class="kpi"><div class="kpi-lbl">배본 임박</div>
+        <div class="kpi-sub">${ym} · 입고일 기준</div></div>
+      <div class="kpi"><div class="kpi-lbl">입고 임박</div>
         <div class="kpi-val ${soon.length?'bad':''}">${soon.length}<span style="font-size:19px;font-weight:700">종</span></div>
-        <div class="kpi-sub">3주 이내</div></div>
+        <div class="kpi-sub">3주 이내 입고</div></div>
     </div>
 
     <div class="card gap">
-      <div class="card-title">제작 진행 현황 <small>배본일 순 · 진행 막대는 킥오프부터 입고까지 11단계</small></div>
+      <div class="card-title">제작 진행 현황 <small>입고일 순 · 회의 3단계 / 제작 7단계</small></div>
       ${live.length ? `<table>
-        <tr><th style="width:74px">배본일</th><th style="width:220px">도서</th>
+        <tr><th style="width:92px">입고일</th><th style="width:220px">도서</th>
             <th>진행 · 공정 단계</th><th style="width:190px">담당</th></tr>
         ${live.slice(0,25).map(b=>{
-          const st = stageOf(b), d = dday(b.ship);
+          const kd = keyDate(b), d = dday(kd);
+          const st = stageOf(b);
           const col = d<=7 ? 'var(--bad)' : (d<=21 ? 'var(--warn)' : 'var(--ink2)');
           const who = [['기획',b.plan],['마케터',b.mkter],['디자인',b.design]]
             .filter(([,v]) => v)
@@ -4687,8 +4690,12 @@ function renderPublish(){
               + `<b style="color:var(--ink);font-weight:700">${esc(v)}</b></span>`)
             .join('<span style="color:var(--border2);margin:0 5px">·</span>');
           return `<tr>
-            <td style="vertical-align:top"><b style="font-size:13px;color:var(--ink);letter-spacing:-.01em">${ymd(b.ship).slice(5).replace('-','/')}</b>
-              <div style="font-size:10px;font-weight:700;color:${col};margin-top:1px">D-${d}</div></td>
+            <td style="vertical-align:top">
+              <b style="font-size:13px;color:var(--ink);letter-spacing:-.01em">${ymd(kd).slice(5).replace('-','/')}</b>
+              ${!b.inDate ? '<div style="font-size:9px;color:var(--ink3);line-height:1.3">배본일 기준</div>' : ''}
+              <div style="font-size:10px;font-weight:700;color:${col};margin-top:1px">D-${d}</div>
+              <div style="font-size:10px;color:var(--ink3);margin-top:3px">
+                ${b.ship ? `배본 ${ymd(b.ship).slice(5).replace('-','/')}` : '<span style="color:var(--ink3)">배본 미정</span>'}</div></td>
             <td style="vertical-align:top">
               <div style="font-size:12px;font-weight:800;color:var(--ink);line-height:1.4">${esc(b.title)}</div>
               <div style="font-size:11px;color:var(--ink2);line-height:1.5">${esc(b.author)||'<span style="color:var(--ink3)">저자 미정</span>'}${b.trans?`<span style="color:var(--ink3)"> / 역 ${esc(b.trans)}</span>`:''}</div>
@@ -4702,11 +4709,11 @@ function renderPublish(){
             <td style="font-size:11px;color:var(--ink2);vertical-align:top;line-height:1.9">${who||'<span style="color:var(--ink3)">미배정</span>'}</td>
           </tr>`;
         }).join('')}
-      </table>` : `<div class="empty-row">배본 예정 도서가 없습니다</div>`}
+      </table>` : `<div class="empty-row">입고 예정 도서가 없습니다</div>`}
     </div>
 
     <div class="g2 gap">
-      <div class="card"><div class="card-title">월별 배본 예정 <small>한 달에 몰리면 마케팅 리소스가 분산됩니다</small></div>${shipByMonth()}</div>
+      <div class="card"><div class="card-title">월별 입고 예정 <small>한 달에 몰리면 제작 리소스가 분산됩니다</small></div>${shipByMonth()}</div>
       <div class="card"><div class="card-title">공정 단계 분포 <small>진행 중 도서가 어느 구간에 있는지</small></div>${stageDist()}</div>
     </div>
 
