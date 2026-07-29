@@ -2055,8 +2055,8 @@ function renderTrendChart(curM) {
   if (!el) return;
 
   const W = el.offsetWidth || 900;
-  const H = 250;
-  const PAD = {t:28, r:72, b:70, l:72};   // 하단 여유는 '인당 순매출' 줄 자리
+  const H = 220;
+  const PAD = {t:28, r:72, b:40, l:72};
   const cW = W - PAD.l - PAD.r;
   const cH = H - PAD.t - PAD.b;
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
@@ -2130,27 +2130,6 @@ function renderTrendChart(curM) {
     ${retTicks.slice(1).map(v => `
       <text x="${PAD.l+cW+10}" y="${yRet(v)+4}" fill="${TC.ret}" font-size="10" font-family="inherit" opacity=".7">${Math.round(v)}%</text>
     `).join('')}
-
-    <!-- 인당 순매출 (월 축에 그대로 정렬) -->
-    ${(() => {
-      const Y = +((document.getElementById('monthPicker').value||'').slice(0,4));
-      if (!Y || typeof headcountAt !== 'function') return '';
-      const per = MONTHS.map((_, i) => {
-        const h = headcountAt(Y, i);
-        return (h && M_NET_SALES[i] > 0) ? M_NET_SALES[i] / h : null;
-      });
-      if (!per.some(v => v != null)) return '';
-      const yR = PAD.t + cH + 44;
-      return `<line x1="${PAD.l}" x2="${PAD.l+cW}" y1="${yR-14}" y2="${yR-14}" stroke="${TC.grid}"/>`
-        + `<text x="${PAD.l-10}" y="${yR+3}" fill="${TC.axis}" font-size="9" font-weight="700"
-             letter-spacing=".06em" text-anchor="end" font-family="inherit">인당</text>`
-        + per.map((v,i) => v == null ? '' :
-            `<text x="${xPos(i)}" y="${yR+3}" fill="${i===curM?TC.axisNow:TC.legend}" font-size="10"
-               font-weight="${i===curM?800:500}" text-anchor="middle" font-family="inherit">${fmtAmt(Math.round(v))}</text>`
-            + `<text x="${xPos(i)}" y="${yR+16}" fill="${TC.axis}" font-size="8.5" opacity=".8"
-               text-anchor="middle" font-family="inherit">${headcountAt(Y,i)}명</text>`
-          ).join('');
-    })()}
 
     <!-- 월 레이블 -->
     ${months.map((mo,i) => `
@@ -2403,110 +2382,113 @@ function renderSummary(){
       const pubCnt  = PUB_BOOKS.filter(b=>b.ship && String(b.ship.getFullYear())===yr4s && b.ship < new Date()).length;
       const tc = teamCountAt(Y, m);
 
-      // 월별 인당 순매출
       const per = MONTHS.map((_,i)=>{ const h=headcountAt(Y,i); return (h && M_NET_SALES[i]>0) ? M_NET_SALES[i]/h : null; });
       const idx = MONTHS.map((_,i)=>i).filter(i=>per[i]!=null);
       const curPer = per[m], prevPer = m>0 ? per[m-1] : null;
       const delta  = (curPer!=null && prevPer) ? (curPer/prevPer-1)*100 : null;
 
-      /* 히어로 차트 — 인당 순매출 추이 (면적 + 선 + 점) */
-      const hero = (()=>{
+      /* 메인 차트 — 월별 인당 순매출(막대) + 재직 인원(선, 우축).
+         월별 실적 추이와 같은 무게로 그린다. 좌표는 픽셀 그대로 쓰고
+         preserveAspectRatio 를 건드리지 않는다 (점선 애니메이션이 늘어나 끊겨 보임). */
+      const chart = (()=>{
         if(idx.length<2) return '';
-        const W=560,H=120,P={t:14,r:8,b:22,l:8};
+        const W=1000,H=250,P={t:26,r:64,b:44,l:76};
         const cW=W-P.l-P.r, cH=H-P.t-P.b;
-        const mx=Math.max(...idx.map(i=>per[i])), mn=Math.min(...idx.map(i=>per[i]));
-        const rng=(mx-mn)||1;
-        const x=k=>P.l+(idx.length>1? k/(idx.length-1):0.5)*cW;
-        const y=v=>P.t+cH-((v-mn)/rng)*(cH*0.82)-cH*0.09;
-        const pts=idx.map((i,k)=>x(k)+','+y(per[i])).join('L');
-        const area='M'+x(0)+','+(P.t+cH)+'L'+pts+'L'+x(idx.length-1)+','+(P.t+cH)+'Z';
-        return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:120px;display:block;overflow:visible">
-          <defs><linearGradient id="perGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#3A5BD9" stop-opacity=".26"/>
-            <stop offset="100%" stop-color="#3A5BD9" stop-opacity="0"/></linearGradient></defs>
-          <path d="${area}" fill="url(#perGrad)"/>
-          <path d="M${pts}" data-draw fill="none" stroke="#3A5BD9" stroke-width="2.4"
-                stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
-          ${idx.map((i,k)=>{
-            const cur=i===m;
-            return `<circle cx="${x(k)}" cy="${y(per[i])}" r="${cur?5:3}" fill="#FFF"
-              stroke="${cur?'#2A44A8':'#3A5BD9'}" stroke-width="${cur?2.6:1.8}" vector-effect="non-scaling-stroke"/>`;
-          }).join('')}
-          ${idx.map((i,k)=>`<text x="${x(k)}" y="${P.t+cH+16}" font-size="9" text-anchor="middle"
-            fill="${i===m?'var(--ink)':'var(--ink3)'}" font-weight="${i===m?800:400}" font-family="inherit">${MONTHS[i]}</text>`).join('')}
+        const mxV=Math.max(...idx.map(i=>per[i]))*1.12;
+        const hc=i=>headcountAt(Y,i);
+        const mxH=Math.max(...idx.map(hc))*1.35;
+        const bw=Math.min(54, cW/idx.length*0.52);
+        const xc=k=>P.l+(k+0.5)*(cW/idx.length);
+        const yV=v=>P.t+cH-(v/mxV)*cH;
+        const yH=v=>P.t+cH-(v/mxH)*cH;
+
+        const grid=[0,.25,.5,.75,1].map(f=>{
+          const yy=P.t+cH-f*cH;
+          return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/>`
+            +`<text x="${P.l-10}" y="${yy+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(mxV*f)}</text>`
+            +`<text x="${P.l+cW+10}" y="${yy+4}" fill="#B7C0CA" font-size="10" font-family="inherit">${Math.round(mxH*f)}</text>`;
+        }).join('');
+
+        const bars=idx.map((i,k)=>{
+          const cur=i===m, h=Math.max(2,cH-(yV(per[i])-P.t));
+          return `<rect x="${xc(k)-bw/2}" y="${yV(per[i])}" width="${bw}" height="${h}" rx="3"
+                    fill="${cur?'url(#perBarCur)':'url(#perBar)'}"/>`
+            +`<text x="${xc(k)}" y="${yV(per[i])-9}" fill="${cur?'#0F1620':'#55606E'}" font-size="11"
+                 font-weight="${cur?800:600}" text-anchor="middle" font-family="inherit">${fmtAmt(Math.round(per[i]))}</text>`;
+        }).join('');
+
+        const hpts=idx.map((i,k)=>xc(k)+','+yH(hc(i))).join('L');
+        const hdots=idx.map((i,k)=>`<circle cx="${xc(k)}" cy="${yH(hc(i))}" r="${i===m?4.5:3}" fill="#FFF"
+            stroke="#7C8794" stroke-width="${i===m?2.4:1.6}"/>`).join('');
+        const hlab=idx.map((i,k)=>`<text x="${xc(k)}" y="${yH(hc(i))-11}" fill="#7C8794" font-size="9"
+            text-anchor="middle" font-family="inherit">${hc(i)}명</text>`).join('');
+        const mlab=idx.map((i,k)=>`<text x="${xc(k)}" y="${P.t+cH+22}" fill="${i===m?'#0F1620':'#96A1AE'}"
+            font-size="11" font-weight="${i===m?800:400}" text-anchor="middle" font-family="inherit">${MONTHS[i]}</text>`).join('');
+
+        return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:250px;display:block">
+          <defs>
+            <linearGradient id="perBar" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6B8AF0" stop-opacity=".9"/><stop offset="100%" stop-color="#6B8AF0" stop-opacity=".38"/></linearGradient>
+            <linearGradient id="perBarCur" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3A5BD9"/><stop offset="100%" stop-color="#3A5BD9" stop-opacity=".55"/></linearGradient>
+          </defs>
+          ${grid}${bars}
+          <path d="M${hpts}" data-draw fill="none" stroke="#7C8794" stroke-width="1.8"
+                stroke-dasharray="none" stroke-linejoin="round"/>
+          ${hdots}${hlab}${mlab}
         </svg>`;
       })();
 
-      const mini = (arr, color) => {
-        const ii = MONTHS.map((_,i)=>i).filter(i=>arr[i]!=null && arr[i]!==0).filter(i=>i<=m);
-        if(ii.length<2) return '';
-        const W=120,H=26;
-        const vs=ii.map(i=>arr[i]), mx=Math.max(...vs), mn=Math.min(...vs), rng=(mx-mn)||1;
-        const x=k=>k/(ii.length-1)*W, y=v=>H-2-((v-mn)/rng)*(H-6);
-        const pts=ii.map((i,k)=>x(k)+','+y(arr[i])).join('L');
-        return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:26px;display:block;margin-top:10px;overflow:visible">
-          <path d="M${pts}" data-draw fill="none" stroke="${color}" stroke-width="1.8"
-            stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
-      };
-      const profSeries = MONTHS.map((_,i)=>{ const h=headcountAt(Y,i); return (h && M_NET_SALES[i]>0) ? (M_NET_SALES[i]-costSplit(i).total)/h : null; });
-      const costSeries = MONTHS.map((_,i)=>{ const h=headcountAt(Y,i); return (h && costSplit(i).total>0) ? costSplit(i).total/h : null; });
-
-      const sub = (label, val, fmt, series, color, note, delay) => `
-        <div class="rise" style="--d:${delay}ms;flex:1;min-width:132px;padding:16px 18px;background:var(--surface);
-             border:1px solid var(--border);border-radius:var(--r2)">
-          <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">${label}</div>
-          <div style="font-size:23px;font-weight:800;letter-spacing:-.035em;color:var(--ink);line-height:1;margin-top:9px"
-               data-count="${val}" data-fmt="${fmt}">0</div>
-          <div style="font-size:10px;color:var(--ink3);margin-top:5px">${note}</div>
-          ${mini(series, color)}
+      const tile = (label, val, fmt, note, accent, delay) => `
+        <div class="rise" style="--d:${delay}ms;flex:1;min-width:170px;padding:18px 20px;
+             background:var(--surface);border:1px solid ${accent?'var(--border2)':'var(--border)'};border-radius:var(--r2)">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+               color:${accent?'var(--accent-deep)':'var(--ink3)'}">${label}</div>
+          <div style="font-size:${accent?34:26}px;font-weight:800;letter-spacing:-.04em;color:var(--ink);
+               line-height:1;margin-top:10px" data-count="${val}" data-fmt="${fmt}">0</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:7px;line-height:1.5">${note}</div>
         </div>`;
 
       return `<div class="card gap" style="position:relative;overflow:hidden;
-           background:linear-gradient(140deg,var(--accent-dim) 0%,var(--surface) 52%);border-color:var(--border2)">
+           background:linear-gradient(150deg,var(--accent-dim) 0%,var(--surface) 40%);border-color:var(--border2)">
         <div style="position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-on-dark))"></div>
 
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px">
-          <div class="card-title" style="margin:0;font-size:15px">인당 생산성
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+          <div class="card-title" style="margin:0;font-size:16px">인당 생산성
             <small>${yr4s}년 ${months}개월 누적 · 평균 ${avgN.toFixed(1)}명 기준</small></div>
           <div style="font-size:11px;color:var(--ink3)">${MONTHS[m]} 재직 ${N}명 · ${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')}</div>
         </div>
 
-        <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:stretch">
-          <div class="rise" style="--d:0ms;flex:1.6;min-width:300px;padding:20px 22px;background:var(--surface);
-               border:1px solid var(--border2);border-radius:var(--r2);display:flex;flex-direction:column">
-            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-              <span style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-deep)">인당 순매출</span>
-              ${delta!=null?`<span style="font-size:11px;font-weight:800;color:${delta>=0?'var(--good)':'var(--bad)'}">
-                ${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}% <span style="color:var(--ink3);font-weight:500">전월 대비</span></span>`:''}
-            </div>
-            <div style="display:flex;align-items:baseline;gap:12px;margin-top:10px">
-              <div style="font-size:46px;font-weight:800;letter-spacing:-.05em;color:var(--ink);line-height:1"
-                   data-count="${Math.round(cumNet/avgN)}" data-fmt="won">0</div>
-              <div style="font-size:12px;color:var(--ink3)">월평균 ${won(Math.round(cumNet/avgN/months))}</div>
-            </div>
-            <div style="margin-top:auto;padding-top:12px">${hero}</div>
-          </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+          ${tile('인당 순매출', Math.round(cumNet/avgN), 'won',
+              `월평균 ${won(Math.round(cumNet/avgN/months))}` +
+              (delta!=null?` · <b style="color:${delta>=0?'var(--good)':'var(--bad)'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}%</b> 전월 대비`:''), true, 0)}
+          ${tile('인당 손익', Math.round(cumProf/avgN), 'wonS', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`, false, 80)}
+          ${tile('인당 출간', (pubCnt/avgN).toFixed(1), 'dec', `${yr4s}년 ${pubCnt}종 출간`, false, 160)}
+          ${tile('인당 비용', Math.round(cumCost/avgN), 'won', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`, false, 240)}
+        </div>
 
-          <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
-            ${sub('인당 손익', Math.round(cumProf/avgN), 'wonS', profSeries, cumProf>=0?'#0E6E52':'#B3243C', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`, 90)}
-            <div style="display:flex;gap:12px;flex-wrap:wrap">
-              ${sub('인당 출간', (pubCnt/avgN).toFixed(1), 'dec', [], '#3A5BD9', `${yr4s}년 ${pubCnt}종`, 170)}
-              ${sub('인당 비용', Math.round(cumCost/avgN), 'won', costSeries, '#7C8794', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`, 250)}
-            </div>
+        <div class="rise" style="--d:300ms;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:16px 18px 10px">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="font-size:11px;font-weight:800;color:var(--ink2)">월별 인당 순매출</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)">
+              <span style="width:14px;height:9px;border-radius:2px;background:var(--accent)"></span>인당 순매출 (좌)</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)">
+              <svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="#7C8794" stroke-width="1.8"/></svg>재직 인원 (우)</span>
           </div>
+          ${chart}
         </div>
 
         ${(()=>{
           const gaps = rosterGapMonths(Y, m);
           const noLeavers = !rosterHasLeavers();
           if(!gaps.length && !noLeavers) return '';
-          return `<div style="margin-top:16px;padding:11px 13px;background:var(--warn-dim);border-radius:var(--r2);
+          return `<div style="margin-top:14px;padding:11px 13px;background:var(--warn-dim);border-radius:var(--r2);
             font-size:11px;color:var(--ink2);line-height:1.65">
             <b style="color:var(--warn)">인원 이력이 불완전합니다.</b>
             ${gaps.length ? `<b>${gaps.map(i=>MONTHS[i]).join(' · ')}</b> 의 재직 인원이 ${MONTHS[m]} 대비 크게 적게 잡혔습니다. ` : ''}
             ${noLeavers ? '구성원 시트에 <b>퇴사일</b>이 입력된 행이 하나도 없습니다. ' : ''}
-            퇴사자를 명부에서 지우면 그 사람이 재직하던 과거 달의 인원까지 줄어들어 인당 지표가 부풀려집니다.<br>
-            <b>퇴사자도 행을 남기고 퇴사일만 채워주세요.</b></div>`;
+            퇴사자도 행을 남기고 <b>퇴사일만 채워주세요.</b></div>`;
         })()}
       </div>`;
     })()}
