@@ -615,14 +615,8 @@ const PUB_EXPORT = [];   // 판권 수출
 const MEMBERS = [];
 // 재직 명부 — 생일 노출여부와 무관하게 전원. 입사·퇴사일로 시점별 인원을 센다.
 const ROSTER = [];
-// 01_월별실적의 '인원' 행. 값이 있으면 명부 계산보다 우선한다.
-// 퇴사자 이력이 없는 기간은 명부만으로는 인원이 과소 계상되기 때문.
-const M_HEADCOUNT = Array(12).fill(0);
 // 특정 연·월(0-based) 시점의 재직 인원
 function headcountAt(y, mIdx){
-  // 시트에 직접 입력된 인원이 있으면 그것을 쓴다
-  var manual = M_HEADCOUNT[mIdx] || 0;
-  if (manual > 0) return manual;
   var start = new Date(y, mIdx, 1);
   var end   = new Date(y, mIdx + 1, 0);
   return ROSTER.filter(function(p){
@@ -631,8 +625,19 @@ function headcountAt(y, mIdx){
     return true;
   }).length;
 }
-// 인원 출처 — 화면에 어떤 기준인지 밝히기 위함
-function headcountSource(mIdx){ return (M_HEADCOUNT[mIdx] || 0) > 0 ? 'sheet' : 'roster'; }
+// 명부 완전성 점검 — 퇴사 이력이 없으면 과거 인원이 급격히 적게 잡힌다.
+// 기준월 대비 60% 미만인 달이 있으면 누락으로 본다.
+function rosterGapMonths(y, mIdx){
+  var cur = headcountAt(y, mIdx);
+  if (!cur) return [];
+  var out = [];
+  for (var i = 0; i < mIdx; i++){
+    if (headcountAt(y, i) < cur * 0.6) out.push(i);
+  }
+  return out;
+}
+// 퇴사일이 한 건도 없으면 이력 자체가 없는 것으로 본다
+function rosterHasLeavers(){ return ROSTER.some(function(p){ return !!p.leaveD; }); }
 // 기간 평균 인원 (0~mIdx 월)
 function avgHeadcount(y, mIdx){
   var sum = 0, n = 0;
@@ -1332,13 +1337,6 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
 
   const newShip   = getMonthly('총 매출');
   const newReturn = getMonthly('반품액');
-  // 인원 — 없으면 0 이 들어가고 명부 계산으로 넘어간다
-  (function(){
-    const h = getMonthly('인원');
-    const h2 = h.some(v=>v>0) ? h : getMonthly('재직 인원');
-    M_HEADCOUNT.splice(0, 12, ...h2.map(v => Math.round(toNum(v))));
-  })();
-
   const newMkt    = getMonthly('마케팅팀 비용');
   const newPub    = getMonthly('출판팀 비용');
   const newCom    = getMonthly('경상비');
@@ -2325,6 +2323,75 @@ function renderSummary(){
     </div>
 
     ${(()=>{
+      const yr4s = (document.getElementById('monthPicker').value||'').slice(0,4);
+      const Y = +yr4s;
+      const N = headcountAt(Y, m);                 // 기준월 재직 인원
+      if(!N) return '';
+      const avgN = avgHeadcount(Y, m) || N;        // 기간 평균 인원 (입퇴사 반영)
+      const months = m + 1;
+      const cumNet  = M_NET_SALES.slice(0,m+1).reduce((a,b)=>a+b,0);
+      const cumCost = MONTHS.slice(0,m+1).reduce((a,_,i)=>a+costSplit(i).total,0);
+      const cumProf = cumNet - cumCost;
+      const pubCnt  = PUB_BOOKS.filter(b=>b.ship && String(b.ship.getFullYear())===yr4s && b.ship < new Date()).length;
+      const tc = teamCountAt(Y, m);
+
+      const box = (label, val, unit, sub) => `<div style="flex:1;min-width:150px">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-deep)">${label}</div>
+        <div style="font-size:32px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1;margin-top:10px">${val}<span style="font-size:16px;font-weight:700">${unit}</span></div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:6px;line-height:1.5">${sub}</div></div>`;
+
+      /* 월별 인당 순매출 추이 — 인원 변동을 함께 보여준다 */
+      const trend = (()=>{
+        const idx = MONTHS.map((_,i)=>i).filter(i => M_NET_SALES[i] > 0);
+        if(idx.length < 2) return '';
+        const per = i => { const h = headcountAt(Y, i); return h ? M_NET_SALES[i]/h : 0; };
+        const mx = Math.max(...idx.map(per), 1);
+        const hMax = Math.max(...idx.map(i=>headcountAt(Y,i)), 1);
+        return `<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px">월별 인당 순매출 · 재직 인원</div>
+          <div style="display:flex;align-items:flex-end;gap:10px;height:126px">
+            ${idx.map(i=>{
+              const v = per(i), h = Math.max(4, v/mx*84), hc = headcountAt(Y,i), cur = i===m;
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0">
+                <div style="font-size:10px;font-weight:${cur?800:600};color:${cur?'var(--ink)':'var(--ink2)'};white-space:nowrap">${won(Math.round(v))}</div>
+                <div class="bar-grow" style="--w:100%;height:${h}px;width:100%;border-radius:var(--r4) var(--r4) 0 0;
+                  background:${cur?'var(--accent)':'var(--border2)'}"></div>
+                <div style="font-size:9px;color:var(--ink3);white-space:nowrap">${hc}명</div>
+                <div style="font-size:10px;font-weight:${cur?800:400};color:${cur?'var(--ink)':'var(--ink3)'}">${MONTHS[i]}</div>
+              </div>`;
+            }).join('')}
+          </div></div>`;
+      })();
+
+      return `<div class="card gap" style="position:relative;overflow:hidden;background:linear-gradient(180deg,var(--accent-dim) 0%,var(--surface) 46%);border-color:var(--border2)">
+        <div style="position:absolute;left:0;top:0;right:0;height:3px;background:var(--accent)"></div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+          <div class="card-title" style="margin:0;font-size:15px">인당 생산성 <small>${yr4s}년 ${months}개월 누적 · 평균 ${avgN.toFixed(1)}명 기준</small></div>
+          <div style="font-size:11px;color:var(--ink3)">${MONTHS[m]} 재직 ${N}명 · ${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')}</div>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap">
+          ${box('인당 순매출', won(Math.round(cumNet/avgN)), '', `월평균 ${won(Math.round(cumNet/avgN/months))}`)}
+          ${box('인당 손익', (cumProf>=0?'+':'') + won(Math.round(cumProf/avgN)), '', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`)}
+          ${box('인당 출간', (pubCnt/avgN).toFixed(1), '종', `${yr4s}년 출간 ${pubCnt}종`)}
+          ${box('인당 비용', won(Math.round(cumCost/avgN)), '', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`)}
+        </div>
+        ${trend}
+        ${(()=>{
+          const gaps = rosterGapMonths(Y, m);
+          const noLeavers = !rosterHasLeavers();
+          if(!gaps.length && !noLeavers) return '';
+          return `<div style="margin-top:14px;padding:11px 13px;background:var(--warn-dim);border-radius:var(--r2);
+            font-size:11px;color:var(--ink2);line-height:1.65">
+            <b style="color:var(--warn)">인원 이력이 불완전합니다.</b>
+            ${gaps.length ? `<b>${gaps.map(i=>MONTHS[i]).join(' · ')}</b> 의 재직 인원이 ${MONTHS[m]} 대비 크게 적게 잡혔습니다. ` : ''}
+            ${noLeavers ? '구성원 시트에 <b>퇴사일</b>이 입력된 행이 하나도 없습니다. ' : ''}
+            퇴사자를 명부에서 지우면 그 사람이 재직하던 과거 달의 인원까지 줄어들어 인당 지표가 부풀려집니다.<br>
+            <b>퇴사자도 행을 남기고 퇴사일만 채워주세요.</b> 한 번 넣어두면 이후에는 손댈 일이 없습니다.</div>`;
+        })()}
+      </div>`;
+    })()}
+
+    ${(()=>{
       if(!PUB_EXPORT.length) return '';
       const cnt = PUB_EXPORT.length;
       const titles = new Set(PUB_EXPORT.map(r=>String(r['도서명']||'').trim()).filter(Boolean));
@@ -2368,67 +2435,6 @@ function renderSummary(){
           ${bs.length ? bs.map(m=>row(m,'')).join('') : '<div class="empty-row">이번 달은 없습니다</div>'}</div>
         <div class="card"><div class="card-title">입사 기념일</div>
           ${as.length ? as.map(m=>row(m, (+(document.getElementById('monthPicker').value||'').slice(0,4) - +m.joinYear)+'주년')).join('') : '<div class="empty-row">이번 달은 없습니다</div>'}</div>
-      </div>`;
-    })()}
-
-    ${(()=>{
-      const yr4s = (document.getElementById('monthPicker').value||'').slice(0,4);
-      const Y = +yr4s;
-      const N = headcountAt(Y, m);                 // 기준월 재직 인원
-      if(!N) return '';
-      const avgN = avgHeadcount(Y, m) || N;        // 기간 평균 인원 (입퇴사 반영)
-      const months = m + 1;
-      const cumNet  = M_NET_SALES.slice(0,m+1).reduce((a,b)=>a+b,0);
-      const cumCost = MONTHS.slice(0,m+1).reduce((a,_,i)=>a+costSplit(i).total,0);
-      const cumProf = cumNet - cumCost;
-      const pubCnt  = PUB_BOOKS.filter(b=>b.ship && String(b.ship.getFullYear())===yr4s && b.ship < new Date()).length;
-      const tc = teamCountAt(Y, m);
-
-      const box = (label, val, unit, sub) => `<div style="flex:1;min-width:150px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">${label}</div>
-        <div style="font-size:26px;font-weight:800;letter-spacing:-.035em;color:var(--ink);line-height:1;margin-top:9px">${val}<span style="font-size:14px;font-weight:700">${unit}</span></div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:6px;line-height:1.5">${sub}</div></div>`;
-
-      /* 월별 인당 순매출 추이 — 인원 변동을 함께 보여준다 */
-      const trend = (()=>{
-        const idx = MONTHS.map((_,i)=>i).filter(i => M_NET_SALES[i] > 0);
-        if(idx.length < 2) return '';
-        const per = i => { const h = headcountAt(Y, i); return h ? M_NET_SALES[i]/h : 0; };
-        const mx = Math.max(...idx.map(per), 1);
-        const hMax = Math.max(...idx.map(i=>headcountAt(Y,i)), 1);
-        return `<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px">월별 인당 순매출 · 재직 인원</div>
-          <div style="display:flex;align-items:flex-end;gap:10px;height:126px">
-            ${idx.map(i=>{
-              const v = per(i), h = Math.max(4, v/mx*84), hc = headcountAt(Y,i), cur = i===m;
-              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0">
-                <div style="font-size:10px;font-weight:${cur?800:600};color:${cur?'var(--ink)':'var(--ink2)'};white-space:nowrap">${won(Math.round(v))}</div>
-                <div class="bar-grow" style="--w:100%;height:${h}px;width:100%;border-radius:var(--r4) var(--r4) 0 0;
-                  background:${cur?'var(--accent)':'var(--border2)'}"></div>
-                <div style="font-size:9px;color:var(--ink3);white-space:nowrap">${hc}명</div>
-                <div style="font-size:10px;font-weight:${cur?800:400};color:${cur?'var(--ink)':'var(--ink3)'}">${MONTHS[i]}</div>
-              </div>`;
-            }).join('')}
-          </div></div>`;
-      })();
-
-      return `<div class="card gap2">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-          <div class="card-title" style="margin:0">인당 생산성 <small>${yr4s}년 ${months}개월 누적 · 평균 ${avgN.toFixed(1)}명 기준</small></div>
-          <div style="font-size:11px;color:var(--ink3)">${MONTHS[m]} 재직 ${N}명${headcountSource(m)==='sheet' ? '' : ` · ${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')}`}</div>
-        </div>
-        <div style="display:flex;gap:24px;flex-wrap:wrap">
-          ${box('인당 순매출', won(Math.round(cumNet/avgN)), '', `월평균 ${won(Math.round(cumNet/avgN/months))}`)}
-          ${box('인당 손익', (cumProf>=0?'+':'') + won(Math.round(cumProf/avgN)), '', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`)}
-          ${box('인당 출간', (pubCnt/avgN).toFixed(1), '종', `${yr4s}년 출간 ${pubCnt}종`)}
-          ${box('인당 비용', won(Math.round(cumCost/avgN)), '', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`)}
-        </div>
-        ${trend}
-        ${(()=>{
-          const rosterMonths = MONTHS.slice(0,m+1).map((_,i)=>i).filter(i=>headcountSource(i)!=='sheet');
-          if(!rosterMonths.length) return '';
-          return `<div style="margin-top:14px;padding:10px 12px;background:var(--warn-dim);border-radius:var(--r2);font-size:11px;color:var(--ink2);line-height:1.6"><b>${rosterMonths.map(i=>MONTHS[i]).join(' · ')}</b> 은 구성원 명부로 인원을 셌습니다. 퇴사 이력이 없으면 인원이 실제보다 적게 잡혀 인당 지표가 부풀려집니다.<br><b>01_월별실적</b>에 <b>인원</b> 행을 추가하고 월별 재직 인원을 넣으면 그 값을 우선 사용합니다.</div>`;
-        })()}
       </div>`;
     })()}
 
@@ -4980,18 +4986,11 @@ function renderData(){
         ].map(([a,b])=>`<tr><td style="font-size:12px"><b>${a}</b></td><td style="font-size:12px;color:var(--ink2)">${b}</td></tr>`).join('')}
       </table>`)}
 
-    ${card('01_월별실적 · 인원 행', '인당 생산성 지표의 분모', `
-      <table>
-        <tr><th style="width:150px">항목</th><th>설명</th></tr>
-        <tr><td><b style="font-size:12px">인원</b></td><td style="font-size:12px;color:var(--ink2)">다른 행과 같은 형식으로 <b>항목=인원</b>, 연도, 1~12월에 <b>월별 재직 인원</b>을 넣습니다.<br>이 값이 있으면 구성원 명부보다 <b>우선 사용</b>합니다.</td></tr>
-        <tr><td><b style="font-size:12px">왜 필요한가</b></td><td style="font-size:12px;color:var(--ink2)">구성원 탭에 <b style="color:var(--bad)">퇴사자 이력이 없으면</b> 과거 인원이 실제보다 적게 잡혀 인당 지표가 부풀려집니다.<br>퇴사자를 전부 복원하기 어려우면 이 행에 월별 인원만 넣어도 정확해집니다.</td></tr>
-      </table>`)}
-
     ${card('구성원', '생일·입사 기념일 축하와 인당 생산성 지표에 쓰입니다', cols([
       ['이름','필수'],
       ['팀','팀별 인원 표시에 사용'],
       ['입사일','근속 연차와 <b>시점별 재직 인원</b> 계산에 사용. YYYY-MM-DD'],
-      ['퇴사일','<b style="color:var(--bad)">퇴사자는 행을 지우지 말고 여기에 날짜를 넣으세요.</b><br>행을 지우면 과거 월의 인당 지표까지 함께 바뀝니다'],
+      ['퇴사일','<b style="color:var(--bad)">퇴사자는 행을 지우지 말고 여기에 날짜를 넣으세요.</b><br>행을 지우면 그 사람이 재직하던 과거 달의 인원까지 줄어들어 인당 지표가 부풀려집니다.<br>한 번 넣어두면 매달 손댈 일이 없습니다 — 인원은 입사일·퇴사일로 시점마다 자동 계산됩니다'],
       ['생일','MM-DD 로 충분합니다. 생년은 저장하지 않습니다'],
       ['노출여부','<b>Y</b> 인 사람만 생일이 화면에 뜹니다. 비워두면 축하 대상에서 빠지며, 인원 집계에는 그대로 포함됩니다'],
     ]))}
