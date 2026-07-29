@@ -115,6 +115,35 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pill-val.dn{color:#F08098}
 .pill-sub{font-size:12px;color:var(--band-ink2);text-align:right;margin-top:8px;letter-spacing:.01em}
 
+/* 이스터에그 — 로고 5회 클릭 시 전체 화면 연출 */
+.brand img{cursor:pointer;user-select:none;-webkit-user-drag:none}
+#eggStage{position:fixed;inset:0;z-index:1200;pointer-events:none;display:flex;
+  align-items:center;justify-content:center;overflow:hidden}
+@keyframes eggVeil{0%{opacity:0}18%{opacity:1}72%{opacity:1}100%{opacity:0}}
+#eggStage .veil{position:absolute;inset:0;background:radial-gradient(circle at 50% 48%,
+  rgba(58,91,217,.16) 0%, rgba(15,22,32,.72) 62%, rgba(15,22,32,.88) 100%);
+  backdrop-filter:blur(6px);animation:eggVeil 1.9s var(--ease) both}
+@keyframes eggMark{
+  0%   {transform:scale(.18) rotate(-14deg);opacity:0}
+  22%  {transform:scale(1.16) rotate(4deg); opacity:1}
+  34%  {transform:scale(.96) rotate(-2deg)}
+  46%  {transform:scale(1.02) rotate(0deg)}
+  74%  {transform:scale(1) rotate(0deg);   opacity:1}
+  100% {transform:scale(1.5) rotate(0deg); opacity:0}
+}
+#eggStage .mark{width:min(34vh,300px);height:auto;filter:drop-shadow(0 18px 46px rgba(0,0,0,.45));
+  animation:eggMark 1.9s cubic-bezier(.2,1.3,.35,1) both}
+@keyframes eggRing{0%{transform:scale(.06);opacity:.9}100%{transform:scale(3.4);opacity:0}}
+#eggStage .ring{position:absolute;width:60vmin;height:60vmin;border-radius:50%;
+  border:2px solid var(--accent);animation:eggRing 1.5s cubic-bezier(.16,1,.3,1) both}
+@keyframes eggWord{0%{opacity:0;transform:translateY(14px)}30%{opacity:1;transform:none}
+  74%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
+#eggStage .word{position:absolute;bottom:16vh;font-size:12px;font-weight:800;letter-spacing:.34em;
+  text-transform:uppercase;color:var(--accent);animation:eggWord 1.9s var(--ease) both}
+/* 대외비 뱃지 길게 누르기 */
+.conf-badge{transition:background var(--d-fast) linear,border-color var(--d-fast) linear}
+.conf-badge.secret{background:var(--ink);border-color:var(--ink);color:var(--accent)}
+
 /* 보안 고지 */
 .conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:var(--r4);
   background:var(--accent-dim);border:1px solid var(--accent);color:var(--ink);
@@ -1715,6 +1744,7 @@ function initApp(){
   showSkeleton();
   renderTabs(); renderPills(); renderActive();
   stampConfNote();
+  initEasterEggs();
   window.addEventListener('hashchange', function(){ applyHash(); renderPills(); renderActive(); });
   initShortcuts();
 
@@ -5054,6 +5084,74 @@ function celebrate(){
   document.addEventListener('keydown', function esc2(e){
     if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc2); }
   });
+}
+
+// 전체 화면 연출 — 1.9초 후 스스로 사라진다. 클릭을 막지 않도록 pointer-events 는 none.
+function launchEgg(src){
+  if (document.getElementById('eggStage')) return;
+  var st = document.createElement('div');
+  st.id = 'eggStage';
+  st.innerHTML =
+      '<div class="veil"></div>'
+    + '<div class="ring"></div>'
+    + '<div class="ring" style="animation-delay:.16s"></div>'
+    + '<div class="ring" style="animation-delay:.32s"></div>'
+    + '<img class="mark" src="' + src + '" alt="">'
+    + '<div class="word">Contents Business Division</div>';
+  document.body.appendChild(st);
+  setTimeout(function(){ st.remove(); }, 1900);
+}
+
+// ── 이스터에그 ──
+// 업무 흐름에 개입하지 않는 선에서만. 데이터·판단에는 아무 영향이 없다.
+function initEasterEggs(){
+  // (1) 로고 5회 연속 클릭
+  var logo = document.querySelector('.brand img');
+  if (logo) {
+    var hit = 0, t = null;
+    logo.addEventListener('click', function(){
+      hit++;
+      clearTimeout(t);
+      t = setTimeout(function(){ hit = 0; }, 1500);   // 1.5초 안에 이어서 눌러야 함
+      if (hit < 5) return;
+      hit = 0;
+      launchEgg(logo.src);
+    });
+  }
+
+  // (2) 대외비 뱃지 3초 길게 누르기
+  var badge = document.querySelector('header .conf-badge');
+  if (badge) {
+    var hold = null, orig = badge.textContent;
+    var start = function(){
+      clearTimeout(hold);
+      hold = setTimeout(function(){
+        badge.textContent = '극비';
+        badge.classList.add('secret');
+        setTimeout(function(){
+          badge.textContent = orig;
+          badge.classList.remove('secret');
+        }, 1400);
+      }, 3000);
+    };
+    var stop = function(){ clearTimeout(hold); };
+    badge.addEventListener('pointerdown', start);
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
+      badge.addEventListener(ev, stop);
+    });
+  }
+
+  // (3) 콘솔 인사
+  try {
+    console.log(
+      '%c필름 %c콘텐츠사업본부 대시보드\n' +
+      '%c여기까지 열어보셨다면 이미 우리 편입니다.\n' +
+      '숫자가 이상하면 콘솔에 mktDiag() 또는 __monthlyDiag() 를 쳐보세요.',
+      'font-size:15px;font-weight:800;color:#3A5BD9',
+      'font-size:15px;font-weight:800;color:#0F1620',
+      'font-size:12px;color:#55606E;line-height:1.7'
+    );
+  } catch(e) {}
 }
 
 function stampConfNote(){
