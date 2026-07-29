@@ -2326,49 +2326,6 @@ function renderSummary(){
   const colors10 = Array(10).fill('#CDD4DE'); // 단일 컬러 통일
 
   document.getElementById('tab-summary').innerHTML=`
-    <!-- 상단 KPI 6개 -->
-    <div class="g6 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div>${spark(M_TARGET,m)}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
-      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
-      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지출+예정) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
-    </div>
-
-    <!-- 중단: 항목별 매출 추이 + 이슈 -->
-    <div class="sec-label gap2">월별 실적 분석</div>
-    <div class="g2">
-      <div class="card">
-        <div class="card-title">도서별 누적 출고 비중 <small>부수 기준 상위 10개</small></div>
-        ${topBooks.length ? topBooks.map((b,i) => {
-          const pct2 = totalCumQty ? Math.round(b.cumShipQty/totalCumQty*1000)/10 : 0;
-          const maxPct = totalCumQty ? Math.round(topBooks[0].cumShipQty/totalCumQty*1000)/10 : 1;
-          const barW = Math.round(pct2/maxPct*100);
-          const isBest = i===0;
-          return `<div style="margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;font-weight:600;color:var(--ink1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.title)}</span>
-              ${isBest ? `<span style="font-size:10px;font-weight:700;background:#3A5BD9;color:#0F1620;padding:2px 7px;border-radius:var(--r);letter-spacing:.5px">BEST</span>` : ''}
-              <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
-            </div>
-            <div style="background:var(--ink5);border-radius:var(--r3);height:10px;overflow:hidden">
-              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${isBest?'#1B2430':colors10[i]};height:10px;border-radius:var(--r3)"></div>
-            </div>
-          </div>`;
-        }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
-      </div>
-      <div class="card" style="display:flex;flex-direction:column">
-        <div class="card-title">주요 이슈 · 액션</div>
-        <div class="notice-grid" style="flex:1">${issues.map(i=>`
-          <div class="notice ${i.type}">
-            <div class="n-label">${i.label}</div>
-            <div class="n-val">${i.val}</div>
-            <div class="n-sub">${i.sub}</div>
-          </div>`).join('')}</div>
-      </div>
-    </div>
-
     ${(()=>{
       const yr4s = (document.getElementById('monthPicker').value||'').slice(0,4);
       const Y = +yr4s;
@@ -2396,17 +2353,17 @@ function renderSummary(){
         const cW=W-P.l-P.r, cH=H-P.t-P.b;
         const mxV=Math.max(...idx.map(i=>per[i]))*1.12;
         const hc=i=>headcountAt(Y,i);
-        const mxH=Math.max(...idx.map(hc))*1.35;
-        const bw=Math.min(54, cW/idx.length*0.52);
+        const mxH=Math.max(...idx.map(hc))*1.55;   // 선을 위쪽에 띄워 막대 값 라벨과 겹치지 않게
+        const bw=Math.min(72, cW/idx.length*0.62);
         const xc=k=>P.l+(k+0.5)*(cW/idx.length);
         const yV=v=>P.t+cH-(v/mxV)*cH;
-        const yH=v=>P.t+cH-(v/mxH)*cH;
+        const yH=v=>P.t+cH-(v/mxH)*cH*0.92;
 
         const grid=[0,.25,.5,.75,1].map(f=>{
           const yy=P.t+cH-f*cH;
           return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/>`
             +`<text x="${P.l-10}" y="${yy+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(mxV*f)}</text>`
-            +`<text x="${P.l+cW+10}" y="${yy+4}" fill="#B7C0CA" font-size="10" font-family="inherit">${Math.round(mxH*f)}</text>`;
+            +`<text x="${P.l+cW+10}" y="${yy+4}" fill="#B7C0CA" font-size="10" font-family="inherit">${Math.round(mxH*f)}${f===1?'명':''}</text>`;
         }).join('');
 
         const bars=idx.map((i,k)=>{
@@ -2420,8 +2377,9 @@ function renderSummary(){
         const hpts=idx.map((i,k)=>xc(k)+','+yH(hc(i))).join('L');
         const hdots=idx.map((i,k)=>`<circle cx="${xc(k)}" cy="${yH(hc(i))}" r="${i===m?4.5:3}" fill="#FFF"
             stroke="#7C8794" stroke-width="${i===m?2.4:1.6}"/>`).join('');
-        const hlab=idx.map((i,k)=>`<text x="${xc(k)}" y="${yH(hc(i))-11}" fill="#7C8794" font-size="9"
-            text-anchor="middle" font-family="inherit">${hc(i)}명</text>`).join('');
+        // 인원 라벨은 기준월만 — 매달 찍으면 막대 값과 뒤엉킨다 (우측 축으로 규모는 읽힌다)
+        const hlab=idx.map((i,k)=> i!==m ? '' : `<text x="${xc(k)}" y="${yH(hc(i))-12}" fill="#55606E" font-size="10"
+            font-weight="800" text-anchor="middle" font-family="inherit">${hc(i)}명</text>`).join('');
         const mlab=idx.map((i,k)=>`<text x="${xc(k)}" y="${P.t+cH+22}" fill="${i===m?'#0F1620':'#96A1AE'}"
             font-size="11" font-weight="${i===m?800:400}" text-anchor="middle" font-family="inherit">${MONTHS[i]}</text>`).join('');
 
@@ -2492,6 +2450,49 @@ function renderSummary(){
         })()}
       </div>`;
     })()}
+
+    <!-- 상단 KPI 6개 -->
+    <div class="g6 gap">
+      <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div>${spark(M_TARGET,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div><div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
+      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
+      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지출+예정) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
+    </div>
+
+    <!-- 중단: 항목별 매출 추이 + 이슈 -->
+    <div class="sec-label gap2">월별 실적 분석</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">도서별 누적 출고 비중 <small>부수 기준 상위 10개</small></div>
+        ${topBooks.length ? topBooks.map((b,i) => {
+          const pct2 = totalCumQty ? Math.round(b.cumShipQty/totalCumQty*1000)/10 : 0;
+          const maxPct = totalCumQty ? Math.round(topBooks[0].cumShipQty/totalCumQty*1000)/10 : 1;
+          const barW = Math.round(pct2/maxPct*100);
+          const isBest = i===0;
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:600;color:var(--ink1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.title)}</span>
+              ${isBest ? `<span style="font-size:10px;font-weight:700;background:#3A5BD9;color:#0F1620;padding:2px 7px;border-radius:var(--r);letter-spacing:.5px">BEST</span>` : ''}
+              <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
+            </div>
+            <div style="background:var(--ink5);border-radius:var(--r3);height:10px;overflow:hidden">
+              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${isBest?'#1B2430':colors10[i]};height:10px;border-radius:var(--r3)"></div>
+            </div>
+          </div>`;
+        }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
+      </div>
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="card-title">주요 이슈 · 액션</div>
+        <div class="notice-grid" style="flex:1">${issues.map(i=>`
+          <div class="notice ${i.type}">
+            <div class="n-label">${i.label}</div>
+            <div class="n-val">${i.val}</div>
+            <div class="n-sub">${i.sub}</div>
+          </div>`).join('')}</div>
+      </div>
+    </div>
 
     ${(()=>{
       if(!PUB_EXPORT.length) return '';
