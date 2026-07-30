@@ -1085,7 +1085,9 @@ async function loadChannelSheets(){
     if (hi < 0) throw new Error('헤더(구분·계정)를 찾지 못했습니다');
     const hdr = g[hi].map(v => String(v||'').trim());
     const cols = [];
-    hdr.forEach((h, i) => { const d = parseAnyDate(h); if (d && i >= 2) cols.push({i, d}); });
+    // 헤더가 ' 6월 22일(월)' 처럼 연도 없이 표시되므로 기준 연도를 붙여 읽는다
+    const yHint = (document.getElementById('monthPicker').value||'').slice(0,4) || String(new Date().getFullYear());
+    hdr.forEach((h, i) => { const d = parseAnyDate(h) || dateWithYear(h, yHint); if (d && i >= 2) cols.push({i, d}); });
     const out = [];
     g.slice(hi + 1).forEach(r => {
       const acct = String(r[1]||'').trim();
@@ -4349,6 +4351,9 @@ function parseAnyDate(v){
   // "2026-01-14 00:00:00" / "2026-01-14T09:30" 처럼 시간이 붙은 값 → 시간 부분 제거.
   // 안 벗기면 '1400' 이 일(日)로 먹혀 엉뚱한 날짜가 나온다.
   t = t.replace(/[T\s]+\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*(Z|[+-]\d{2}:?\d{2})?$/i, '').trim();
+  // 한글 표기: 2026년 6월 22일 / 2026년 6월 22일(월)
+  var kr = t.match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+  if (kr) return new Date(+kr[1], +kr[2] - 1, +kr[3]);
   var p = t.replace(/[.\/]/g, '-').replace(/\s/g, '').split('-').filter(function(x){ return x !== ''; });
   if (p.length >= 3) {
     var y = +p[0], m = +p[1], d = +p[2];
