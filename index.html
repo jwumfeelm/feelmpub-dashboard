@@ -6057,34 +6057,90 @@ function initEasterEggs(){
 }
 
 // 시트별 최신 일자를 모아 지연을 알린다
+// 시트마다 정상 갱신 주기가 다르다. grace 안이면 100%, 넘어가면 하루 8점씩 깎는다.
+const FRESH_SPEC = [
+  {key:'판매량',    label:'일별 판매',   grace:1},
+  {key:'콘텐츠',    label:'콘텐츠 실적', grace:3},
+  {key:'채널팔로워', label:'채널 팔로워', grace:7},
+];
 function computeFreshness(){
   const last = arr => arr.filter(Boolean).sort((a,b)=>b-a)[0] || null;
-  FRESH['판매량_일별_서점'] = (()=>{
+  FRESH['판매량'] = (()=>{
     const ks = [];
     Object.keys(DAY_SALES_STORE||{}).forEach(b => Object.keys(DAY_SALES_STORE[b]||{}).forEach(d => ks.push(d)));
     return ks.length ? parseAnyDate(ks.sort()[ks.length-1]) : null;
   })();
-  FRESH['콘텐츠플랜실적'] = last((CH_CONTENT||[]).map(c=>c.up));
-  FRESH['채널팔로워(위클리)'] = last([].concat(...(CH_WEEKLY||[]).map(w=>w.points.map(p=>p.date))));
+  FRESH['콘텐츠']    = last((CH_CONTENT||[]).map(c=>c.up));
+  FRESH['채널팔로워'] = last([].concat(...(CH_WEEKLY||[]).map(w=>w.points.map(p=>p.date))));
 }
-function freshnessBanner(){
+function freshScore(key){
+  const spec = FRESH_SPEC.find(s=>s.key===key);
+  const d = FRESH[key];
+  if (!spec || !d) return null;
   const today = new Date(); today.setHours(0,0,0,0);
-  const late = Object.keys(FRESH).map(k=>{
-    const d = FRESH[k]; if(!d) return null;
-    const gap = Math.round((today - d)/86400000);
-    return gap >= 4 ? {k, d, gap} : null;
-  }).filter(Boolean).sort((a,b)=>b.gap-a.gap);
-  if(!late.length) return '';
-  return `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
-    <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:5px">데이터가 밀려 있습니다</div>
-    <div style="font-size:12px;color:var(--ink2);line-height:1.8">
-      ${late.map(x=>`<span style="display:inline-block;margin-right:16px"><b>${esc(x.k)}</b>
-        최종 ${ymd(x.d).slice(5).replace('-','/')} · <b style="color:var(--warn)">${x.gap}일 지연</b></span>`).join('')}
-    </div>
-    <div style="font-size:11px;color:var(--ink3);margin-top:7px">최신 데이터가 반영되기 전이므로 당월 수치는 실제보다 낮게 나옵니다.</div>
-  </div>`;
+  const gap = Math.max(0, Math.round((today - d)/86400000));
+  return {gap, pct: Math.max(0, Math.min(100, 100 - Math.max(0, gap - spec.grace) * 8)), label: spec.label, date: d};
 }
 
+/* 토마토 — 신선도만큼 아래에서 위로 빨갛게 찬다 */
+function tomato(pct, size){
+  const S = size || 46;
+  const id = 'tm' + Math.random().toString(36).slice(2,8);
+  const fill = Math.max(0, Math.min(100, pct));
+  return `<svg viewBox="0 0 48 48" width="${S}" height="${S}" style="display:block;flex-shrink:0">
+    <defs>
+      <clipPath id="${id}"><rect x="0" y="${48 - 48*fill/100}" width="48" height="${48*fill/100}"/></clipPath>
+    </defs>
+    <g>
+      <path d="M24 12c8.5 0 15 5.6 15 14.5S32.5 42 24 42 9 35.4 9 26.5 15.5 12 24 12z" fill="#E4E8EE"/>
+      <path d="M24 12c8.5 0 15 5.6 15 14.5S32.5 42 24 42 9 35.4 9 26.5 15.5 12 24 12z" fill="#D9422B" clip-path="url(#${id})"/>
+      <path d="M24 13c-1.6-2.4-4.4-3.6-7.2-3.2 1 2.2 3 3.6 5.2 4.1M24 13c1.6-2.4 4.4-3.6 7.2-3.2-1 2.2-3 3.6-5.2 4.1"
+            fill="none" stroke="#3E7A4E" stroke-width="2" stroke-linecap="round"/>
+      <path d="M24 13.5V10" stroke="#3E7A4E" stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+}
+function freshnessBanner(){
+  const list = FRESH_SPEC.map(sp => freshScore(sp.key)).filter(Boolean);
+  if (!list.length) return '';
+  const avg = Math.round(list.reduce((a,x)=>a+x.pct,0) / list.length);
+  const verdict = avg >= 90 ? {t:'아주 신선함',  c:'var(--good)'}
+                : avg >= 70 ? {t:'먹을 만함',    c:'var(--ink2)'}
+                : avg >= 40 ? {t:'시들해지는 중', c:'var(--warn)'}
+                :             {t:'상했습니다',    c:'var(--bad)'};
+  const cell = x => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0">
+      ${tomato(x.pct, 34)}
+      <div style="min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap">${esc(x.label)}</div>
+        <div style="font-size:11px;color:var(--ink3);white-space:nowrap;margin-top:2px">
+          ${ymd(x.date).slice(5).replace('-','/')} · ${x.gap === 0 ? '오늘' : x.gap + '일 전'}</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-size:15px;font-weight:800;letter-spacing:-.02em;
+             color:${x.pct>=70?'var(--ink)':(x.pct>=40?'var(--warn)':'var(--bad)')}">${x.pct}%</div>
+      </div>
+    </div>`;
+  return `<div class="card gap" style="border-left:3px solid ${verdict.c}">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:13px">
+        ${tomato(avg, 52)}
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">데이터 신선도</div>
+          <div style="display:flex;align-items:baseline;gap:9px;margin-top:5px">
+            <span style="font-size:27px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1">${avg}%</span>
+            <span style="font-size:13px;font-weight:800;color:${verdict.c}">${verdict.t}</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:280px;display:flex;gap:26px;flex-wrap:wrap;
+           border-left:1px solid var(--border);padding-left:22px">
+        ${list.map(x=>`<div style="flex:1;min-width:150px">${cell(x)}</div>`).join('')}
+      </div>
+    </div>
+    ${avg < 70 ? `<div style="font-size:11px;color:var(--ink2);margin-top:10px;line-height:1.6">
+      최신 데이터가 반영되기 전이라 당월 수치가 실제보다 낮게 나옵니다. 시트 갱신 후 다시 확인해 주세요.</div>` : ''}
+  </div>`;
+}
 function stampConfNote(){
   const el = document.getElementById('confStamp');
   if (!el) return;
