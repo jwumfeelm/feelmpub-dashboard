@@ -498,6 +498,8 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 </div>
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot loading" id="syncDot"></div><span id="syncTxt">시트 불러오는 중…</span></div>
+        <div id="freshChip" style="display:none;align-items:center;gap:6px;cursor:help"></div>
+        <div id="freshChip" style="display:none;align-items:center;gap:6px;cursor:help"></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
         <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--band-border);color:var(--band-ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
@@ -1418,6 +1420,8 @@ async function loadSheets() {
     txt.textContent = '시트 연동 완료 · ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     hideSkeleton();
     computeFreshness();
+    renderFreshChip();
+    updateFreshChip();
 
     // 최초 렌더는 빈 데이터로 그려지므로 애니메이션 잠금을 풀고 실데이터로 다시 재생
     const _tc = document.getElementById('trend-chart');
@@ -2829,6 +2833,7 @@ function renderShip(){
   const storeBarColors={"교보":"#3A5BD9","예스24":"#37424F","알라딘":"#55606E","네이버":"#B3243C","기타":"#96A1AE"};
 
   document.getElementById('tab-ship').innerHTML=`
+    ${freshNote(TAB_FRESH.ship)}
     <!-- 상단 KPI -->
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">월 출고 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">공급가 기준</div></div>
@@ -2970,6 +2975,8 @@ function renderMkt(){
   }));
 
   document.getElementById('tab-mkt').innerHTML=`
+    ${freshInline(['판매량'])}
+    ${freshNote(TAB_FRESH.mkt)}
     <!-- 누적 KPI -->
     <div class="sec-label gap">누적 실적</div>
     <div class="g3">
@@ -3232,6 +3239,7 @@ function renderCost(){
   const rateDelta = (curRate!=null && prvRate!=null) ? (curRate-prvRate) : null;
 
   document.getElementById('tab-cost').innerHTML=`
+    ${freshNote(TAB_FRESH.cost)}
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">당월 비용</div>
         <div class="kpi-val">${won(cs.total)}</div>
@@ -3315,7 +3323,8 @@ function renderChannel(){
   const stale = m !== pickM && hasData(m);
 
   if(!CH_PERF.length && !CH_CONTENT.length){
-    el.innerHTML = `<div class="card gap"><div class="card-title">채널</div>
+    el.innerHTML = `
+    ${freshInline(['콘텐츠','채널팔로워'])}<div class="card gap"><div class="card-title">채널</div>
       <div class="empty-row">채널 관리 시트를 불러오지 못했습니다. 공유 설정과 GID를 확인해 주세요.</div></div>`;
     return;
   }
@@ -3474,6 +3483,7 @@ function renderChannel(){
   }
 
   el.innerHTML = `
+    ${freshNote(TAB_FRESH.channel)}
     ${stale ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
       <div style="font-size:12px;color:var(--ink2);line-height:1.6">
         <b>${MONTHS[pickM]} 채널 데이터가 아직 없습니다.</b> 아래 수치는 <b>${MONTHS[m]}</b> 기준입니다.
@@ -3878,6 +3888,7 @@ function renderBooks(){
   const kThru  = kShip>0 ? Math.round(kSale/kShip*100) : 0;
 
   document.getElementById('tab-books').innerHTML=`
+    ${freshNote(TAB_FRESH.books)}
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">${booksShowAll?'전체 도서':'관리 대상'}</div><div class="kpi-val">${base.length}<span style="font-size:19px;font-weight:700">종</span></div><div class="kpi-sub">전체 ${BOOKS.length}종 중</div></div>
       <div class="kpi"><div class="kpi-lbl">최근 12개월 출고</div><div class="kpi-val">${won(kR12)}</div><div class="kpi-sub">기준월 직전 12개월</div></div>
@@ -4060,11 +4071,14 @@ function renderCalendar() {
   const goalPct = Math.min(Math.round(currentSales/goalQty*100),100);
 
   document.getElementById('tab-calendar').innerHTML = `
+    ${freshNote(TAB_FRESH.calendar)}
     ${_noGid.length ? '<div class="card gap" style="border-left:3px solid var(--bad);background:var(--bad-dim)">'
       + '<div style="font-size:12px;color:var(--ink);font-weight:700;margin-bottom:4px">탭 GID가 등록되지 않은 도서가 있습니다</div>'
       + '<div style="font-size:12px;color:var(--ink2);line-height:1.7">' + _noGid.map(esc).join(" · ")
       + '<br>캠페인 시트 <b>00_설정</b>에 <b>GID</b> 열을 만들고, 해당 도서 탭을 연 상태의 주소창에서 gid= 뒤 숫자를 넣어주세요. 주소 전체를 붙여넣어도 됩니다.</div></div>'
       : ''}
+
+    ${freshInline(['판매량'])}
 
     <!-- 도서 선택 -->
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2)">
@@ -5552,6 +5566,7 @@ function renderPublish(){
   }
 
   el.innerHTML = `
+    ${freshNote(TAB_FRESH.publish)}
     <div class="g3 gap">
       ${(()=>{ const done = yearBooks.filter(b=>b.ship < today).length;
         const pct = yearBooks.length ? Math.round(done/yearBooks.length*100) : 0;
@@ -6059,10 +6074,25 @@ function initEasterEggs(){
 // 시트별 최신 일자를 모아 지연을 알린다
 // 시트마다 정상 갱신 주기가 다르다. grace 안이면 100%, 넘어가면 하루 8점씩 깎는다.
 const FRESH_SPEC = [
+  {key:'출고',      label:'출고 실적',   grace:2},
   {key:'판매량',    label:'일별 판매',   grace:1},
+  {key:'주차판매',  label:'주차 판매',   grace:7},
+  {key:'비용',      label:'비용원장',    grace:7},
+  {key:'캠페인',    label:'캠페인 액션', grace:5},
+  {key:'출간',      label:'출간 일정',   grace:14},
   {key:'콘텐츠',    label:'콘텐츠 실적', grace:3},
   {key:'채널팔로워', label:'채널 팔로워', grace:7},
 ];
+// 탭이 어떤 시트에 기대는지
+const TAB_FRESH = {
+  ship:     ['출고'],
+  mkt:      ['판매량','주차판매'],
+  cost:     ['비용'],
+  channel:  ['콘텐츠','채널팔로워'],
+  calendar: ['판매량','캠페인'],
+  publish:  ['출간'],
+  books:    ['출고','판매량'],
+};
 function computeFreshness(){
   const last = arr => arr.filter(Boolean).sort((a,b)=>b-a)[0] || null;
   FRESH['판매량'] = (()=>{
@@ -6072,6 +6102,39 @@ function computeFreshness(){
   })();
   FRESH['콘텐츠']    = last((CH_CONTENT||[]).map(c=>c.up));
   FRESH['채널팔로워'] = last([].concat(...(CH_WEEKLY||[]).map(w=>w.points.map(p=>p.date))));
+  // '2026-30주차' → 그 주 월요일
+  const weekToDate = w => {
+    const m = String(w||'').match(/(\d{4})\D+(\d{1,2})/);
+    if (!m) return null;
+    const d = new Date(+m[1], 0, 1 + (+m[2] - 1) * 7);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));   // 해당 주 월요일
+    return d;
+  };
+  FRESH['주차판매'] = (()=>{
+    const ks = [];
+    Object.keys(WEEK_SALES||{}).forEach(b => (WEEK_SALES[b]||[]).forEach(w => {
+      const d = weekToDate(w && w.week); if (d) ks.push(d);
+    }));
+    return last(ks);
+  })();
+  FRESH['캠페인'] = (()=>{
+    const ds = [];
+    Object.keys(MKT_ACTIONS||{}).forEach(k => (MKT_ACTIONS[k]||[]).forEach(a => {
+      const d = parseAnyDate(a.date); if(d) ds.push(d);
+    }));
+    return last(ds);
+  })();
+  FRESH['출간'] = last((PUB_BOOKS||[]).map(b => b.inDate || b.ship));
+  // 출고·비용은 월 단위 시트라 '가장 최근 값이 있는 달의 말일'로 본다
+  const monthEnd = arr => {
+    for (let i = 11; i >= 0; i--) if ((arr[i]||0) > 0) {
+      const y = new Date().getFullYear();
+      return new Date(y, i + 1, 0);
+    }
+    return null;
+  };
+  FRESH['출고'] = monthEnd(M_SHIP_SALES);
+  FRESH['비용'] = monthEnd(M_TOTAL_COST);
 }
 function freshScore(key){
   const spec = FRESH_SPEC.find(s=>s.key===key);
@@ -6100,6 +6163,65 @@ function tomato(pct, size){
     </g>
   </svg>`;
 }
+// 헤더 상시 표시 — 어느 탭에서도 데이터가 상했는지 보인다
+function updateFreshChip(){
+  const el = document.getElementById('freshChip');
+  if (!el) return;
+  const list = FRESH_SPEC.map(sp => freshScore(sp.key)).filter(Boolean);
+  if (!list.length) { el.style.display = 'none'; return; }
+  const avg = Math.round(list.reduce((a,x)=>a+x.pct,0) / list.length);
+  const col = avg >= 90 ? '#8FE3C0' : avg >= 70 ? '#C6D2F7' : avg >= 40 ? '#F0C36B' : '#F0A0B0';
+  el.style.display = 'flex';
+  el.title = '데이터 신선도 ' + avg + '%\n'
+    + list.map(x => `${x.label}  ${x.pct}%  (${ymd(x.date).slice(5).replace('-','/')} · ${x.gap===0?'오늘':x.gap+'일 전'})`).join('\n');
+  el.innerHTML = tomato(avg, 17)
+    + `<span style="font-size:11px;font-weight:800;color:${col};letter-spacing:-.01em">${avg}%</span>`;
+}
+
+// 탭마다 영향받는 시트만 짚는다. 신선하면 아무것도 안 띄운다.
+function freshNote(keys){
+  const list = keys.map(k => freshScore(k)).filter(Boolean).filter(x => x.pct < 90);
+  if (!list.length) return '';
+  const worst = Math.min(...list.map(x=>x.pct));
+  const col = worst >= 70 ? 'var(--border2)' : worst >= 40 ? 'var(--warn)' : 'var(--bad)';
+  return `<div class="card gap" style="border-left:3px solid ${col};display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    ${tomato(worst, 30)}
+    <div style="font-size:12px;color:var(--ink2);line-height:1.6">
+      ${list.map(x=>`<b style="color:var(--ink)">${esc(x.label)}</b> ${x.pct}% · 최종 ${ymd(x.date).slice(5).replace('-','/')}
+        <span style="color:var(--ink3)">(${x.gap}일 전)</span>`).join('<span style="color:var(--border2);margin:0 8px">·</span>')}
+      <div style="font-size:11px;color:var(--ink3);margin-top:3px">이 탭 숫자는 위 시트에 의존합니다. 갱신 전이면 실제보다 낮게 나옵니다.</div>
+    </div>
+  </div>`;
+}
+
+// 헤더 상시 표시 — 어느 탭에서도 데이터가 밀렸는지 알 수 있게
+function renderFreshChip(){
+  const el = document.getElementById('freshChip');
+  if (!el) return;
+  const list = FRESH_SPEC.map(sp => freshScore(sp.key)).filter(Boolean);
+  if (!list.length) { el.style.display = 'none'; return; }
+  const avg = Math.round(list.reduce((a,x)=>a+x.pct,0) / list.length);
+  const tip = list.map(x => `${x.label} ${x.pct}% (${ymd(x.date).slice(5).replace('-','/')} · ${x.gap===0?'오늘':x.gap+'일 전'})`).join('\n');
+  const col = avg>=90 ? 'var(--accent-on-dark)' : (avg>=70 ? 'rgba(255,255,255,.72)' : (avg>=40 ? '#F0C14B' : '#F08A8A'));
+  el.style.display = 'flex';
+  el.title = '데이터 신선도 ' + avg + '%\n' + tip;
+  el.innerHTML = tomato(avg, 17)
+    + `<span style="font-size:11px;font-weight:700;color:${col}">${avg}%</span>`;
+}
+
+/* 탭 안에 끼워넣는 한 줄 — 그 탭에서 실제로 쓰는 시트만 */
+function freshInline(keys){
+  const list = keys.map(k => freshScore(k)).filter(Boolean);
+  if (!list.length) return '';
+  return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 13px;
+       background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:14px">
+    ${list.map(x=>`<span style="display:inline-flex;align-items:center;gap:7px">
+      ${tomato(x.pct, 20)}
+      <span style="font-size:11px;color:var(--ink2)"><b style="color:var(--ink)">${esc(x.label)}</b>
+        ${x.pct}% · ${ymd(x.date).slice(5).replace('-','/')} ${x.gap===0?'(오늘)':`(${x.gap}일 전)`}</span></span>`).join('')}
+  </div>`;
+}
+
 function freshnessBanner(){
   const list = FRESH_SPEC.map(sp => freshScore(sp.key)).filter(Boolean);
   if (!list.length) return '';
