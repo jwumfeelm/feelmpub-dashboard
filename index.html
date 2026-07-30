@@ -542,6 +542,15 @@ const CFG = {
     // 도서 탭 GID는 00_설정의 GID 열에서 읽는다 (신간 추가 시 코드 수정 불필요)
   },
 
+  // 그로스 — 채널 관리 (채널정보 탭은 계정 비밀번호가 있어 연동하지 않는다)
+  chSheetId: "1ynj4-5vZlO5uUGuPypadLhB-CqUtJkQBcjwfAT_P6xk",
+  chTabs: {
+    perf:    {name:"채널실적(2026)",     gid:"2127284367"},
+    content: {name:"콘텐츠플랜실적",       gid:"1193117225"},
+    weekly:  {name:"채널팔로워(위클리)",   gid:"386861249"},
+    // 채널업로드(708332082) 는 일정표라 우선 미연동
+  },
+
   // 출판팀 — 출간 기획 및 제작 현황
   pubSheetId: "1fbLmOxOgFkAyC23WgTw1dkZScfvJq1z05nyGPNzTeE4",
   pubGids: {
@@ -613,6 +622,11 @@ const COST_BY_CAT = {};
 // 지급월 기준 집계 — '이번 달 실제로 나가는 돈'. 귀속월(손익)과 시점이 다르다.
 // {지급월: {fixed, plan, fromPrev}}  fromPrev = 이전 달 귀속분 금액
 const COST_BY_PAY = {};
+// 그로스 — 채널
+const CH_PERF    = [];   // 계정별 월 실적 {구분, 계정, items:{항목:[12]}}
+const CH_CONTENT = [];   // 콘텐츠 단위 실적
+const CH_WEEKLY  = [];   // 주차별 팔로워 {구분, 계정, points:[{date, v}]}
+
 // 출판팀 — 출간 기획/제작 현황
 const PUB_BOOKS  = [];   // 출간 예정·진행 도서
 const PUB_RIGHTS = [];   // 외서 계약
@@ -940,6 +954,84 @@ function mdOf(v){
   var d = parseAnyDate(t);
   if (d) return ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
   return '';
+}
+
+// ── 그로스 채널 시트 ──
+async function fetchChGrid(tab){
+  const base = `https://docs.google.com/spreadsheets/d/${CFG.chSheetId}/`;
+  const url  = tab.gid
+    ? `${base}export?format=csv&gid=${tab.gid}`
+    : `${base}gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab.name)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseCSVGrid(await res.text());
+}
+
+async function loadChannelSheets(){
+  // 채널실적 — 계정마다 여러 '항목' 행이 이어지고, 구분/계정은 첫 행에만 있다
+  try {
+    const g = await fetchChGrid(CFG.chTabs.perf);
+    const hi = findHeaderRow(g, ['구분','계정','항목']);
+    if (hi < 0) throw new Error('헤더(구분·계정·항목)를 찾지 못했습니다');
+    const hdr = g[hi].map(v => String(v||'').trim());
+    // 월 열 위치 — '1월'~'12월'
+    const mCol = [];
+    for (let mm = 1; mm <= 12; mm++) mCol.push(hdr.indexOf(mm + '월'));
+    const out = [];
+    let cur = null, lastKind = '';
+    g.slice(hi + 1).forEach(r => {
+      const kind = String(r[0]||'').trim();
+      const acct = String(r[1]||'').trim();
+      const item = String(r[2]||'').trim();
+      if (kind) lastKind = kind;
+      if (acct) { cur = {kind: lastKind, acct: acct, items: {}}; out.push(cur); }
+      if (!cur || !item) return;
+      cur.items[item] = mCol.map(ci => ci >= 0 ? toNum(r[ci]) : 0);
+    });
+    CH_PERF.splice(0, CH_PERF.length, ...out.filter(x => x.acct));
+  } catch(e) { console.warn('[채널실적] 로드 실패:', e); }
+
+  // 콘텐츠 단위 실적
+  try {
+    const g = await fetchChGrid(CFG.chTabs.content);
+    const hi = findHeaderRow(g, ['콘텐츠','채널']);
+    if (hi < 0) throw new Error('헤더(콘텐츠·채널)를 찾지 못했습니다');
+    const objs = gridToObjs(g, hi).filter(o => String(o['콘텐츠']||'').trim());
+    CH_CONTENT.splice(0, CH_CONTENT.length, ...objs.map(o => ({
+      plan:   String(o['기획']||'').trim(),
+      make:   String(o['제작']||'').trim(),
+      book:   String(o['도서']||'').trim(),
+      title:  String(o['콘텐츠']||'').trim(),
+      format: String(o['포맷']||'').trim(),
+      ch:     String(o['채널']||'').trim(),
+      up:     parseAnyDate(o['업로드']),
+      reach:  toNum(o['도달/조회']),
+      share:  toNum(o['공유']),
+      save:   toNum(o['저장']),
+      follow: toNum(o['팔로워 유입']),
+      grade:  String(o['등급']||'').trim(),
+    })));
+  } catch(e) { console.warn('[콘텐츠플랜실적] 로드 실패:', e); }
+
+  // 주차별 팔로워
+  try {
+    const g = await fetchChGrid(CFG.chTabs.weekly);
+    const hi = findHeaderRow(g, ['구분','계정']);
+    if (hi < 0) throw new Error('헤더(구분·계정)를 찾지 못했습니다');
+    const hdr = g[hi].map(v => String(v||'').trim());
+    const cols = [];
+    hdr.forEach((h, i) => { const d = parseAnyDate(h); if (d && i >= 2) cols.push({i, d}); });
+    const out = [];
+    g.slice(hi + 1).forEach(r => {
+      const acct = String(r[1]||'').trim();
+      if (!acct) return;
+      out.push({
+        kind: String(r[0]||'').trim(), acct: acct,
+        points: cols.map(c => ({date: c.d, v: toNum(r[c.i])})).filter(p => p.v > 0),
+      });
+    });
+    CH_WEEKLY.splice(0, CH_WEEKLY.length, ...out);
+  } catch(e) { console.warn('[채널팔로워] 로드 실패:', e); }
 }
 
 // ── 출판팀 시트 ──
@@ -1271,6 +1363,9 @@ async function loadSheets() {
     renderActive();
 
     window.__mktMissingGid = [];
+    // 그로스 채널 시트 비동기 로드
+    loadChannelSheets().then(() => { if (activeTab==='channel') renderChannel(); });
+
     // 출판팀 시트 비동기 로드
     loadPubSheets().then(() => {
       if (activeTab==='publish') renderPublish();
@@ -1991,6 +2086,7 @@ function runCountUps(root){
       if (mode === 'won')  return (v < 0 ? '-' : '') + won(Math.abs(Math.round(v)));
       if (mode === 'wonS') return (v >= 0 ? '+' : '-') + won(Math.abs(Math.round(v)));
       if (mode === 'dec')  return v.toFixed(1);
+      if (mode === 'int')  return Math.round(v).toLocaleString();
       return String(Math.round(v));
     };
     // 애니메이션이 어떤 이유로든 중단돼도 값이 0 으로 남지 않게 최종값을 예약해 둔다
@@ -3137,96 +3233,278 @@ function costRowsFor(m){
    5. 채널 실적
 ───────────────────────────────────── */
 function renderChannel(){
-  const totalReach=CHANNELS.reduce((a,c)=>a+c.reach,0);
-  const totalSaves=CHANNELS.reduce((a,c)=>a+c.saves,0);
-  const totalFan  =CHANNELS.reduce((a,c)=>a+c.followers,0);
-  const totalRev  =CHANNELS.reduce((a,c)=>a+c.revenue,0);
+  const el = document.getElementById('tab-channel');
+  const pickM = getM();
+  const ym = document.getElementById('monthPicker').value.slice(0,7);
 
-  // 채널 실적에서 자동 산출 (하드코딩 금지 — 없으면 빈 상태로 둔다)
-  const issues=(()=>{
-    if(!CHANNELS.length) return [];
-    const out=[];
-    const byReach=[...CHANNELS].sort((a,b)=>b.reach-a.reach);
-    const top=byReach[0];
-    if(top && top.reach>0)
-      out.push({type:'good', text:`${top.name} — 당월 도달 ${top.reach.toLocaleString()} (전 채널 중 최고)`});
+  // 채널 시트는 월 마감 후 채워지므로 기준월이 비어 있을 수 있다.
+  // 그 경우 데이터가 있는 가장 최근 달로 대체하고 그 사실을 표시한다.
+  const hasData = i => CH_PERF.some(c => ((c.items['팔로워']||[])[i]||0) > 0 || ((c.items['도달']||[])[i]||0) > 0);
+  let m = pickM;
+  while (m > 0 && !hasData(m)) m--;
+  const stale = m !== pickM && hasData(m);
 
-    // 업로드 대비 도달 효율
-    const eff=CHANNELS.filter(c=>c.uploads>0).map(c=>({...c, per:c.reach/c.uploads}));
-    if(eff.length>1){
-      const best=[...eff].sort((a,b)=>b.per-a.per)[0];
-      const worst=[...eff].sort((a,b)=>a.per-b.per)[0];
-      if(best && best.per>0)
-        out.push({type:'info', text:`${best.name} — 업로드당 평균 도달 ${Math.round(best.per).toLocaleString()}로 가장 효율적`});
-      if(worst && worst!==best)
-        out.push({type:'warn', text:`${worst.name} — 업로드당 평균 도달 ${Math.round(worst.per).toLocaleString()}, 콘텐츠 기획 점검 필요`});
-    }
-    // 팔로워 순증이 마이너스인 채널
-    const down=CHANNELS.filter(c=>c.fanGain<0).sort((a,b)=>a.fanGain-b.fanGain)[0];
-    if(down)
-      out.push({type:'bad', text:`${down.name} — 팔로워 ${down.fanGain.toLocaleString()}명 순감, 원인 분석 필요`});
-    // 업로드가 아예 없는 채널
-    const idle=CHANNELS.filter(c=>c.uploads===0).map(c=>c.name);
-    if(idle.length)
-      out.push({type:'warn', text:`${idle.join(' · ')} — 당월 업로드 없음`});
-    return out.slice(0,4);
-  })();
+  if(!CH_PERF.length && !CH_CONTENT.length){
+    el.innerHTML = `<div class="card gap"><div class="card-title">채널</div>
+      <div class="empty-row">채널 관리 시트를 불러오지 못했습니다. 공유 설정과 GID를 확인해 주세요.</div></div>`;
+    return;
+  }
 
-  document.getElementById('tab-channel').innerHTML=`
-    <!-- 상단 KPI -->
+  const iv = (a,i) => (a && a[i]) || 0;
+  const rows = CH_PERF.map(c => ({
+    kind:c.kind, acct:c.acct,
+    fol:iv(c.items['팔로워'],m), diff:iv(c.items['증감'],m),
+    reach:iv(c.items['도달'],m)||iv(c.items['도달(조회수)'],m),
+    up:iv(c.items['업로드'],m), avg:iv(c.items['도달 평균'],m),
+    share:iv(c.items['공유'],m), save:iv(c.items['저장'],m),
+    rev:iv(c.items['수익(보너스)'],m)+iv(c.items['수익(광고)'],m),
+    series:(c.items['팔로워']||[]).slice(0,m+1),
+  })).filter(r => r.fol || r.reach || r.up);
+
+  const sum = k => rows.reduce((a,r)=>a+(r[k]||0),0);
+  const totFol=sum('fol'), totDiff=sum('diff'), totReach=sum('reach'), totUp=sum('up'), totRev=sum('rev');
+  const kindColor = k => laneColor('ch-'+k).bg;
+  const kinds = [...new Set(rows.map(r=>r.kind))];
+
+  const contAll = CH_CONTENT.slice();
+  const cont = contAll.filter(c => c.up && ymd(c.up).slice(0,7)===ym);
+
+  /* ── 채널 포트폴리오 : 팔로워(가로) × 도달 평균(세로) × 업로드(크기) ── */
+  function scatter(){
+    const pts = rows.filter(r => r.fol>0 && r.avg>0);
+    if(pts.length<2) return '<div class="empty-row">표시할 채널이 없습니다</div>';
+    const W=1000,H=300,P={t:22,r:24,b:44,l:74};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b;
+    const mxF=Math.max(...pts.map(p=>p.fol))*1.15, mxA=Math.max(...pts.map(p=>p.avg))*1.18;
+    const mxU=Math.max(...pts.map(p=>p.up),1);
+    const x=v=>P.l+(v/mxF)*cW, y=v=>P.t+cH-(v/mxA)*cH;
+    const rad=u=>6+Math.sqrt(u/mxU)*16;
+    const grid=[0,.25,.5,.75,1].map(f=>{
+      const yy=P.t+cH-f*cH, xx=P.l+f*cW;
+      return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/>`
+        +`<line x1="${xx}" x2="${xx}" y1="${P.t}" y2="${P.t+cH}" stroke="#0F162008"/>`
+        +`<text x="${P.l-9}" y="${yy+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(mxA*f)}</text>`
+        +`<text x="${xx}" y="${P.t+cH+20}" fill="#96A1AE" font-size="10" text-anchor="middle" font-family="inherit">${fmtAmt(mxF*f)}</text>`;
+    }).join('');
+    // 평균선 — 이 선보다 위면 규모 대비 효율이 좋은 채널
+    const avgA = pts.reduce((a,p)=>a+p.avg,0)/pts.length;
+    const ref = `<line x1="${P.l}" x2="${P.l+cW}" y1="${y(avgA)}" y2="${y(avgA)}" stroke="#8AA0EE" stroke-width="1.5" stroke-dasharray="5,4"/>`
+      + `<text x="${P.l+cW-4}" y="${y(avgA)-7}" fill="#2A44A8" font-size="10" font-weight="700" text-anchor="end" font-family="inherit">평균 도달 ${fmtAmt(Math.round(avgA))}</text>`;
+    const bub = pts.sort((a,b)=>b.up-a.up).map(p=>{
+      const cx=x(p.fol), cy=y(p.avg), r=rad(p.up);
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${kindColor(p.kind)}" fill-opacity=".62"
+                stroke="${kindColor(p.kind)}" stroke-width="1.6"><title>${esc(p.acct)} · 팔로워 ${p.fol.toLocaleString()} · 도달평균 ${Math.round(p.avg).toLocaleString()} · 업로드 ${p.up}</title></circle>`
+        +`<text x="${cx}" y="${cy-r-6}" fill="var(--ink2)" font-size="10" font-weight="700" text-anchor="middle" font-family="inherit">${esc(p.acct)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:300px;display:block">
+      ${grid}${ref}${bub}
+      <text x="${P.l+cW/2}" y="${H-6}" fill="#B7C0CA" font-size="10" text-anchor="middle" font-family="inherit">팔로워 →</text>
+      <text x="14" y="${P.t+cH/2}" fill="#B7C0CA" font-size="10" text-anchor="middle" font-family="inherit" transform="rotate(-90 14 ${P.t+cH/2})">도달 평균 →</text>
+    </svg>`;
+  }
+
+  /* ── 주차별 팔로워 : 첫 주 대비 증감률 멀티라인 ── */
+  function weeklyChart(){
+    const ws = CH_WEEKLY.filter(w=>w.points.length>=2);
+    if(!ws.length) return '';
+    const dates = ws[0].points.map(p=>p.date);
+    const W=1000,H=260,P={t:20,r:150,b:38,l:56};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b;
+    const pct = w => w.points.map(p=>(p.v/w.points[0].v-1)*100);
+    const all = ws.flatMap(pct);
+    const mx=Math.max(...all,1.2), mn=Math.min(...all,-1.2);
+    const x=k=>P.l+(k/(dates.length-1))*cW;
+    const y=v=>P.t+cH-((v-mn)/((mx-mn)||1))*cH;
+    const zero = y(0);
+    const lines = ws.map((w,wi)=>{
+      const ps=pct(w).map((v,k)=>x(k)+','+y(v)).join('L');
+      const last=pct(w)[pct(w).length-1];
+      return `<path d="M${ps}" data-draw fill="none" stroke="${kindColor(w.kind)}" stroke-width="2"
+                stroke-linejoin="round" opacity=".9"><title>${esc(w.acct)}</title></path>`
+        +`<circle cx="${x(dates.length-1)}" cy="${y(last)}" r="3.2" fill="#FFF" stroke="${kindColor(w.kind)}" stroke-width="2"/>`
+        +`<text x="${P.l+cW+8}" y="${y(last)+4}" fill="var(--ink2)" font-size="10" font-weight="700" font-family="inherit">${esc(w.acct)} <tspan fill="${last>=0?'#0E6E52':'#B3243C'}">${last>=0?'+':''}${last.toFixed(1)}%</tspan></text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;display:block">
+      <line x1="${P.l}" x2="${P.l+cW}" y1="${zero}" y2="${zero}" stroke="#0F162018" stroke-width="1.5"/>
+      <text x="${P.l-8}" y="${zero+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">0%</text>
+      ${dates.map((d,k)=>`<text x="${x(k)}" y="${P.t+cH+20}" fill="#96A1AE" font-size="10" text-anchor="middle" font-family="inherit">${ymd(d).slice(5).replace('-','/')}</text>`).join('')}
+      ${lines}</svg>`;
+  }
+
+  /* ── 도서 × 채널 히트맵 ── */
+  function heat(){
+    const cross={}, bTot={}, cTot={};
+    contAll.forEach(c=>{
+      if(!c.book || !c.ch || c.ch==='-') return;
+      const k=c.book+'|'+c.ch;
+      cross[k]=(cross[k]||0)+c.reach;
+      bTot[c.book]=(bTot[c.book]||0)+c.reach;
+      cTot[c.ch]=(cTot[c.ch]||0)+c.reach;
+    });
+    const bs=Object.keys(bTot).sort((a,b)=>bTot[b]-bTot[a]);
+    const cs=Object.keys(cTot).sort((a,b)=>cTot[b]-cTot[a]).slice(0,10);
+    if(!bs.length) return '';
+    const mx=Math.max(...Object.values(cross));
+    return `<div style="overflow-x:auto"><table style="min-width:100%">
+      <tr><th style="width:78px"></th>${cs.map(c=>`<th style="font-size:10px;font-weight:700;text-align:center;padding:6px 3px;white-space:nowrap">${esc(c.replace(/^\((IN|YT|TT|TH)\)/,''))}</th>`).join('')}
+        <th class="right" style="width:78px">합계</th></tr>
+      ${bs.map(b=>`<tr>
+        <td><b style="font-size:12px">${esc(b)}</b></td>
+        ${cs.map(c=>{
+          const v=cross[b+'|'+c]||0, t=v/mx;
+          return `<td style="padding:3px" title="${esc(b)} × ${esc(c)} · ${v.toLocaleString()}">
+            <div style="height:30px;border-radius:var(--r4);display:flex;align-items:center;justify-content:center;
+              background:${v?`rgba(58,91,217,${(0.10+t*0.82).toFixed(3)})`:'var(--surface3)'};
+              color:${t>0.45?'#FFF':'var(--ink2)'};font-size:10px;font-weight:700">${v?fmtAmt(v):''}</div></td>`;
+        }).join('')}
+        <td class="right"><b>${fmtAmt(bTot[b])}</b></td></tr>`).join('')}
+    </table></div>`;
+  }
+
+  /* ── 도달 집중도 : 상위 N건이 전체의 몇 % ── */
+  function concentration(){
+    const rs=contAll.map(c=>c.reach).filter(v=>v>0).sort((a,b)=>b-a);
+    if(rs.length<5) return '';
+    const tot=rs.reduce((a,b)=>a+b,0);
+    const W=1000,H=190,P={t:16,r:20,b:34,l:52};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b;
+    let acc=0; const pts=rs.map((v,i)=>{acc+=v; return {x:(i+1)/rs.length, y:acc/tot};});
+    const px=k=>P.l+k*cW, py=v=>P.t+cH-v*cH;
+    const path='M'+P.l+','+(P.t+cH)+'L'+pts.map(p=>px(p.x)+','+py(p.y)).join('L');
+    const marks=[5,10,20,50].filter(k=>k<=rs.length).map(k=>{
+      const share=rs.slice(0,k).reduce((a,b)=>a+b,0)/tot;
+      return {k, share, x:px(k/rs.length), y:py(share)};
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:190px;display:block">
+      ${[0,.25,.5,.75,1].map(f=>`<line x1="${P.l}" x2="${P.l+cW}" y1="${py(f)}" y2="${py(f)}" stroke="#0F16200D"/>
+        <text x="${P.l-8}" y="${py(f)+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${Math.round(f*100)}%</text>`).join('')}
+      <path d="${path}L${px(1)},${P.t+cH}Z" fill="#3A5BD9" fill-opacity=".10"/>
+      <path d="${path}" data-draw fill="none" stroke="#3A5BD9" stroke-width="2.4" stroke-linejoin="round"/>
+      ${marks.map(mk=>`<circle cx="${mk.x}" cy="${mk.y}" r="4" fill="#FFF" stroke="#2A44A8" stroke-width="2.2"/>
+        <text x="${mk.x}" y="${mk.y-11}" fill="var(--ink)" font-size="10" font-weight="800" text-anchor="middle" font-family="inherit">${Math.round(mk.share*100)}%</text>
+        <text x="${mk.x}" y="${P.t+cH+18}" fill="#96A1AE" font-size="10" text-anchor="middle" font-family="inherit">상위 ${mk.k}건</text>`).join('')}
+      <text x="${px(1)}" y="${P.t+cH+18}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">전체 ${rs.length}건</text>
+    </svg>`;
+  }
+
+  el.innerHTML = `
+    ${stale ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
+      <div style="font-size:12px;color:var(--ink2);line-height:1.6">
+        <b>${MONTHS[pickM]} 채널 데이터가 아직 없습니다.</b> 아래 수치는 <b>${MONTHS[m]}</b> 기준입니다.
+        채널 관리 시트의 <b>채널실적(2026)</b> 탭에 ${MONTHS[pickM]} 열을 채우면 자동으로 반영됩니다.</div></div>` : ''}
+
     <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">총 도달수</div><div class="kpi-val">${(totalReach/10000).toFixed(0)}만</div><div class="kpi-sub">${CHANNELS.length}개 채널 합산</div></div>
-      <div class="kpi"><div class="kpi-lbl">총 저장수</div><div class="kpi-val">${totalSaves.toLocaleString()}</div><div class="kpi-sub">전월 대비 +12.3%</div></div>
-      <div class="kpi"><div class="kpi-lbl">총 팔로워</div><div class="kpi-val">${(totalFan/10000).toFixed(1)}만</div><div class="kpi-sub">누적 합산</div></div>
-      <div class="kpi"><div class="kpi-lbl">채널 총 수익</div><div class="kpi-val">${won(totalRev)}</div><div class="kpi-sub">광고·제휴 합산</div></div>
+      <div class="kpi"><div class="kpi-lbl">총 팔로워</div>
+        <div class="kpi-val" data-count="${totFol}" data-fmt="int">0</div>
+        <div class="kpi-sub">${rows.length}개 채널 · ${kinds.join(' · ')}</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 순증</div>
+        <div class="kpi-val ${totDiff>=0?'good':'bad'}">${totDiff>=0?'+':''}${totDiff.toLocaleString()}</div>
+        <div class="kpi-sub">${MONTHS[m]} 팔로워 증감</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 도달</div>
+        <div class="kpi-val" data-count="${totReach}" data-fmt="int">0</div>
+        <div class="kpi-sub">업로드 ${totUp.toLocaleString()}건</div></div>
+      <div class="kpi"><div class="kpi-lbl">당월 채널 수익</div>
+        <div class="kpi-val">${won(totRev)}</div>
+        <div class="kpi-sub">보너스 + 광고</div></div>
     </div>
 
-    <!-- 중단: 채널별 상세 -->
-    <div class="sec-label gap2">월별 채널 단위 실적</div>
-    <div class="card">
-      <div class="card-title">채널별 상세 지표</div>
+    <div class="card gap">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="card-title" style="margin:0">채널 포트폴리오
+          <small>가로 팔로워 · 세로 도달 평균 · 원 크기 업로드 수</small></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink3)">
+          ${kinds.map(k=>`<span style="display:inline-flex;align-items:center;gap:5px">
+            <span style="width:9px;height:9px;border-radius:50%;background:${kindColor(k)}"></span>${esc(k)}</span>`).join('')}
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">점선 위쪽은 규모 대비 도달이 좋은 채널입니다</div>
+      ${scatter()}
+    </div>
+
+    ${CH_WEEKLY.length ? `
+    <div class="card gap">
+      <div class="card-title">주차별 팔로워 <small>첫 주 대비 증감률 · 규모가 달라도 비교되도록 % 로 환산</small></div>
+      ${weeklyChart()}
+    </div>` : ''}
+
+    ${contAll.length ? `
+    <div class="g2 gap">
+      <div class="card">
+        <div class="card-title">도서 × 채널 도달 <small>어느 도서가 어느 채널에서 통하는지</small></div>
+        ${heat()}
+      </div>
+      <div class="card">
+        <div class="card-title">도달 집중도 <small>소수 콘텐츠에 얼마나 쏠려 있는지</small></div>
+        ${concentration()}
+        <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-top:10px">
+          곡선이 왼쪽에서 가파를수록 소수 콘텐츠가 도달을 독식합니다. 완만할수록 고르게 나옵니다.</div>
+      </div>
+    </div>` : ''}
+
+    <div class="card gap">
+      <div class="card-title">채널별 현황 <small>${MONTHS[m]} · 팔로워 순</small></div>
       <table>
-        <tr><th>채널</th><th>플랫폼</th><th class="right">월 업로드</th><th class="right">월 도달</th><th class="right">공유수</th><th class="right">저장수</th><th class="right">팔로워</th><th class="right">팔로워 순증</th><th class="right">광고 수익</th></tr>
-        ${CHANNELS.map(c=>`<tr>
-          <td><b style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${esc(c.name)}${c.link?`<a href="${c.link}" target="_blank" style="color:var(--ink3);font-size:12px;font-weight:400;text-decoration:none;margin-left:4px" onclick="event.stopPropagation()">↗</a>`:''}</b></td>
-          <td><span class="badge neutral">${c.platform}</span></td>
-          <td class="right">${c.uploads}</td>
-          <td class="right">${(c.reach/10000).toFixed(0)}만</td>
-          <td class="right">${c.shares.toLocaleString()}</td>
-          <td class="right">${c.saves.toLocaleString()}</td>
-          <td class="right">${c.followers.toLocaleString()}</td>
-          <td class="right"><span style="color:${c.fanGain>=0?'var(--good)':'var(--bad)'}">${c.fanGain>=0?'+':''}${c.fanGain.toLocaleString()}</span></td>
-          <td class="right">${c.revenue?won(c.revenue):'—'}</td>
-        </tr>`).join('')}
+        <tr><th style="width:150px">채널</th><th class="right">팔로워</th><th class="right">증감</th>
+            <th class="right">도달</th><th class="right">업로드</th><th class="right">도달 평균</th>
+            <th class="right">공유</th><th class="right">저장</th><th style="width:110px">추이</th></tr>
+        ${rows.sort((a,b)=>b.fol-a.fol).map(r=>`
+          <tr>
+            <td><span style="display:inline-flex;align-items:center;gap:7px">
+              <span style="width:8px;height:8px;border-radius:2px;background:${kindColor(r.kind)};flex-shrink:0"></span>
+              <b style="font-size:12px">${esc(r.acct)}</b></span>
+              <div style="font-size:10px;color:var(--ink3);margin-left:15px">${esc(r.kind)}</div></td>
+            <td class="right"><b>${r.fol.toLocaleString()}</b></td>
+            <td class="right" style="color:${r.diff>0?'var(--good)':(r.diff<0?'var(--bad)':'var(--ink3)')};font-weight:700">${r.diff>0?'+':''}${r.diff.toLocaleString()}</td>
+            <td class="right">${r.reach?r.reach.toLocaleString():'—'}</td>
+            <td class="right">${r.up||'—'}</td>
+            <td class="right">${r.avg?Math.round(r.avg).toLocaleString():'—'}</td>
+            <td class="right">${r.share?r.share.toLocaleString():'—'}</td>
+            <td class="right">${r.save?r.save.toLocaleString():'—'}</td>
+            <td>${spark(r.series, m, {color:'var(--ink3)'})}</td>
+          </tr>`).join('')}
       </table>
     </div>
 
-    <!-- 하단: 이슈 -->
-    <div class="sec-label gap2">이슈 · 광고 · 고효율 콘텐츠</div>
-    <div class="card">
-      <div class="card-title">채널 이슈사항</div>
-      ${issues.length ? issues.map(i=>`<div class="notice ${i.type}"><span class="dot"></span><span>${i.text}</span></div>`).join('')
-        : `<div class="empty-row">채널 실적 데이터가 없습니다</div>`}
-    </div>
-
-    <!-- 도달 차트 -->
-    <div class="card gap2">
-      <div class="card-title">채널별 월 도달 비교</div>
+    ${contAll.length ? `
+    <div class="card gap">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div class="card-title" style="margin:0">콘텐츠별 실적 <small>${chShowAll?`전체 ${contAll.length}건`:`${ym} 업로드 ${cont.length}건`} · 도달 순</small></div>
+        <button onclick="chShowAll=!chShowAll;renderChannel()" style="border:1px solid var(--border2);background:var(--surface);
+          color:var(--ink2);border-radius:var(--r3);padding:5px 11px;font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer">
+          ${chShowAll?`당월만 (${cont.length}건)`:`전체 보기 (${contAll.length}건)`}</button>
+      </div>
       ${(()=>{
-        const maxReach = Math.max(...CHANNELS.map(c=>c.reach), 0);
-        return barChart(
-          CHANNELS.map(c=>({
-            l: c.name.replace('인스타 ','').replace('유튜브 ','').replace('틱톡 ',''),
-            v: c.reach,
-            lv: (c.reach/10000).toFixed(0)+'만',
-            tip: `${c.name}: ${(c.reach/10000).toFixed(0)}만`,
-            top: c.reach===maxReach && maxReach>0
-          })),
-          // 채널 구분은 x축 라벨이 하므로 색은 단일. 1위만 강조해 색이 순위를 뜻하게 한다
-          {colorFn:(d)=> d.top ? 'b-top' : 'b-flat'}
-        );
+        const list=(chShowAll?contAll:cont).slice().sort((a,b)=>b.reach-a.reach);
+        if(!list.length) return '<div class="empty-row">해당 기간 업로드된 콘텐츠가 없습니다</div>';
+        const mx=list[0].reach||1;
+        return `<table>
+          <tr><th style="width:74px">업로드</th><th>콘텐츠</th><th style="width:118px">채널</th>
+              <th style="width:56px">포맷</th><th class="right" style="width:160px">도달/조회</th>
+              <th class="right" style="width:58px">공유</th><th class="right" style="width:58px">저장</th>
+              <th class="right" style="width:66px">팔로워</th><th style="width:44px">등급</th></tr>
+          ${list.slice(0,200).map(c=>`
+            <tr>
+              <td style="font-size:11px;color:var(--ink3)">${c.up?ymd(c.up).slice(5).replace('-','/'):'—'}</td>
+              <td><b style="font-size:12px">${esc(c.title)}</b>${c.book?`<span style="font-size:10px;color:var(--ink3);margin-left:6px">${esc(c.book)}</span>`:''}</td>
+              <td style="font-size:11px;color:var(--ink2)">${esc(c.ch)}</td>
+              <td style="font-size:11px;color:var(--ink3)">${esc(c.format)}</td>
+              <td class="right"><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+                <div style="flex:1;max-width:82px;height:5px;background:var(--ink5);border-radius:var(--r5);overflow:hidden">
+                  <div class="bar-grow" style="--w:${Math.min(100,c.reach/mx*100)}%;height:5px;background:var(--accent);border-radius:var(--r5)"></div></div>
+                <b style="min-width:58px">${c.reach.toLocaleString()}</b></div></td>
+              <td class="right">${c.share||'—'}</td>
+              <td class="right">${c.save||'—'}</td>
+              <td class="right" style="color:${c.follow>0?'var(--good)':'var(--ink3)'};font-weight:${c.follow>0?700:400}">${c.follow>0?'+'+c.follow:'—'}</td>
+              <td>${c.grade&&c.grade!=='-'?`<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+                border-radius:var(--r4);font-size:10px;font-weight:800;background:${c.grade==='A'?'var(--good-dim)':'var(--surface3)'};
+                color:${c.grade==='A'?'var(--good)':'var(--ink2)'}">${esc(c.grade)}</span>`:''}</td>
+            </tr>`).join('')}
+        </table>${list.length>200?`<div style="font-size:11px;color:var(--ink3);margin-top:10px">상위 200건 표시 · 전체 ${list.length}건</div>`:''}`;
       })()}
-    </div>`;
+    </div>` : ''}`;
+
+  const _ch = document.getElementById('tab-channel');
+  setTimeout(function(){ runCountUps(_ch); drawLines(_ch); }, 0);
 }
 
 /* ─────────────────────────────────────
@@ -3234,6 +3512,7 @@ function renderChannel(){
 ───────────────────────────────────── */
 // 도서 DB 표시 범위: 최근 12개월 출고매출 1,000만원 이상만 (전체 보기 토글)
 let booksShowAll = false;
+let chShowAll = false;
 let bookQuery = "";
 function onBookSearch(v){ bookQuery = String(v||"").trim(); renderBooks(); }
 
