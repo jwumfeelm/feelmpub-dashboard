@@ -977,6 +977,7 @@ async function loadChannelSheets(){
     // 월 열 위치 — '1월'~'12월'
     const mCol = [];
     for (let mm = 1; mm <= 12; mm++) mCol.push(hdr.indexOf(mm + '월'));
+    const pCol = hdr.indexOf('2025');   // 전년 누적
     const out = [];
     let cur = null, lastKind = '';
     g.slice(hi + 1).forEach(r => {
@@ -987,6 +988,7 @@ async function loadChannelSheets(){
       if (acct) { cur = {kind: lastKind, acct: acct, items: {}}; out.push(cur); }
       if (!cur || !item) return;
       cur.items[item] = mCol.map(ci => ci >= 0 ? toNum(r[ci]) : 0);
+      if (pCol >= 0) (cur.prev = cur.prev || {})[item] = toNum(r[pCol]);   // 2025 전년 열
     });
     CH_PERF.splice(0, CH_PERF.length, ...out.filter(x => x.acct));
   } catch(e) { console.warn('[채널실적] 로드 실패:', e); }
@@ -1004,12 +1006,20 @@ async function loadChannelSheets(){
       title:  String(o['콘텐츠']||'').trim(),
       format: String(o['포맷']||'').trim(),
       ch:     String(o['채널']||'').trim(),
-      up:     parseAnyDate(o['업로드']),
+      up:     parseAnyDate(o['업로드']) || dateWithYear(o['업로드'], String(new Date().getFullYear())),
       reach:  toNum(o['도달/조회']),
       share:  toNum(o['공유']),
       save:   toNum(o['저장']),
       follow: toNum(o['팔로워 유입']),
       grade:  String(o['등급']||'').trim(),
+      // 판매 기여 — 업로드 전후 5일 판매량 비교
+      sPre:   toNum(o['판매량(-5)']),
+      sPost:  toNum(o['판매량(+5)']),
+      sDiff:  toNum(o['판매증감']),
+      scoreC: toNum(o['스코어(콘텐츠)']),
+      scoreS: toNum(o['스코어(판매)']),
+      eff:    String(o['효율']||'').trim(),
+      report: parseAnyDate(o['리포트']),
     })));
   } catch(e) { console.warn('[콘텐츠플랜실적] 로드 실패:', e); }
 
@@ -3258,6 +3268,9 @@ function renderChannel(){
     up:iv(c.items['업로드'],m), avg:iv(c.items['도달 평균'],m),
     share:iv(c.items['공유'],m), save:iv(c.items['저장'],m),
     rev:iv(c.items['수익(보너스)'],m)+iv(c.items['수익(광고)'],m),
+    prevReach:(c.prev && (c.prev['도달'] || c.prev['도달(조회수)'])) || 0,
+    ytdReach:((c.items['도달']||[]).slice(0,m+1).reduce((a,b)=>a+b,0))
+            +((c.items['도달(조회수)']||[]).slice(0,m+1).reduce((a,b)=>a+b,0)),
     series:(c.items['팔로워']||[]).slice(0,m+1),
   })).filter(r => r.fol || r.reach || r.up);
 
@@ -3270,37 +3283,50 @@ function renderChannel(){
   const cont = contAll.filter(c => c.up && ymd(c.up).slice(0,7)===ym);
 
   /* ── 채널 포트폴리오 : 팔로워(가로) × 도달 평균(세로) × 업로드(크기) ── */
-  function scatter(){
-    const pts = rows.filter(r => r.fol>0 && r.avg>0);
-    if(pts.length<2) return '<div class="empty-row">표시할 채널이 없습니다</div>';
-    const W=1000,H=300,P={t:22,r:24,b:44,l:74};
-    const cW=W-P.l-P.r, cH=H-P.t-P.b;
-    const mxF=Math.max(...pts.map(p=>p.fol))*1.15, mxA=Math.max(...pts.map(p=>p.avg))*1.18;
-    const mxU=Math.max(...pts.map(p=>p.up),1);
-    const x=v=>P.l+(v/mxF)*cW, y=v=>P.t+cH-(v/mxA)*cH;
-    const rad=u=>6+Math.sqrt(u/mxU)*16;
-    const grid=[0,.25,.5,.75,1].map(f=>{
-      const yy=P.t+cH-f*cH, xx=P.l+f*cW;
-      return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/>`
-        +`<line x1="${xx}" x2="${xx}" y1="${P.t}" y2="${P.t+cH}" stroke="#0F162008"/>`
-        +`<text x="${P.l-9}" y="${yy+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(mxA*f)}</text>`
-        +`<text x="${xx}" y="${P.t+cH+20}" fill="#96A1AE" font-size="10" text-anchor="middle" font-family="inherit">${fmtAmt(mxF*f)}</text>`;
-    }).join('');
-    // 평균선 — 이 선보다 위면 규모 대비 효율이 좋은 채널
-    const avgA = pts.reduce((a,p)=>a+p.avg,0)/pts.length;
-    const ref = `<line x1="${P.l}" x2="${P.l+cW}" y1="${y(avgA)}" y2="${y(avgA)}" stroke="#8AA0EE" stroke-width="1.5" stroke-dasharray="5,4"/>`
-      + `<text x="${P.l+cW-4}" y="${y(avgA)-7}" fill="#2A44A8" font-size="10" font-weight="700" text-anchor="end" font-family="inherit">평균 도달 ${fmtAmt(Math.round(avgA))}</text>`;
-    const bub = pts.sort((a,b)=>b.up-a.up).map(p=>{
-      const cx=x(p.fol), cy=y(p.avg), r=rad(p.up);
-      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${kindColor(p.kind)}" fill-opacity=".62"
-                stroke="${kindColor(p.kind)}" stroke-width="1.6"><title>${esc(p.acct)} · 팔로워 ${p.fol.toLocaleString()} · 도달평균 ${Math.round(p.avg).toLocaleString()} · 업로드 ${p.up}</title></circle>`
-        +`<text x="${cx}" y="${cy-r-6}" fill="var(--ink2)" font-size="10" font-weight="700" text-anchor="middle" font-family="inherit">${esc(p.acct)}</text>`;
-    }).join('');
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:300px;display:block">
-      ${grid}${ref}${bub}
-      <text x="${P.l+cW/2}" y="${H-6}" fill="#B7C0CA" font-size="10" text-anchor="middle" font-family="inherit">팔로워 →</text>
-      <text x="14" y="${P.t+cH/2}" fill="#B7C0CA" font-size="10" text-anchor="middle" font-family="inherit" transform="rotate(-90 14 ${P.t+cH/2})">도달 평균 →</text>
-    </svg>`;
+  /* 채널 효율 — 산점도는 대부분이 한 구석에 뭉쳐 라벨이 겹친다.
+     채널명을 세로로 세우면 겹칠 일이 없고 순위도 바로 읽힌다. */
+  function effBars(){
+    const list = rows.filter(r=>r.fol>0 && r.avg>0)
+      .map(r=>({...r, rate: r.avg/r.fol}))
+      .sort((a,b)=>b.rate-a.rate);
+    if(!list.length) return '<div class="empty-row">표시할 채널이 없습니다</div>';
+    const mxRate = list[0].rate;
+    const mxFol  = Math.max(...list.map(r=>r.fol));
+    const med = (()=>{ const v=list.map(r=>r.rate).sort((a,b)=>a-b); return v[Math.floor(v.length/2)]; })();
+    return `<div>
+      <div style="display:flex;align-items:center;gap:10px;padding:0 0 7px;font-size:10px;
+           font-weight:700;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase;border-bottom:1px solid var(--border)">
+        <span style="width:132px">채널</span>
+        <span style="flex:1">도달률 · 팔로워 대비 1건 평균 도달</span>
+        <span style="width:70px;text-align:right">도달 평균</span>
+        <span style="width:66px;text-align:right">팔로워</span>
+        <span style="width:44px;text-align:right">업로드</span>
+      </div>
+      ${list.map((r,i)=>{
+        const w = Math.max(1.5, r.rate/mxRate*100);
+        const good = r.rate >= med;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0${i?';border-top:1px solid var(--border)':''}">
+          <div style="width:132px;display:flex;align-items:center;gap:7px;min-width:0">
+            <span style="width:8px;height:8px;border-radius:2px;background:${kindColor(r.kind)};flex-shrink:0"></span>
+            <span style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.acct)}</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px">
+            <div style="flex:1;height:13px;background:var(--surface3);border-radius:var(--r5);overflow:hidden">
+              <div class="bar-grow" style="--w:${w}%;--d:${i*35}ms;height:13px;
+                background:${good?'var(--accent)':'var(--border2)'}"></div>
+            </div>
+            <span style="width:58px;text-align:right;font-size:12px;font-weight:800;
+              color:${good?'var(--accent-deep)':'var(--ink3)'}">${r.rate>=10?Math.round(r.rate*100).toLocaleString():(r.rate*100).toFixed(0)}%</span>
+          </div>
+          <div style="width:70px;text-align:right;font-size:12px;font-weight:700;color:var(--ink)">${fmtAmt(Math.round(r.avg))}</div>
+          <div style="width:66px;text-align:right;font-size:11px;color:var(--ink2)">${fmtAmt(r.fol)}</div>
+          <div style="width:44px;text-align:right;font-size:11px;color:var(--ink3)">${r.up||'—'}</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:11px;color:var(--ink3);margin-top:12px;line-height:1.6">
+        도달률 = 콘텐츠 1건 평균 도달 ÷ 팔로워. 100%를 넘으면 팔로워 밖으로 퍼졌다는 뜻입니다.
+        진한 막대는 중앙값(${Math.round(med*100)}%) 이상.</div>
+    </div>`;
   }
 
   /* ── 주차별 팔로워 : 첫 주 대비 증감률 멀티라인 ── */
@@ -3410,15 +3436,14 @@ function renderChannel(){
 
     <div class="card gap">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="card-title" style="margin:0">채널 포트폴리오
-          <small>가로 팔로워 · 세로 도달 평균 · 원 크기 업로드 수</small></div>
+        <div class="card-title" style="margin:0">채널 효율
+          <small>팔로워 대비 얼마나 멀리 퍼지는지 · 도달률 순</small></div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink3)">
           ${kinds.map(k=>`<span style="display:inline-flex;align-items:center;gap:5px">
             <span style="width:9px;height:9px;border-radius:50%;background:${kindColor(k)}"></span>${esc(k)}</span>`).join('')}
         </div>
       </div>
-      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">점선 위쪽은 규모 대비 도달이 좋은 채널입니다</div>
-      ${scatter()}
+      ${effBars()}
     </div>
 
     ${CH_WEEKLY.length ? `
@@ -3446,7 +3471,10 @@ function renderChannel(){
       <table>
         <tr><th style="width:150px">채널</th><th class="right">팔로워</th><th class="right">증감</th>
             <th class="right">도달</th><th class="right">업로드</th><th class="right">도달 평균</th>
-            <th class="right">공유</th><th class="right">저장</th><th style="width:110px">추이</th></tr>
+            <th class="right">공유</th><th class="right">저장</th>
+            <th class="right" style="width:92px">수익</th>
+            <th class="right" style="width:112px">전년 대비 도달</th>
+            <th style="width:100px">추이</th></tr>
         ${rows.sort((a,b)=>b.fol-a.fol).map(r=>`
           <tr>
             <td><span style="display:inline-flex;align-items:center;gap:7px">
@@ -3460,12 +3488,118 @@ function renderChannel(){
             <td class="right">${r.avg?Math.round(r.avg).toLocaleString():'—'}</td>
             <td class="right">${r.share?r.share.toLocaleString():'—'}</td>
             <td class="right">${r.save?r.save.toLocaleString():'—'}</td>
+            <td class="right">${r.rev?won(r.rev):'<span style="color:var(--ink3)">—</span>'}</td>
+            <td class="right">${(()=>{
+              if(!r.prevReach) return '<span style="color:var(--ink3)">—</span>';
+              const g = r.ytdReach/r.prevReach*100 - 100;
+              return `<b style="color:${g>=0?'var(--good)':'var(--bad)'}">${g>=0?'+':''}${Math.round(g)}%</b>`
+                + `<div style="font-size:10px;color:var(--ink3)">${fmtAmt(r.prevReach)} → ${fmtAmt(r.ytdReach)}</div>`;
+            })()}</td>
             <td>${spark(r.series, m, {color:'var(--ink3)'})}</td>
           </tr>`).join('')}
       </table>
     </div>
 
     ${contAll.length ? `
+    ${(()=>{
+      const sv = contAll.filter(c => c.sPre > 0 || c.sPost > 0);
+      if(!sv.length) return '';
+      const up = sv.filter(c=>c.sDiff>0).length, dn = sv.filter(c=>c.sDiff<0).length, fl = sv.length-up-dn;
+      const byBook = {};
+      sv.forEach(c=>{ const b=c.book||'미지정'; (byBook[b]=byBook[b]||{n:0,pre:0,post:0,reach:0}); 
+        byBook[b].n++; byBook[b].pre+=c.sPre; byBook[b].post+=c.sPost; byBook[b].reach+=c.reach; });
+      const books = Object.keys(byBook).map(k=>({k, ...byBook[k],
+        rate: byBook[k].pre ? (byBook[k].post/byBook[k].pre-1)*100 : null})).sort((a,b)=>b.n-a.n);
+      const mxN = Math.max(up, dn, fl, 1);
+      const seg = (label, n, color) => `<div style="flex:1;min-width:104px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">${label}</div>
+        <div style="font-size:24px;font-weight:800;letter-spacing:-.03em;color:${color};line-height:1;margin-top:8px">${n}<span style="font-size:13px">건</span></div>
+        <div style="height:5px;background:var(--surface3);border-radius:var(--r5);overflow:hidden;margin-top:9px">
+          <div class="bar-grow" style="--w:${n/mxN*100}%;height:5px;background:${color};border-radius:var(--r5)"></div></div></div>`;
+      return `<div class="card gap">
+        <div class="card-title">콘텐츠 → 판매 기여 <small>업로드 전 5일 대비 후 5일 판매량 · 측정된 ${sv.length}건</small></div>
+        <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:18px">
+          ${seg('판매 증가', up, 'var(--good)')}
+          ${seg('판매 감소', dn, 'var(--bad)')}
+          ${seg('변화 없음', fl, 'var(--ink3)')}
+        </div>
+        <table>
+          <tr><th style="width:96px">도서</th><th class="right" style="width:70px">측정 건수</th>
+              <th class="right" style="width:96px">업로드 전</th><th class="right" style="width:96px">업로드 후</th>
+              <th style="width:150px">증감</th><th class="right" style="width:96px">누적 도달</th></tr>
+          ${books.map(b=>{
+            const g = b.rate;
+            return `<tr>
+              <td><b style="font-size:12px">${esc(b.k)}</b></td>
+              <td class="right">${b.n}건</td>
+              <td class="right">${Math.round(b.pre).toLocaleString()}부</td>
+              <td class="right"><b>${Math.round(b.post).toLocaleString()}부</b></td>
+              <td>${g==null?'<span style="color:var(--ink3)">—</span>':`
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="flex:1;height:9px;background:var(--surface3);border-radius:var(--r5);overflow:hidden;position:relative">
+                    <div class="bar-grow" style="--w:${Math.min(100,Math.abs(g))}%;height:9px;
+                      background:${g>=0?'var(--good)':'var(--bad)'};border-radius:var(--r5)"></div></div>
+                  <b style="width:56px;text-align:right;color:${g>=0?'var(--good)':'var(--bad)'}">${g>=0?'+':''}${g.toFixed(1)}%</b>
+                </div>`}</td>
+              <td class="right">${fmtAmt(b.reach)}</td></tr>`;
+          }).join('')}
+        </table>
+        <div style="font-size:11px;color:var(--ink3);margin-top:12px;line-height:1.6">
+          같은 기간 다른 마케팅 활동이 겹치므로 인과가 아니라 <b>동반 추세</b>로 읽어야 합니다.
+          측정되지 않은 ${contAll.length - sv.length}건은 판매량 열이 비어 있습니다.</div>
+      </div>`;
+    })()}
+
+    ${(()=>{
+      const top = contAll.filter(c=>c.reach>0).sort((a,b)=>b.reach-a.reach).slice(0,10);
+      if(!top.length) return '';
+      const mx = top[0].reach;
+      const eng = c => c.reach ? (c.share + c.save) / c.reach * 100 : 0;
+      return `<div class="card gap">
+        <div class="card-title">TOP 콘텐츠 <small>도달 상위 10건 · 전체 ${contAll.length}건 중</small></div>
+        ${top.map((c,i)=>{
+          const w = c.reach/mx*100;
+          const rank = i+1;
+          const medal = rank<=3;
+          return `<div class="rise" style="--d:${i*45}ms;display:flex;align-items:center;gap:14px;
+               padding:11px 0${i?';border-top:1px solid var(--border)':''}">
+            <div style="width:26px;height:26px;border-radius:var(--r3);flex-shrink:0;display:flex;
+                 align-items:center;justify-content:center;font-size:12px;font-weight:800;
+                 background:${medal?'var(--accent)':'var(--surface3)'};color:${medal?'#FFF':'var(--ink3)'}">${rank}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.4;
+                   white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div>
+              <div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11px;color:var(--ink3);flex-wrap:wrap">
+                <span style="color:var(--ink2);font-weight:600">${esc(c.ch)}</span>
+                ${c.book?`<span>·</span><span>${esc(c.book)}</span>`:''}
+                ${c.format?`<span>·</span><span>${esc(c.format)}</span>`:''}
+                ${c.up?`<span>·</span><span>${ymd(c.up).slice(5).replace('-','/')}</span>`:''}
+              </div>
+              <div style="height:6px;background:var(--surface3);border-radius:var(--r5);overflow:hidden;margin-top:7px">
+                <div class="bar-grow" style="--w:${w}%;--d:${i*45+120}ms;height:6px;background:var(--accent);border-radius:var(--r5)"></div>
+              </div>
+            </div>
+            <div style="width:96px;text-align:right;flex-shrink:0">
+              <div style="font-size:17px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1">${c.reach.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--ink3);margin-top:3px">도달</div>
+            </div>
+            <div style="width:150px;flex-shrink:0;display:flex;gap:12px;justify-content:flex-end;font-size:11px">
+              ${[['공유',c.share],['저장',c.save],['팔로워',c.follow]].map(([l,v])=>`
+                <div style="text-align:right;min-width:38px">
+                  <div style="font-weight:700;color:${v>0?'var(--ink)':'var(--ink3)'}">${v>0?(l==='팔로워'?'+':'')+v.toLocaleString():'—'}</div>
+                  <div style="font-size:10px;color:var(--ink3);margin-top:2px">${l}</div></div>`).join('')}
+            </div>
+            <div style="width:56px;text-align:right;flex-shrink:0">
+              <div style="font-size:12px;font-weight:800;color:${eng(c)>=3?'var(--good)':'var(--ink3)'}">${eng(c).toFixed(1)}%</div>
+              <div style="font-size:10px;color:var(--ink3);margin-top:2px">참여율</div>
+            </div>
+          </div>`;
+        }).join('')}
+        <div style="font-size:11px;color:var(--ink3);margin-top:12px;line-height:1.6">
+          참여율 = (공유 + 저장) ÷ 도달. 도달이 커도 참여율이 낮으면 노출만 되고 반응은 없었다는 뜻입니다.</div>
+      </div>`;
+    })()}
+
     <div class="card gap">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div class="card-title" style="margin:0">콘텐츠별 실적 <small>${chShowAll?`전체 ${contAll.length}건`:`${ym} 업로드 ${cont.length}건`} · 도달 순</small></div>
@@ -3481,11 +3615,14 @@ function renderChannel(){
           <tr><th style="width:74px">업로드</th><th>콘텐츠</th><th style="width:118px">채널</th>
               <th style="width:56px">포맷</th><th class="right" style="width:160px">도달/조회</th>
               <th class="right" style="width:58px">공유</th><th class="right" style="width:58px">저장</th>
-              <th class="right" style="width:66px">팔로워</th><th style="width:44px">등급</th></tr>
+              <th class="right" style="width:64px">팔로워</th>
+              <th class="right" style="width:74px">판매증감</th>
+              <th class="right" style="width:54px">스코어</th>
+              <th style="width:40px">등급</th><th style="width:52px">효율</th></tr>
           ${list.slice(0,200).map(c=>`
             <tr>
               <td style="font-size:11px;color:var(--ink3)">${c.up?ymd(c.up).slice(5).replace('-','/'):'—'}</td>
-              <td><b style="font-size:12px">${esc(c.title)}</b>${c.book?`<span style="font-size:10px;color:var(--ink3);margin-left:6px">${esc(c.book)}</span>`:''}</td>
+              <td><b style="font-size:12px">${esc(c.title)}</b>${c.book?`<span style="font-size:10px;color:var(--ink3);margin-left:6px">${esc(c.book)}</span>`:''}${(c.plan||c.make)?`<div style="font-size:10px;color:var(--ink3);margin-top:2px">기획 ${esc(c.plan)||'—'} · 제작 ${esc(c.make)||'—'}</div>`:''}</td>
               <td style="font-size:11px;color:var(--ink2)">${esc(c.ch)}</td>
               <td style="font-size:11px;color:var(--ink3)">${esc(c.format)}</td>
               <td class="right"><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
@@ -3495,9 +3632,12 @@ function renderChannel(){
               <td class="right">${c.share||'—'}</td>
               <td class="right">${c.save||'—'}</td>
               <td class="right" style="color:${c.follow>0?'var(--good)':'var(--ink3)'};font-weight:${c.follow>0?700:400}">${c.follow>0?'+'+c.follow:'—'}</td>
+              <td class="right">${(c.sPre||c.sPost)?`<b style="color:${c.sDiff>0?'var(--good)':(c.sDiff<0?'var(--bad)':'var(--ink3)')}">${c.sDiff>0?'+':''}${c.sDiff}</b>`:'<span style="color:var(--ink3)">—</span>'}</td>
+              <td class="right" style="color:var(--ink2)">${(c.scoreC||c.scoreS)?(c.scoreC+c.scoreS):'<span style="color:var(--ink3)">—</span>'}</td>
               <td>${c.grade&&c.grade!=='-'?`<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
                 border-radius:var(--r4);font-size:10px;font-weight:800;background:${c.grade==='A'?'var(--good-dim)':'var(--surface3)'};
                 color:${c.grade==='A'?'var(--good)':'var(--ink2)'}">${esc(c.grade)}</span>`:''}</td>
+              <td style="font-size:11px;color:var(--ink2)">${esc(c.eff)||''}</td>
             </tr>`).join('')}
         </table>${list.length>200?`<div style="font-size:11px;color:var(--ink3);margin-top:10px">상위 200건 표시 · 전체 ${list.length}건</div>`:''}`;
       })()}
