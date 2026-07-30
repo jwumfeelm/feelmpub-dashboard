@@ -145,7 +145,7 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .conf-badge.secret{background:var(--ink);border-color:var(--ink);color:var(--accent)}
 
 /* 보안 고지 */
-.conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:var(--r4);
+.conf-badge{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:var(--r4);user-select:none;-webkit-user-select:none;cursor:default;
   background:var(--accent-dim);border:1px solid var(--accent);color:var(--ink);
   font-size:9px;font-weight:800;letter-spacing:.08em;white-space:nowrap;flex-shrink:0}
 .conf-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:24px;padding:12px 2px 0;
@@ -5399,26 +5399,56 @@ function initEasterEggs(){
     });
   }
 
-  // (2) 대외비 뱃지 3초 길게 누르기
+  // (2) 대외비 뱃지 길게 누르기 (2초)
   var badge = document.querySelector('header .conf-badge');
   if (badge) {
-    var hold = null, orig = badge.textContent;
-    var start = function(){
-      clearTimeout(hold);
-      hold = setTimeout(function(){
-        badge.textContent = '극비';
-        badge.classList.add('secret');
-        setTimeout(function(){
-          badge.textContent = orig;
-          badge.classList.remove('secret');
-        }, 1400);
-      }, 3000);
+    var HOLD_MS = 2000;
+    var orig = badge.textContent;
+    var hold = null, revert = null, busy = false;
+
+    // 누르는 동안 차오르는 표시 — 반응이 없으면 되는지 알 수 없다
+    badge.style.position = 'relative';
+    badge.style.overflow = 'hidden';
+    var fill = document.createElement('span');
+    fill.style.cssText = 'position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);'
+      + 'opacity:.32;pointer-events:none';
+    badge.appendChild(fill);
+
+    var reset = function(){
+      clearTimeout(hold); hold = null;
+      fill.style.transition = 'width .18s linear';
+      fill.style.width = '0';
     };
-    var stop = function(){ clearTimeout(hold); };
-    badge.addEventListener('pointerdown', start);
-    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
-      badge.addEventListener(ev, stop);
+    var fire = function(){
+      busy = true;
+      badge.firstChild.nodeValue = '극비';
+      badge.classList.add('secret');
+      reset();
+      clearTimeout(revert);
+      revert = setTimeout(function(){
+        badge.firstChild.nodeValue = orig;
+        badge.classList.remove('secret');
+        busy = false;
+      }, 1600);
+    };
+
+    badge.addEventListener('pointerdown', function(e){
+      if (busy) return;
+      // 포인터를 캡처해 두면 커서가 살짝 벗어나도 이벤트가 끊기지 않는다
+      try { badge.setPointerCapture(e.pointerId); } catch(err) {}
+      fill.style.transition = 'width ' + HOLD_MS + 'ms linear';
+      fill.style.width = '100%';
+      clearTimeout(hold);
+      hold = setTimeout(fire, HOLD_MS);
     });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      badge.addEventListener(ev, function(e){
+        try { badge.releasePointerCapture(e.pointerId); } catch(err) {}
+        reset();
+      });
+    });
+    // 길게 누를 때 글자가 선택되는 것 방지
+    badge.addEventListener('selectstart', function(e){ e.preventDefault(); });
   }
 
   // (3) 콘솔 인사
