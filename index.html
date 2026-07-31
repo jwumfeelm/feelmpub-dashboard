@@ -525,12 +525,12 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
         <div class="sync-st"><div class="sync-dot loading" id="syncDot"></div><span id="syncTxt">시트 불러오는 중…</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
         <button onclick="setCmp(CMP==='prev'?'none':'prev')" id="cmpBtn" title="전월 대비 증감 표시"
-          style="border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.72);
-          border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer">전월 대비</button>
+          style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
+          padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">전월 대비</button>
         <button onclick="copyWeekReport(this)" title="슬랙에 붙일 주간 리포트 복사"
-          style="border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.72);
-          border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer">주간 리포트 복사</button>
-        <button onclick="toggleFullscreen()" id="fsBtn" style="background:none;border:1px solid var(--band-border);color:var(--band-ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
+          style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
+          padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">주간 리포트 복사</button>
+        <button onclick="toggleFullscreen()" id="fsBtn" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:600;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
     </div>
   </header>
@@ -2080,9 +2080,9 @@ function syncCmpBtn(){
   const b = document.getElementById('cmpBtn');
   if (!b) return;
   const on = CMP !== 'none';
-  b.style.background = on ? 'var(--accent)' : 'transparent';
-  b.style.color = on ? '#FFF' : 'rgba(255,255,255,.72)';
-  b.style.borderColor = on ? 'var(--accent)' : 'rgba(255,255,255,.18)';
+  b.style.background  = on ? 'var(--accent)' : 'var(--surface)';
+  b.style.color       = on ? '#FFF' : 'var(--ink2)';
+  b.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
 }
 
 function renderTabs(){
