@@ -2129,6 +2129,7 @@ function readHash(){
   return out;
 }
 function applyHash(){
+  { const mm=(location.hash||'').match(/cmp=(prev|none)/); if(mm) CMP=mm[1]; }
   const q = readHash();
   if(q.m && /^\d{4}-\d{2}$/.test(q.m)){
     const el = document.getElementById('monthPicker');
@@ -2734,15 +2735,20 @@ function renderSummary(){
     })()}
     </div>
 
+    ${CMP!=='none' ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:14px;
+      background:var(--accent-dim);border:1px solid var(--border2);border-radius:var(--r2);font-size:11px;color:var(--ink2)">
+      <b style="color:var(--accent-deep)">전월 대비 표시 중</b>
+      <span>주요 지표 아래에 전월 값과 증감률이 함께 나옵니다.</span></div>` : ''}
+
     ${anomalyCard()}
 
     <!-- 상단 KPI 6개 -->
     <div class="g6 gap">
       <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div>${spark(M_TARGET,m)}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div>${cmpTag(M_SHIP_SALES,m)}<div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
       <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
       <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div>${cmpTag(M_NET_SALES,m)}<div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
-      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div><div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
+      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div>${cmpTag(MONTHS.map((_,i)=>costSplit(i).total),m,true)}<div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
       ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지출+예정) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
     </div>
 
@@ -6193,7 +6199,7 @@ function launchEgg(src){
 // 업무 흐름에 개입하지 않는 선에서만. 데이터·판단에는 아무 영향이 없다.
 /* ── 비교 모드 (전월 / 전년동월) ── */
 let CMP = 'none';                       // none | prev | yoy
-function setCmp(v){ CMP = v; writeHash(); renderActive(); }
+function setCmp(v){ CMP = v; writeHash(); renderActive(); syncCmpBtn(); }
 // 같은 연도 배열만 있으므로 전년은 시트에 없으면 표시하지 않는다
 function cmpDelta(arr, i){
   if (CMP === 'none' || !arr) return null;
