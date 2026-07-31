@@ -960,6 +960,15 @@ function parseCSVGrid(text) {
   );
 }
 
+// 앞쪽 빈 줄을 살려두는 파서.
+// 링크 미러처럼 '좌표가 원본과 1:1로 맞아야 하는' 시트에 쓴다.
+// (기본 parseCSVGrid 는 text.trim() 으로 앞 빈 줄을 지워 행이 밀린다)
+function parseCSVGridKeepRows(text) {
+  return String(text).replace(/\r/g, '').replace(/\n+$/, '').split('\n').map(line =>
+    splitCSVRow(line).map(v => (v || '').trim())
+  );
+}
+
 // 캠페인 시트는 gviz 대신 export 사용.
 // gviz는 열마다 단일 데이터 타입을 강제해서, 같은 열에 날짜(기본정보)와
 // 문자열(액션명)이 섞이면 타입이 다른 쪽을 빈 값으로 날려버림.
@@ -1010,14 +1019,15 @@ function mdOf(v){
 }
 
 // ── 그로스 채널 시트 ──
-async function fetchChGrid(tab){
+async function fetchChGrid(tab, keepRows){
   const base = `https://docs.google.com/spreadsheets/d/${CFG.chSheetId}/`;
   const url  = tab.gid
     ? `${base}export?format=csv&gid=${tab.gid}`
     : `${base}gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab.name)}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return parseCSVGrid(await res.text());
+  const txt = await res.text();
+  return keepRows ? parseCSVGridKeepRows(txt) : parseCSVGrid(txt);
 }
 
 async function loadChannelSheets(){
@@ -1080,7 +1090,7 @@ async function loadChannelSheets(){
   // 이 탭은 세 구역(업로드 / 니체 도달 / 도서 판매현황)이 한 시트에 있다.
   // 포맷이 피드·릴스·숏폼 인 행만 업로드로 본다.
   try {
-    const g = await fetchChGrid(CFG.chTabs.upload);
+    const g = await fetchChGrid(CFG.chTabs.upload, true);   // 좌표 보존
     const hi = findHeaderRow(g, ['구분','계정','포맷']);
     if (hi < 0) throw new Error('헤더(구분·계정·포맷)를 찾지 못했습니다');
     const hdr = g[hi];
@@ -1105,17 +1115,34 @@ async function loadChannelSheets(){
     CH_UPLOAD.splice(0, CH_UPLOAD.length, ...out);
   } catch(e) { console.warn('[채널업로드] 로드 실패:', e); }
 
-  // 업로드 링크 미러 — 같은 좌표에 URL 만 들어 있는 탭. 있으면 칩을 클릭 가능하게 만든다.
+  // 업로드 링크 — 목록 형태(계정·포맷·날짜·제목·URL)로 받아 내용으로 맞춘다.
+  // 좌표로 맞추면 시트가 한 줄만 밀려도 전부 어긋나므로 쓰지 않는다.
   if (CFG.chTabs.uploadLink && CFG.chTabs.uploadLink.gid) {
     try {
       const g = await fetchChGrid(CFG.chTabs.uploadLink);
-      CH_UPLOAD.forEach(u => {
-        const row = g[u.r];
-        const v = row && row[u.c];
-        if (v && /^https?:\/\//i.test(String(v).trim())) u.url = String(v).trim();
+      const hi = findHeaderRow(g, ['계정','날짜','URL']);
+      if (hi < 0) throw new Error('헤더(계정·날짜·URL)를 찾지 못했습니다');
+      const objs = gridToObjs(g, hi);
+      const key = (acct, date, title) =>
+        String(acct||'').replace(/\s/g,'') + '|' + String(date||'') + '|' + String(title||'').replace(/\s/g,'');
+      const map = {};
+      objs.forEach(o => {
+        const u = String(o['URL']||'').trim();
+        if (!/^https?:\/\//i.test(u)) return;
+        const d = parseAnyDate(o['날짜']);
+        map[key(o['계정'], d ? ymd(d) : o['날짜'], o['제목'])] = u;
       });
-      const n = CH_UPLOAD.filter(u => u.url).length;
-      console.info('[채널업로드] 링크 연결', n + '/' + CH_UPLOAD.length);
+      CH_UPLOAD.forEach(u => {
+        // 저장할 때 도서 접두사를 떼어냈으므로 원문으로 되돌려 맞춘다
+        const full = (u.book ? '(' + u.book + ')' : '') + u.title;
+        u.url = map[key(u.acct, ymd(u.date), full)]
+             || map[key(u.acct, ymd(u.date), u.title)] || '';
+      });
+      const n = CH_UPLOAD.filter(x => x.url).length;
+      console.info('[채널업로드] 링크 연결', n + '/' + CH_UPLOAD.length, '· 목록', Object.keys(map).length + '건');
+      window.__uploadLinkDiag = {matched:n, total:CH_UPLOAD.length, listed:Object.keys(map).length,
+        sampleList:Object.keys(map).slice(0,3), sampleUp:CH_UPLOAD.slice(0,3).map(x=>key(x.acct, ymd(x.date), (x.book?'('+x.book+')':'')+x.title))};
+      if (!n && Object.keys(map).length) console.warn('[채널업로드] 목록은 읽혔으나 계정·날짜·제목이 맞지 않습니다. __uploadLinkDiag 확인');
     } catch(e) { console.warn('[채널업로드_링크] 로드 실패:', e); }
   }
 
