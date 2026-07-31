@@ -544,7 +544,6 @@ const CFG = {
     cost:     "1829246221",   // 02_비용원장
     ship:     "397749757",    // 03_출고실적
     scm:      "1165138078",   // 04_마케팅실적
-    channel:  "419118457",    // 05_채널실적
     bookList: "927629470",    // 도서 목록
     weekSales:"105549750",    // 판매량_주차별
     daySalesStore: "2121676287", // 판매량_일별_서점 (판매일|도서|서점|판매부수)
@@ -563,7 +562,7 @@ const CFG = {
     perf:    {name:"채널실적(2026)",     gid:"2127284367"},
     content: {name:"콘텐츠플랜실적",       gid:"1193117225"},
     weekly:  {name:"채널팔로워(위클리)",   gid:"386861249"},
-    // 채널업로드(708332082) 는 일정표라 우선 미연동
+    upload:  {name:"채널업로드(2026)",     gid:"708332082"},
   },
 
   // 출판팀 — 출간 기획 및 제작 현황
@@ -677,6 +676,7 @@ function channelLinkFor(kind, acct){
 const CH_PERF    = [];   // 계정별 월 실적 {구분, 계정, items:{항목:[12]}}
 const CH_CONTENT = [];   // 콘텐츠 단위 실적
 const CH_WEEKLY  = [];   // 주차별 팔로워 {구분, 계정, points:[{date, v}]}
+const CH_UPLOAD  = [];   // 업로드 일정 {kind, acct, who, fmt, date, title, book}
 // 시트별 최신 데이터 일자 — 지연을 모르고 판단하는 걸 막는다
 const FRESH = {};
 
@@ -797,7 +797,6 @@ const EXPENSES = [];
 // 예산 — 시트에서 동적으로 채워짐
 
 // 채널 — 시트(05_채널실적)에서 동적으로 채워짐
-const CHANNELS = [];
 
 /* ─────────────────────────────────────
    SORT STATE
@@ -881,7 +880,6 @@ let SD = {
   cost: [],             // 02_비용원장 (통합)
   ship: [],             // 05_출고실적
   scm: [],              // 06_마케팅실적
-  channel: [],          // 07_채널실적
 };
 
 /* ─────────────────────────────────────
@@ -1075,6 +1073,34 @@ async function loadChannelSheets(){
       report: parseAnyDate(o['리포트']),
     })));
   } catch(e) { console.warn('[콘텐츠플랜실적] 로드 실패:', e); }
+
+  // 채널 업로드 일정
+  // 이 탭은 세 구역(업로드 / 니체 도달 / 도서 판매현황)이 한 시트에 있다.
+  // 포맷이 피드·릴스·숏폼 인 행만 업로드로 본다.
+  try {
+    const g = await fetchChGrid(CFG.chTabs.upload);
+    const hi = findHeaderRow(g, ['구분','계정','포맷']);
+    if (hi < 0) throw new Error('헤더(구분·계정·포맷)를 찾지 못했습니다');
+    const hdr = g[hi];
+    const yHint = (document.getElementById('monthPicker').value||'').slice(0,4) || String(new Date().getFullYear());
+    const cols = [];
+    hdr.forEach((h, i) => { if (i < 4) return; const d = parseAnyDate(h) || dateWithYear(h, yHint); if (d) cols.push({i, d}); });
+    const FMT = /^(피드|릴스|숏폼|스토리)$/;
+    const out = [];
+    let kind = '', acct = '', who = '';
+    g.slice(hi + 1).forEach(r => {
+      if (String(r[1]||'').trim()) { kind = String(r[0]||'').trim() || kind; acct = String(r[1]||'').trim(); who = String(r[2]||'').trim(); }
+      const fmt = String(r[3]||'').trim();
+      if (!FMT.test(fmt) || !acct) return;
+      cols.forEach(c => {
+        const t = String(r[c.i]||'').trim();
+        if (!t) return;
+        const mb = t.match(/^\(([^)]+)\)\s*(.*)$/);
+        out.push({kind, acct, who, fmt, date: c.d, book: mb ? mb[1].trim() : '', title: mb ? mb[2].trim() : t});
+      });
+    });
+    CH_UPLOAD.splice(0, CH_UPLOAD.length, ...out);
+  } catch(e) { console.warn('[채널업로드] 로드 실패:', e); }
 
   // 주차별 팔로워
   try {
@@ -1394,13 +1420,12 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore, members] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
       fetchSheet(CFG.gids.ship),      // 03_출고실적
       fetchSheet(CFG.gids.scm),       // 04_마케팅실적
-      fetchSheet(CFG.gids.channel),   // 05_채널실적
       fetchSheet(CFG.gids.bookList),  // 도서 목록
       fetchSheet(CFG.gids.weekSales), // 판매량_주차별
       fetchSheet(CFG.gids.daySalesStore).catch(e => {   // 판매량_일별_서점
@@ -1412,7 +1437,7 @@ async function loadSheets() {
         : Promise.resolve([]),
     ]);
 
-    applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore, members });
+    applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members });
     celebrate();
 
     SD.loaded = true;
@@ -1458,7 +1483,7 @@ async function loadSheets() {
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
-function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, weekSales, daySalesStore, members }) {
+function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members }) {
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw, 채널링크 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -1940,44 +1965,6 @@ function applySheetData({ setting, monthly, cost, ship, scm, channel, bookList, 
     });
   }
 
-  // ── 07_채널실적 → CHANNELS 갱신 (당월 기준) ──
-  if (channel.length > 0) {
-    const curYM = document.getElementById('monthPicker').value.slice(0,7);
-    const colors = ['#3A5BD9','#37424F','#2A44A8','#B3243C','#55606E'];
-    const curRows = channel.filter(r => r['연도·월'] && String(r['연도·월']).startsWith(curYM));
-    const useRows = curRows.length > 0 ? curRows : (() => {
-      const byName = {};
-      const byNameRevenue = {};
-      channel.filter(r=>r['채널명']).forEach(r => {
-        byName[r['채널명']] = r;
-        if(toNum(r['수익 합']) > 0 || toNum(r['광고수익(원)']) > 0) {
-          byNameRevenue[r['채널명']] = r;
-        }
-      });
-      // 수익 있는 행 우선, 없으면 마지막 행
-      return Object.keys(byName).map(k => ({
-        ...byName[k],
-        '수익 합': byNameRevenue[k]?.['수익 합'] || byName[k]['수익 합'],
-        '광고수익(원)': byNameRevenue[k]?.['광고수익(원)'] || byName[k]['광고수익(원)'],
-        '보너스수익(원)': byNameRevenue[k]?.['보너스수익(원)'] || byName[k]['보너스수익(원)'],
-        '링크': (CFG.channelLinks && (CFG.channelLinks[k] || Object.entries(CFG.channelLinks).find(([ck]) => k.includes(ck) || ck.includes(k))?.[1])) || '',
-      }));
-    })();
-    const mapped = useRows.map((r,i) => ({
-      name:      r['채널명']||'',
-      platform:  r['플랫폼']||'',
-      reach:     toNum(r['도달수']),
-      saves:     toNum(r['저장수']),
-      followers: toNum(r['팔로워(누적)']),
-      fanGain:   toNum(r['팔로워순증']),
-      uploads:   toNum(r['업로드수']),
-      shares:    toNum(r['공유수']),
-      revenue:   toNum(r['수익 합'] || r['광고수익(원)'] || 0),
-      link:      r['링크'] || '',
-      color:     colors[i%5],
-    })).filter(c=>c.name);
-    if(mapped.length > 0) CHANNELS.splice(0, CHANNELS.length, ...mapped);
-  }
 }
 
 /* ─────────────────────────────────────
@@ -3346,6 +3333,50 @@ function renderChannel(){
   const cont = contAll.filter(c => c.up && ymd(c.up).slice(0,7)===ym);
 
   /* ── 채널 포트폴리오 : 팔로워(가로) × 도달 평균(세로) × 업로드(크기) ── */
+  /* 업로드 캘린더 — 계정 x 날짜 히트맵. 어느 채널이 언제 비는지 한눈에 본다. */
+  function uploadCal(){
+    const ups = CH_UPLOAD.filter(u => u.date && ymd(u.date).slice(0,7) === ym);
+    if (!ups.length) return '<div class="empty-row">해당 월 업로드 일정이 없습니다</div>';
+    const y = +ym.slice(0,4), mo = +ym.slice(5,7);
+    const days = new Date(y, mo, 0).getDate();
+    const accts = [...new Set(ups.map(u => u.acct))];
+    const cell = {};                      // acct|day -> [{fmt,title,book}]
+    ups.forEach(u => {
+      const k = u.acct + '|' + u.date.getDate();
+      (cell[k] = cell[k] || []).push(u);
+    });
+    const mx = Math.max(...Object.values(cell).map(v => v.length), 1);
+    const totalBy = a => ups.filter(u => u.acct === a).length;
+    const ordered = accts.sort((a,b) => totalBy(b) - totalBy(a));
+    const dow = ['일','월','화','수','목','금','토'];
+    return `<div style="overflow-x:auto">
+      <table style="min-width:100%;border-collapse:separate;border-spacing:0">
+        <tr><th style="width:132px;position:sticky;left:0;background:var(--surface);z-index:1">채널</th>
+          ${Array.from({length:days},(_,i)=>{
+            const d = new Date(y, mo-1, i+1), w = d.getDay();
+            return `<th style="width:22px;padding:4px 0;text-align:center;font-size:9px;
+              color:${w===0?'var(--bad)':(w===6?'var(--accent-deep)':'var(--ink3)')}">${i+1}
+              <div style="font-size:8px;opacity:.7">${dow[w]}</div></th>`;
+          }).join('')}
+          <th style="width:44px;text-align:right">합계</th></tr>
+        ${ordered.map(a=>`<tr>
+          <td style="position:sticky;left:0;background:var(--surface);z-index:1;font-size:11px;
+              font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:132px">${esc(a)}</td>
+          ${Array.from({length:days},(_,i)=>{
+            const list = cell[a+'|'+(i+1)] || [];
+            const t = list.length / mx;
+            const tip = list.map(u=>`${u.fmt} · ${u.book?'('+u.book+') ':''}${u.title}`).join('\n');
+            return `<td title="${esc(tip)}" style="padding:0;text-align:center">
+              <div style="height:21px;margin:1px;border-radius:2px;display:flex;align-items:center;justify-content:center;
+                background:${list.length?`rgba(58,91,217,${(0.18+t*0.72).toFixed(2)})`:'var(--surface3)'};
+                color:${t>0.5?'#FFF':'var(--ink2)'};font-size:9px;font-weight:800">${list.length||''}</div></td>`;
+          }).join('')}
+          <td style="text-align:right;font-size:11px;font-weight:800">${totalBy(a)}</td></tr>`).join('')}
+      </table></div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:10px;line-height:1.6">
+        칸에 마우스를 올리면 그날 올린 콘텐츠 제목이 보입니다. 빈 칸이 이어지면 해당 채널이 쉬고 있다는 뜻입니다.</div>`;
+  }
+
   /* 채널 효율 — 산점도는 대부분이 한 구석에 뭉쳐 라벨이 겹친다.
      채널명을 세로로 세우면 겹칠 일이 없고 순위도 바로 읽힌다. */
   function effBars(){
@@ -3568,6 +3599,18 @@ function renderChannel(){
             <td>${spark(r.series, m, {color:'var(--ink3)'})}</td>
           </tr>`).join('')}
       </table>
+    </div>
+
+    <div class="card gap">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="card-title" style="margin:0">업로드 캘린더 <small>${ym} · 채널별 일자 업로드</small></div>
+        <div style="font-size:11px;color:var(--ink3)">${(()=>{
+          const u = CH_UPLOAD.filter(x=>x.date && ymd(x.date).slice(0,7)===ym);
+          const f = {}; u.forEach(x=>{ f[x.fmt]=(f[x.fmt]||0)+1; });
+          return u.length ? `총 ${u.length}건 · ` + Object.keys(f).map(k=>`${esc(k)} ${f[k]}`).join(' · ') : '';
+        })()}</div>
+      </div>
+      ${uploadCal()}
     </div>
 
     ${contAll.length ? `
@@ -6076,6 +6119,10 @@ const FRESH_SPEC = [
   {key:'콘텐츠',     label:'콘텐츠 실적',  grace:3,  step:8},
   {key:'채널실적',   label:'채널 월실적',  grace:10, step:4},
   {key:'채널팔로워', label:'채널 팔로워',  grace:7,  step:5},
+  {key:'마케팅실적', label:'마케팅 실적',  grace:10, step:4},
+  {key:'외서계약',   label:'외서 계약',    grace:45, step:2},
+  {key:'판권수출',   label:'판권 수출',    grace:45, step:2},
+  {key:'업로드',     label:'업로드 일정',  grace:3,  step:7},
 ];
 function computeFreshness(){
   const last = arr => arr.filter(Boolean).sort((a,b)=>b-a)[0] || null;
@@ -6110,6 +6157,11 @@ function computeFreshness(){
   FRESH['콘텐츠']   = last((CH_CONTENT||[]).map(c => c.up));
   FRESH['채널실적'] = lastMonthOf((CH_PERF[0] && CH_PERF[0].items && CH_PERF[0].items['팔로워']) || []);
   FRESH['채널팔로워'] = last([].concat(...(CH_WEEKLY||[]).map(w => w.points.map(p => p.date))));
+  FRESH['마케팅실적'] = lastMonthOf((M_SCM||[]).map(v => v && (v.qty || v.amt || v)));
+  FRESH['업로드']     = last((CH_UPLOAD||[]).map(u => u.date).filter(d => d <= new Date()));
+  // 계약은 수시 발생이라 '가장 최근 계약일'을 기준으로 본다
+  FRESH['외서계약']   = last((PUB_RIGHTS||[]).map(r => parseAnyDate(r['계약일'])));
+  FRESH['판권수출']   = last((PUB_EXPORT||[]).map(r => parseAnyDate(r['계약일자']) || parseAnyDate(r['출간일'])));
 }
 function freshScore(key){
   const spec = FRESH_SPEC.find(s=>s.key===key);
@@ -6143,29 +6195,39 @@ function leaf(pct, size){ return banana(pct, size); }
 function banana(pct, size){
   const S = size || 44;
   const st = ripeStage(pct);
-  const seed = Math.round(pct);
-  // 반점 — 신선도에 따라 개수가 늘고, 값이 같으면 항상 같은 자리에 찍힌다
+  const uid = 'bn' + Math.round(pct);
+
+  // 굵은 초승달 하나. rot 으로 부챗살처럼 벌린다.
+  const one = (rot, dx, dy, sc, fill, shade) => `
+    <g transform="translate(${dx} ${dy}) rotate(${rot} 24 26) scale(${sc})">
+      <path d="M11 13 C 11 27, 18 37, 31 37.5 C 36 37.6, 40 36, 42 33
+               C 38 34.6, 31 33.6, 25 28.6 C 19 23.6, 16.6 17, 16.6 12.4 Z" fill="${fill}"/>
+      <path d="M15.5 15 C 16.4 25, 22 33, 31.5 33.9 C 26.6 33.4, 21 29.6, 17.6 23 Z"
+            fill="#000" opacity="${shade}"/>
+    </g>`;
+
+  // 반점 — 앞쪽 바나나에만. 같은 신선도면 항상 같은 자리.
   const spots = [];
   for (let i = 0; i < st.spots; i++) {
-    const t = (i * 0.618033 + 0.17) % 1;                 // 황금비로 고르게 분포
-    const x = 12 + t * 24;
-    const y = 30 - Math.pow((x - 24) / 24, 2) * 14 + ((i * 37 % 7) - 3) * 1.1;
-    spots.push(`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(1.5 + (i%3)*0.5).toFixed(1)}"
-      ry="${(1.1 + (i%2)*0.4).toFixed(1)}" fill="#4A3315" opacity="${(0.42 + (i%3)*0.12).toFixed(2)}"/>`);
+    const t = (i * 0.618033 + 0.23) % 1;
+    const x = 17 + t * 21;
+    const y = 30 - Math.pow((x - 27) / 20, 2) * 12 + ((i * 41 % 7) - 3) * 1.0;
+    spots.push(`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}"
+      rx="${(1.4 + (i%3)*0.45).toFixed(1)}" ry="${(1.05 + (i%2)*0.35).toFixed(1)}"
+      fill="#4A3315" opacity="${(0.40 + (i%3)*0.13).toFixed(2)}"/>`);
   }
+
   return `<svg viewBox="0 0 48 48" width="${S}" height="${S}" style="display:block;flex-shrink:0;
       transform:rotate(${st.droop}deg);transition:transform .45s var(--ease)">
-    <!-- 바나나 본체 -->
-    <path d="M9 16 C 10 30, 19 39, 33 38 C 37 37.7, 40 36, 41 33
-             C 37 35, 30 34.5, 24 30 C 17.5 25, 14.5 19, 14 15 Z" fill="${st.peel}"/>
-    <!-- 안쪽 그늘 -->
-    <path d="M13.5 18 C 15.5 27, 22 33.5, 32.5 34.2 C 28 34, 21 30, 16.5 23.5 Z"
-          fill="#000" opacity=".07"/>
-    <!-- 꼭지 -->
-    <path d="M9 16 L 11.6 12.6 L 15.6 13.6 L 14 15 Z" fill="${st.tip}"/>
-    <!-- 끝 -->
-    <circle cx="41" cy="33" r="1.9" fill="${st.tip}"/>
+    <!-- 뒤쪽 두 개 -->
+    ${one(-26, -3.5, 1.5, 0.93, st.tip, .05)}
+    ${one( 22,  3.5, 1.5, 0.93, st.tip, .05)}
+    <!-- 앞쪽 -->
+    ${one(  0,   0,   0,   1.0, st.peel, .08)}
     ${spots.join('')}
+    <!-- 공통 꼭지 -->
+    <path d="M17 12.6 C 19 8.6, 25 7.4, 28 9.4 C 25.4 10, 22.4 11.4, 20.6 13.4 Z" fill="${st.tip}"/>
+    <path d="M22.5 9.6 L 23.4 5.2" stroke="${st.tip}" stroke-width="2.4" stroke-linecap="round"/>
   </svg>`;
 }
 
