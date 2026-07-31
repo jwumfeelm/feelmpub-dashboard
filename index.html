@@ -6655,58 +6655,73 @@ function freshScore(key){
 
 /* 바나나 — 10% 구간마다 껍질 색·반점·처짐이 바뀐다.
    갓 딴 노랑에서 시작해 반점이 생기고 갈색을 거쳐 검게 물러진다. */
+/* 토마토 — 신선도 10% 구간마다 색·광택·주름이 바뀐다.
+   갓 딴 토마토는 선명한 빨강에 윤기가 돌고, 시들수록 탁해지며 쭈글해진다. */
 const RIPE = [
-  //           앞면      뒷면(더 어둡게)  꼭지        반점 처짐  라벨
-  {peel:'#3A342C', back:'#241F19', tip:'#151310', spots:14, droop:16, label:'버려야 함'},   // 0-9
-  {peel:'#54432E', back:'#3A2F20', tip:'#241C12', spots:12, droop:14, label:'초파리 등장'},
-  {peel:'#75592C', back:'#57411F', tip:'#3A2B14', spots:11, droop:12, label:'많이 물렀음'},
-  {peel:'#95712F', back:'#725421', tip:'#4E3A16', spots: 9, droop:10, label:'빵 만들 때'},
-  {peel:'#B08A33', back:'#8A6B26', tip:'#63491A', spots: 7, droop: 8, label:'물러지는 중'},
-  {peel:'#CAA636', back:'#A2822A', tip:'#78601D', spots: 5, droop: 6, label:'반점 생김'},
-  {peel:'#DEBE3C', back:'#B79A2E', tip:'#8B7322', spots: 3, droop: 5, label:'슬슬 먹어야 함'},
-  {peel:'#EACD44', back:'#C6AA34', tip:'#9C8527', spots: 2, droop: 3, label:'아직 맛있음'},
-  {peel:'#F3DA4D', back:'#D2B93B', tip:'#A8912B', spots: 1, droop: 2, label:'딱 좋음'},
-  {peel:'#F8E45C', back:'#DCC444', tip:'#B09A2F', spots: 0, droop: 0, label:'갓 딴 바나나'}, // 90-100
+  //  본체      진한 쪽    광택   꼭지      주름  찌그러짐  라벨
+  {a:'#6E4636', b:'#4A2D22', gloss:.00, calyx:'#5A5238', wr:5, sq:.14, label:'상했습니다'},   // 0-9
+  {a:'#8A4A34', b:'#5E2F20', gloss:.03, calyx:'#63592F', wr:4, sq:.12, label:'버려야 함'},
+  {a:'#A34D31', b:'#70301B', gloss:.05, calyx:'#6C6030', wr:4, sq:.10, label:'많이 무름'},
+  {a:'#B94E2E', b:'#83301A', gloss:.08, calyx:'#75682F', wr:3, sq:.08, label:'물러지는 중'},
+  {a:'#CB4B2C', b:'#932D18', gloss:.11, calyx:'#6E7C33', wr:3, sq:.06, label:'시들해짐'},
+  {a:'#D9452B', b:'#A02616', gloss:.15, calyx:'#5F8436', wr:2, sq:.05, label:'슬슬 써야 함'},
+  {a:'#E33E2A', b:'#AC2114', gloss:.19, calyx:'#4E8C39', wr:2, sq:.04, label:'괜찮음'},
+  {a:'#EC3527', b:'#B71C12', gloss:.24, calyx:'#3F933C', wr:1, sq:.03, label:'싱싱함'},
+  {a:'#F42B22', b:'#C11710', gloss:.29, calyx:'#33993E', wr:0, sq:.02, label:'아주 싱싱함'},
+  {a:'#FA231F', b:'#C9120E', gloss:.34, calyx:'#2AA043', wr:0, sq:.00, label:'갓 딴 토마토'},   // 90-100
 ];
 function ripeStage(pct){ return RIPE[Math.max(0, Math.min(9, Math.floor(pct/10 - (pct>=100?0.0001:0))))]; }
-// 배너에서 색 참조용으로 bg 를 함께 노출
-function leafStage(pct){ const r = ripeStage(pct); return {bg:r.peel, label:r.label}; }
-function leaf(pct, size){ return banana(pct, size); }
+// 배너에서 색 참조용
+function leafStage(pct){ const r = ripeStage(pct); return {bg:r.a, label:r.label}; }
+function leaf(pct, size){ return tomato(pct, size); }
 
-function banana(pct, size){
+function tomato(pct, size){
   const S = size || 44;
   const st = ripeStage(pct);
+  const uid = 'tm' + Math.round(pct) + '_' + S;
+  // 시들수록 세로가 눌리고 살짝 기운다
+  const ry = 15.2 - st.sq * 10;
+  const rx = 15.6 + st.sq * 3;
+  const cy = 28 + st.sq * 2;
 
-  // 두툼한 초승달 하나
-  const one = (rot, fill, shade) => `
-    <g transform="rotate(${rot} 24 40)">
-      <path d="M13 12
-               C 12 26, 17 36, 27 38.5
-               C 33 40, 38 38.5, 40.5 35
-               C 37 36.5, 31.5 35, 26 30.5
-               C 20 25.5, 17.5 18, 17.5 11.5 Z" fill="${fill}"/>
-      <path d="M16.5 15 C 16.8 25, 21 33, 29 35.6 C 24.5 34.4, 20 30, 17.6 23.5 Z"
-            fill="#000" opacity="${shade}"/>
-    </g>`;
-
-  const spots = [];
-  for (let i = 0; i < st.spots; i++) {
-    const t = (i * 0.618033 + 0.21) % 1;
-    const x = 18 + t * 19;
-    const y = 30 - Math.pow((x - 27) / 19, 2) * 11 + ((i * 43 % 7) - 3) * 0.95;
-    spots.push(`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}"
-      rx="${(1.3 + (i%3)*0.4).toFixed(1)}" ry="${(1.0 + (i%2)*0.3).toFixed(1)}"
-      fill="#3B2A10" opacity="${(0.42 + (i%3)*0.12).toFixed(2)}"/>`);
+  // 주름 — 시들었을 때만, 항상 같은 자리
+  const wr = [];
+  for (let i = 0; i < st.wr; i++) {
+    const ang = (-0.9 + i * 0.55);
+    const x1 = 24 + Math.sin(ang) * rx * 0.55, y1 = cy - ry * 0.55;
+    const x2 = 24 + Math.sin(ang) * rx * 0.92, y2 = cy + ry * 0.62;
+    wr.push(`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} Q ${(x1+x2)/2 + 1.4} ${cy} ${x2.toFixed(1)} ${y2.toFixed(1)}"
+      fill="none" stroke="#2C1710" stroke-width="1" opacity=".16" stroke-linecap="round"/>`);
   }
 
-  return `<svg viewBox="0 0 48 48" width="${S}" height="${S}" style="display:block;flex-shrink:0;
-      transform:rotate(${st.droop}deg);transition:transform .45s var(--ease)">
-    ${one(-15, st.back, .06)}
-    ${one( 14, st.back, .06)}
-    ${one(  0, st.peel, .09)}
-    ${spots.join('')}
-    <path d="M13 12 C 14.5 7.5, 20 6, 22.5 8 C 20 8.8, 17.6 10, 16.4 12.2 Z" fill="${st.tip}"/>
-    <path d="M18.5 8.4 L 19.6 4.4" stroke="${st.tip}" stroke-width="2.6" stroke-linecap="round"/>
+  return `<svg viewBox="0 0 48 48" width="${S}" height="${S}" style="display:block;flex-shrink:0">
+    <defs>
+      <radialGradient id="${uid}b" cx="36%" cy="30%" r="76%">
+        <stop offset="0%"  stop-color="${st.a}"/>
+        <stop offset="62%" stop-color="${st.a}"/>
+        <stop offset="100%" stop-color="${st.b}"/>
+      </radialGradient>
+      <radialGradient id="${uid}g" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#FFF" stop-opacity="${st.gloss}"/>
+        <stop offset="100%" stop-color="#FFF" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <ellipse cx="24" cy="${(cy + ry * 0.92).toFixed(1)}" rx="${(rx * 0.72).toFixed(1)}" ry="2.2" fill="#0F1620" opacity=".10"/>
+    <ellipse cx="24" cy="${cy}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="url(#${uid}b)"/>
+    ${wr.join('')}
+    <ellipse cx="18.6" cy="${(cy - ry * 0.42).toFixed(1)}" rx="${(rx * 0.42).toFixed(1)}" ry="${(ry * 0.34).toFixed(1)}"
+             fill="url(#${uid}g)" transform="rotate(-22 18.6 ${(cy - ry * 0.42).toFixed(1)})"/>
+    <ellipse cx="17.4" cy="${(cy - ry * 0.5).toFixed(1)}" rx="2.5" ry="1.5"
+             fill="#FFF" opacity="${(st.gloss * 1.5).toFixed(2)}" transform="rotate(-22 17.4 ${(cy - ry * 0.5).toFixed(1)})"/>
+
+    <g transform="translate(24 ${(cy - ry + 1.4).toFixed(1)})">
+      ${[0, 72, 144, 216, 288].map(a => `<path d="M0 0 Q ${Math.sin(a*Math.PI/180)*5.4} ${-1.2 + Math.cos(a*Math.PI/180)*1.2}
+        ${Math.sin(a*Math.PI/180)*8.6} ${1.4 + Math.cos(a*Math.PI/180)*2.6} Q ${Math.sin(a*Math.PI/180)*4.4} ${1.2} 0 1.8 Z"
+        fill="${st.calyx}"/>`).join('')}
+      <circle cx="0" cy="0" r="1.9" fill="${st.calyx}"/>
+      <path d="M0 -0.6 L0 -4.2" stroke="${st.calyx}" stroke-width="2.1" stroke-linecap="round"/>
+    </g>
   </svg>`;
 }
 
