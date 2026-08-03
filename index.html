@@ -190,10 +190,11 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 }
 
 /* 인세 정산 로딩 — 화면 한가운데. 기다리는 시간을 기분 좋게 만드는 자리다. */
-#royLoad{position:fixed;inset:0;z-index:1250;display:none;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 50% 44%, rgba(255,255,255,.97) 0%, rgba(245,247,250,.98) 70%);
-  backdrop-filter:blur(2px)}
+#royLoad{position:fixed;inset:0;z-index:980;display:none;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 42%, #FFF 0%, var(--bg) 72%)}
 #royLoad.on{display:flex;animation:fadeIn var(--d) var(--ease) both}
+#royLoad.out{animation:royOut .34s var(--ease) both}
+@keyframes royOut{to{opacity:0;transform:scale(1.03)}}
 #royLoad .in{display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center;padding:24px}
 #royLoad .cap{font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1.5}
 #royLoad .sub{font-size:13px;color:var(--ink3);line-height:1.7}
@@ -1035,6 +1036,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(pw.value===CFG.pw){
       document.getElementById('lock').classList.add('hidden');
       document.getElementById('app').classList.add('show');
+      royLoadShow('시트를 불러오는 중입니다');   // 다 읽을 때까지 화면을 덮는다
       initApp();
     } else { err.style.display='block'; pw.value=''; pw.focus(); }
   }
@@ -1628,6 +1630,7 @@ async function loadSheets() {
   if (!CFG.sheetId || !allSet) {
     dot.className = 'sync-dot error';
     txt.textContent = '시트 ID/GID 미설정 — 데이터 없음';
+    royLoadHide();
     return;
   }
 
@@ -1657,6 +1660,10 @@ async function loadSheets() {
     celebrate();
 
     SD.loaded = true;
+    royLoadHide();
+    // 출고 RAW(3.6MB)는 로그인을 붙잡지 않고 뒤에서 미리 받아둔다.
+    // 인세 정산 탭에 들어갈 즈음이면 대개 준비가 끝나 있다.
+    setTimeout(() => { loadShipRaw(true); }, 1200);
     dot.className = 'sync-dot';
     txt.textContent = '시트 연동 완료 · ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     hideSkeleton();
@@ -1685,6 +1692,7 @@ async function loadSheets() {
     });
 
   } catch(e) {
+    royLoadHide();
     dot.className = 'sync-dot error';
     // 로컬(file://)에서 열면 CORS로 fetch 불가 → 안내 메시지
     const isLocal = location.protocol === 'file:';
@@ -6720,11 +6728,15 @@ function royArchiveDel(round, title){
    행이 많아 인세 정산 탭을 열 때 한 번만 불러온다. */
 let ROY_RAW_STATE = 'idle';   // idle | loading | ok | fail
 let ROY_RAW_ERR = '';         // 실패 사유 — 화면과 콘솔에 그대로 보여준다
-async function loadShipRaw(){
+async function loadShipRaw(quiet){
   if (ROY_RAW_STATE === 'loading' || ROY_RAW_STATE === 'ok') return;
   ROY_RAW_STATE = 'loading';
-  royLoadShow();
-  renderRoyalty();
+  // 금방 끝나면 깜빡이므로 0.5초 넘게 걸릴 때만 띄운다
+  const showTimer = quiet ? null
+    : setTimeout(() => royLoadShow('출고·판매 기록을 불러오는 중입니다'), 500);
+  // 어떤 이유로든 멈추면 25초 뒤 강제로 걷어낸다
+  const killTimer = setTimeout(() => { clearTimeout(showTimer); royLoadHide(); }, 25000);
+  if (!quiet) renderRoyalty();
   try {
     const base = `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/`;
     const url = CFG.gids.shipRaw
@@ -6770,8 +6782,9 @@ async function loadShipRaw(){
     ROY_RAW_ERR = (e && e.message) ? e.message : String(e);
     console.warn('[출고 RAW] 로드 실패:', e);
   }
-  royLoadHide();
-  renderRoyalty();
+  clearTimeout(showTimer); clearTimeout(killTimer);
+  if (!quiet) royLoadHide();
+  if (!quiet || activeTab === 'royalty') renderRoyalty();
 }
 
 // 저자 정보 — 공저는 행을 여러 개 쓴다. 지분을 비우면 균등 분배.
@@ -6822,8 +6835,11 @@ function royAuthorsOf(b){
 const ROY_LOAD_MSGS = [
   '책을 한 권씩 세는 중입니다',
   '서점마다 흩어진 숫자를 모으는 중입니다',
-  '판매 부수를 차곡차곡 쌓는 중입니다',
-  '저자님께 드릴 숫자를 맞춰보는 중입니다',
+  '오늘도 어딘가에서 책장이 넘어가는 중입니다',
+  '숫자를 차곡차곡 쌓는 중입니다',
+  '초판의 잉크 냄새를 맡는 중입니다',
+  '서가에 꽂힌 책들을 헤아리는 중입니다',
+  '독자에게 가는 길을 따라가는 중입니다',
   '반품까지 빠짐없이 챙기는 중입니다',
 ];
 function royLoadArt(size){
@@ -6848,14 +6864,17 @@ function royLoadArt(size){
 }
 
 // 화면 한가운데 로딩 — 멘트는 2.8초마다 바뀐다
-let ROY_LOAD_TIMER = null;
-function royLoadShow(){
+let ROY_LOAD_TIMER = null, ROY_LOAD_KILL = null;
+let ROY_LOAD_AT = 0;
+// 시트가 빨리 오면 애니메이션이 스쳐 지나가 버린다. 최소한 이만큼은 보여준다.
+const ROY_LOAD_MIN = 2200;
+function royLoadShow(note){
   const el = document.getElementById('royLoad');
   if (!el) return;
   const art = document.getElementById('royLoadArt');
   const sub = document.getElementById('royLoadSub');
   if (art) art.innerHTML = royLoadArt(190);
-  if (sub) sub.textContent = '출고·판매 기록이 많아 몇 초 걸립니다';
+  if (sub) sub.textContent = note || '기록이 많아 몇 초 걸립니다';
   let i = Math.floor(Math.random() * ROY_LOAD_MSGS.length);
   const tick = () => {
     const cap = document.getElementById('royLoadCap');
@@ -6864,12 +6883,22 @@ function royLoadShow(){
   tick();
   clearInterval(ROY_LOAD_TIMER);
   ROY_LOAD_TIMER = setInterval(tick, 2800);
+  clearTimeout(ROY_LOAD_KILL);
+  ROY_LOAD_KILL = setTimeout(() => royLoadHide(true), 30000);   // 멈춰도 화면이 막히지 않게
+  ROY_LOAD_AT = Date.now();
   el.classList.add('on');
 }
-function royLoadHide(){
-  clearInterval(ROY_LOAD_TIMER); ROY_LOAD_TIMER = null;
+function royLoadHide(force){
   const el = document.getElementById('royLoad');
-  if (el) el.classList.remove('on');
+  if (!el) return;
+  // 너무 빨리 사라지면 뭐가 지나갔는지도 모른다. 남은 시간만큼 기다렸다 내린다.
+  const left = ROY_LOAD_MIN - (Date.now() - ROY_LOAD_AT);
+  if (!force && ROY_LOAD_AT && left > 0) { setTimeout(() => royLoadHide(true), left); return; }
+  clearInterval(ROY_LOAD_TIMER); ROY_LOAD_TIMER = null;
+  clearTimeout(ROY_LOAD_KILL); ROY_LOAD_KILL = null;
+  ROY_LOAD_AT = 0;
+  el.classList.add('out');
+  setTimeout(() => { el.classList.remove('on'); el.classList.remove('out'); }, 340);
 }
 
 function royLoadCard(){
