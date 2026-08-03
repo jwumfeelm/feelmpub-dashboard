@@ -189,6 +189,17 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
   .tab-btn{font-size:12px;padding:8px 9px}
 }
 
+/* 인세 정산서 모달 */
+#royModal{position:fixed;inset:0;z-index:1300;display:none;align-items:flex-start;justify-content:center;
+  background:rgba(15,22,32,.5);backdrop-filter:blur(3px);padding:32px 20px;overflow-y:auto}
+#royModal.on{display:flex;animation:fadeIn var(--d-fast) var(--ease) both}
+#royModal .box{width:min(980px,100%);background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r);box-shadow:var(--sh-lg);animation:riseIn var(--d-fast) var(--ease) both;
+  padding:20px 22px;margin:auto}
+#royModal .x{position:absolute;top:10px;right:12px;width:28px;height:28px;border:0;background:transparent;
+  color:var(--ink3);font-size:17px;cursor:pointer;border-radius:var(--r3);line-height:1}
+#royModal .x:hover{background:var(--surface3);color:var(--ink)}
+
 /* 통합 검색 (Cmd/Ctrl+K) */
 #cmdk{position:fixed;inset:0;z-index:1400;display:none;align-items:flex-start;justify-content:center;
   background:rgba(15,22,32,.42);backdrop-filter:blur(3px);padding-top:12vh}
@@ -516,6 +527,11 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 </div>
 
 <!-- APP -->
+<div id="royModal"><div class="box" style="position:relative">
+  <button class="x" onclick="royClose()" title="닫기">&#10005;</button>
+  <div id="royModalBody"></div>
+</div></div>
+
 <div id="cmdk"><div class="box">
   <input id="cmdkQ" placeholder="도서 · 채널 · 콘텐츠 · 화면 검색" autocomplete="off">
   <div class="res" id="cmdkR"></div>
@@ -2135,6 +2151,13 @@ function initApp(){
   stampConfNote();
   initEasterEggs();
   initCmdk();
+  (function(){
+    const el = document.getElementById('royModal');
+    if (el) el.addEventListener('click', e => { if (e.target === el) royClose(); });
+    document.addEventListener('keydown', e => {
+      if ((e.key||'').toLowerCase() === 'escape' && el && el.classList.contains('on')) royClose();
+    });
+  })();
   royLoadArchive();
   royMetaLoad();
   initInstall();
@@ -2178,8 +2201,8 @@ function renderTabs(){
   }).join('');
 }
 // 상단 KPI 바 / 월별 추이 차트를 숨길 탭
-const HIDE_PILLS = ['books','data','publish'];
-const HIDE_TREND = ['channel','calendar','books','data','publish'];
+const HIDE_PILLS = ['books','data','publish','royalty'];
+const HIDE_TREND = ['channel','calendar','books','data','publish','royalty'];
 function applyTopVisibility(){
   const pillEl  = document.querySelector('.pill-bar-wrap');
   const trendEl = document.getElementById('trend-chart');
@@ -6534,6 +6557,7 @@ function roySetMeta(b, field, v){
   ROY_META[k][field] = v;
   royMetaSave();
   renderRoyalty();
+  if (ROY.book) royOpen();
 }
 
 function royRounds(){
@@ -6609,7 +6633,8 @@ function royCalc(title, from, to){
     if (royNorm(r.title) === key && inRange(r.ym) && CBD.indexOf(String(r.store).trim()) >= 0) store += r.qty;
   });
   if (rate > 1) rate = rate / 100;
-  return {scm, store, ret, price, rate: rate || 0.1, shipAll, hasStore: ROY_STORE.length > 0};
+  // 인세율은 지어내지 않는다. 시트에 없으면 0 으로 두고 화면에서 '미입력'으로 알린다.
+  return {scm, store, ret, price, rate, shipAll, hasStore: ROY_STORE.length > 0};
 }
 
 /* 아카이브 */
@@ -6734,14 +6759,39 @@ function royEdit(round, title, field, v){
   ROY.edit[k] = ROY.edit[k] || {};
   ROY.edit[k][field] = v;
   renderRoyalty();
+  if (ROY.book) royOpen();
 }
 function royVal(round, title, field, auto){
   const e = ROY.edit[royKey(round, title)];
   const v = e && e[field];
   return (v === undefined || v === '') ? auto : v;
 }
-function royReset(round, title){ delete ROY.edit[royKey(round, title)]; renderRoyalty(); }
-function roySelect(t){ ROY.book = t; ROY.author = 0; renderRoyalty(); }
+function royReset(round, title){ delete ROY.edit[royKey(round, title)]; renderRoyalty(); if (ROY.book) royOpen(); }
+function roySelect(t){ ROY.book = t; ROY.author = 0; renderRoyalty(); royOpen(); }
+function royOpen(){
+  const el = document.getElementById('royModal');
+  const body = document.getElementById('royModalBody');
+  if (!el || !body) return;
+  const rounds = royRounds();
+  const round = rounds.find(x => x.key === ROY.round) || rounds[0];
+  const r = royRows(round).find(x => x.b.title === ROY.book);
+  if (!r) return;
+  body.innerHTML = r.noRate
+    ? `<div class="card-title" style="margin-bottom:10px">${esc(r.b.title)}</div>
+       <div style="font-size:12.5px;color:var(--ink2);line-height:1.8">
+         <b style="color:var(--bad)">인세율이 없어 정산서를 만들 수 없습니다.</b><br>
+         <b>인세정산용_정보</b> 탭에 이 도서의 인세율을 채워주세요.<br>
+         <span style="color:var(--ink3)">판매 ${r.sold.toLocaleString()}부 · 반품 ${r.ret.toLocaleString()}부 ·
+         순 출고 ${r.net.toLocaleString()}부 · 정가 ${r.price.toLocaleString()}원까지는 집계돼 있습니다.</span></div>`
+    : royDetail(round, r);
+  el.classList.add('on');
+  el.scrollTop = 0;
+}
+function royClose(){
+  const el = document.getElementById('royModal');
+  if (el) el.classList.remove('on');
+  ROY.book = '';
+}
 function roySetRound(k){ ROY.round = k; ROY.book = ''; renderRoyalty(); }
 function roySearch(v){ ROY.q = String(v||'').trim(); renderRoyalty(); }
 function royArchSearch(v){ ROY.aq = String(v||'').trim(); renderRoyalty(); }
@@ -6786,19 +6836,23 @@ function royRows(round){
     const author = royVal(round.key, b.title, 'author', royMeta(b, 'author', b.author || ''));
     const sold  = +royVal(round.key, b.title, 'sold', c.scm + c.store) || 0;
     const ret   = +royVal(round.key, b.title, 'ret',  c.ret) || 0;
-    const net   = sold - ret;
+    // 제외 부수 — 프로모션·기업 구매처럼 인세 대상이 아닌 물량 (수기 입력)
+    const excl  = +royVal(round.key, b.title, 'excl', 0) || 0;
+    const exclNote = String(royVal(round.key, b.title, 'exclNote', '') || '');
+    const net   = sold - ret - excl;
     // 구간 인세: 도서 목록에 구간이 있으면 그걸 쓰고, 없으면 단일 요율
-    // 인세율도 인세정산용_정보가 정본
+    // 인세율은 인세정산용_정보가 정본. 없으면 정산 불가로 표시한다.
     const tiers = (ov && ov.tiers && ov.tiers.length) ? ov.tiers
-                : ((b.tiers && b.tiers.length) ? b.tiers : [{rate, cap: Infinity}]);
+                : ((b.tiers && b.tiers.length) ? b.tiers : (rate > 0 ? [{rate, cap: Infinity}] : []));
+    const noRate = !tiers.length;
     const already = roySoldBefore(b.title, sp.from);
     const tr = tierAmount(tiers, price, already, Math.max(0, net));
     const per = tr.parts.length === 1 ? tr.parts[0].per : Math.round(price * rate);
     const amount = tr.parts.length ? tr.amount : net * Math.round(price * rate);
     // 화면에 찍는 요율도 실제 적용된 구간을 따라간다 (단일 구간일 때)
     const rateShown = tr.parts.length === 1 ? tr.parts[0].rate : (tiers[0] ? tiers[0].rate : rate);
-    return {b, pub, pubYm, pubFallback, hasInfo: !!ov, sp, c, sold, ret, net, price,
-            rate: rateShown, per, amount, author,
+    return {b, pub, pubYm, pubFallback, hasInfo: !!ov, noRate, sp, c, sold, ret, excl, exclNote, net, price,
+            rate: rateShown, per, amount: noRate ? 0 : amount, author,
             tiers, already, parts: tr.parts, multi: tr.parts.length > 1,
             authors: royAuthorsOf(b),
             edited: !!ROY.edit[royKey(round.key, b.title)]};
@@ -6811,12 +6865,17 @@ function renderRoyalty(){
   if (!ROY.round) ROY.round = rounds[0].key;
   const round = rounds.find(r => r.key === ROY.round) || rounds[0];
   const rows = royRows(round);
-  const target = rows.filter(r => !r.skip && (r.sold || r.ret));
+  // 인세정산용_정보 탭에 등록된 도서만 정산 대상으로 본다.
+  // 등록 안 한 책까지 띄우면 정산 안 하는 책이 섞여 혼란스럽다.
+  const target = rows.filter(r => !r.skip && r.hasInfo && (r.sold || r.ret));
+  // 등록은 안 됐지만 이번 기간에 판매가 있는 책 — 누락 확인용
+  const unreg = rows.filter(r => !r.skip && !r.hasInfo && (r.sold || r.ret));
   const skipped = rows.filter(r => r.skip && r.skip.indexOf('이월') >= 0);
   const shown = target.filter(r => royMatch(r, ROY.q));
-  const sumShown = shown.reduce((a,r) => a + r.amount, 0);
-  const noInfo = target.filter(r => !r.hasInfo);
-  const noPub  = target.filter(r => r.hasInfo && r.pubFallback);
+  const ready = shown.filter(r => !r.noRate);
+  const sumShown = ready.reduce((a,r) => a + r.amount, 0);
+  const noPub  = target.filter(r => r.pubFallback);
+  const noRate = target.filter(r => r.noRate);
   const sel = ROY.book ? target.find(r => r.b.title === ROY.book) : null;
 
   el.innerHTML = `
@@ -6833,7 +6892,7 @@ function renderRoyalty(){
       <input value="${esc(ROY.q)}" oninput="roySearch(this.value)" placeholder="도서명 · 저자명 · ISBN 검색"
         style="margin-left:auto;width:230px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
         border-radius:var(--r3);padding:7px 12px;font-family:var(--sans);font-size:12px;outline:none">
-      <span style="font-size:12px;color:var(--ink2)">대상 <b style="color:var(--ink)">${shown.length}</b>${ROY.q?`/${target.length}`:''}종 · 합계 <b style="color:var(--ink)">${won(sumShown)}</b></span>
+      <span style="font-size:12px;color:var(--ink2)">대상 <b style="color:var(--ink)">${shown.length}</b>${ROY.q?`/${target.length}`:''}종${ready.length<shown.length?` · <b style="color:var(--bad)">인세율 미입력 ${shown.length-ready.length}종</b>`:''} · 산출 가능 <b style="color:var(--ink)">${won(sumShown)}</b></span>
     </div>
 
     ${ROY_RAW_STATE === 'loading' ? `<div class="card gap" style="border-left:3px solid var(--accent)">
@@ -6848,9 +6907,17 @@ function renderRoyalty(){
 
     <div class="card gap">
       <div class="card-title">정산 대상 <small>${esc(round.label)} · 행을 누르면 정산서가 열립니다</small></div>
+      ${(!ROY_AUTHORS.length) ? `<div style="padding:26px 4px;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px">인세정산용_정보 탭이 비어 있습니다</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.8">
+          이 탭에 등록한 도서만 정산 대상이 됩니다. 아래 순서로 채워주세요.<br>
+          <b>ISBN · 도서명 · 저자명 · 지분(100) · 은행 · 계좌번호 · 예금주 · 출간일 · 1구간 인세율</b><br>
+          <span style="color:var(--ink3)">공저는 같은 도서로 행을 여러 개 만들고 지분을 나눠 적습니다.</span></div>
+      </div>` : ''}
       ${shown.length ? `<table>
         <tr><th style="width:250px">도서 · 저자</th><th class="right" style="width:92px">판매 부수</th>
-            <th class="right" style="width:80px">반품</th><th class="right" style="width:92px">순 출고</th>
+            <th class="right" style="width:76px">반품</th><th class="right" style="width:76px">제외</th>
+            <th class="right" style="width:92px">순 출고</th>
             <th class="right" style="width:76px">정가</th><th class="right" style="width:58px">인세율</th>
             <th class="right" style="width:78px">권당</th><th class="right" style="width:112px">정산 금액</th>
             <th style="width:96px">정산 기간</th></tr>
@@ -6866,18 +6933,36 @@ function renderRoyalty(){
   : '<span style="color:var(--warn)">저자 미입력</span>'}${r.b.isbn?` · ${esc(r.b.isbn)}`:''}</div></td>
             <td class="right">${r.sold.toLocaleString()}</td>
             <td class="right" style="color:var(--bad)">${r.ret.toLocaleString()}</td>
+            <td class="right">${r.excl>0
+              ? `<b title="${esc(r.exclNote||'인세 대상 제외')}" style="color:var(--warn);cursor:help">${r.excl.toLocaleString()}</b>`
+              : '<span style="color:var(--ink5)">—</span>'}</td>
             <td class="right"><b>${r.net.toLocaleString()}</b></td>
             <td class="right">${r.price.toLocaleString()}</td>
-            <td class="right">${r.multi
+            <td class="right">${r.noRate ? '<span style="color:var(--bad)">미입력</span>' : (r.multi
               ? `<span title="${r.parts.map(p=>(p.rate*100).toFixed(0)+'% '+p.qty.toLocaleString()+'부').join(' + ')}"
                    style="cursor:help">${[...new Set(r.parts.map(p=>(p.rate*100).toFixed(0)))].join('/')}%</span>`
-              : (r.rate*100).toFixed(0)+'%'}</td>
-            <td class="right">${r.per.toLocaleString()}</td>
-            <td class="right"><b style="font-size:12.5px">${r.amount.toLocaleString()}</b></td>
+              : (r.rate*100).toFixed(0)+'%')}</td>
+            <td class="right">${r.noRate ? '—' : r.per.toLocaleString()}</td>
+            <td class="right">${r.noRate ? '<span style="color:var(--ink3)">—</span>'
+              : `<b style="font-size:12.5px">${r.amount.toLocaleString()}</b>`}</td>
             <td style="font-size:10px;color:var(--ink3)">${r.sp.from} ~ ${r.sp.to}</td>
           </tr>`).join('')}
-      </table>` : `<div class="empty-row">${ROY.q?'검색 결과가 없습니다':'이 회차에 정산할 도서가 없습니다'}</div>`}
+      </table>` : (ROY_AUTHORS.length ? `<div class="empty-row">${ROY.q?'검색 결과가 없습니다':'이 회차에 정산할 도서가 없습니다'}</div>` : '')}
     </div>
+
+    ${unreg.length ? `<div class="card gap">
+      <div class="card-title">등록되지 않은 판매 도서 <small>이번 기간에 판매가 있지만 인세정산용_정보에 없는 도서 ${unreg.length}종</small></div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin-bottom:10px">
+        인세를 지급하는 책이면 시트에 추가해 주세요. 지급 대상이 아니면 그대로 두시면 됩니다.</div>
+      <table>
+        <tr><th>도서</th><th style="width:150px">ISBN</th><th class="right" style="width:96px">순 출고</th></tr>
+        ${unreg.slice().sort((a,b)=>b.net-a.net).slice(0,30).map(r=>`<tr>
+          <td><b style="font-size:12px">${esc(r.b.title)}</b></td>
+          <td style="font-size:11px;color:var(--ink3)">${esc(r.b.isbn||'—')}</td>
+          <td class="right">${r.net.toLocaleString()}</td></tr>`).join('')}
+      </table>
+      ${unreg.length>30?`<div style="font-size:11px;color:var(--ink3);margin-top:9px">순 출고 상위 30종 표시 · 전체 ${unreg.length}종</div>`:''}
+    </div>` : ''}
 
     ${skipped.length ? `<div class="card gap">
       <div class="card-title">다음 회차로 이월 <small>출간일이 지급월로부터 2개월 이내</small></div>
@@ -6888,17 +6973,17 @@ function renderRoyalty(){
       </div>
     </div>` : ''}
 
-    ${(noInfo.length || noPub.length) ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
+    ${(noPub.length || noRate.length) ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
       <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:6px">인세정산용_정보 탭에 채울 것이 있습니다</div>
-      ${noInfo.length ? `<div style="font-size:12px;color:var(--ink2);line-height:1.7;margin-bottom:6px">
-        <b>미등록 ${noInfo.length}종</b> — 저자·계좌·인세율이 없어 정산서를 만들 수 없습니다.<br>
-        <span style="color:var(--ink3)">${noInfo.slice(0,8).map(r=>esc(r.b.title)).join(' · ')}${noInfo.length>8?` 외 ${noInfo.length-8}종`:''}</span></div>` : ''}
+      ${noRate.length ? `<div style="font-size:12px;color:var(--ink2);line-height:1.7;margin-bottom:6px">
+        <b style="color:var(--bad)">인세율 미입력 ${noRate.length}종</b> — 인세율이 없으면 정산 금액을 계산하지 않습니다.
+        임의로 가정하지 않으니 시트에 채워주세요.</div>` : ''}
       ${noPub.length ? `<div style="font-size:12px;color:var(--ink2);line-height:1.7">
         <b>출간일 미기입 ${noPub.length}종</b> — 도서 목록 값으로 대신 계산했습니다. 이월 판정이 달라질 수 있습니다.<br>
         <span style="color:var(--ink3)">${noPub.slice(0,8).map(r=>esc(r.b.title)).join(' · ')}${noPub.length>8?` 외 ${noPub.length-8}종`:''}</span></div>` : ''}
     </div>` : ''}
 
-    ${sel ? royDetail(round, sel) : ''}
+
     ${royArchiveCard()}`;
 }
 
@@ -6936,7 +7021,7 @@ function royDetail(round, r){
           cursor:pointer">PNG 다운로드</button>
       </div>
     </div>
-    <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:16px">
+    <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:12px">
       <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
         ${L('저자명')}${meta('author', author, 180)}
         ${L('계좌번호')}${meta('account', account, 250)}
@@ -6952,11 +7037,19 @@ function royDetail(round, r){
       <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
         ${L('판매 부수')}${inp('sold', r.sold, 110, 'right')}
         ${L('반품 부수')}${inp('ret', r.ret, 110, 'right')}
+        ${L('제외 부수')}${inp('excl', r.excl, 110, 'right')}
         ${L('순 출고')}<b style="font-size:13px;width:110px;display:inline-block;text-align:right">${r.net.toLocaleString()}</b>
         ${L('정산 금액')}<b style="font-size:15px;width:110px;display:inline-block;text-align:right;
           color:var(--accent-deep)">${r.amount.toLocaleString()}</b>
       </div>
     </div>
+    ${r.excl > 0 || r.exclNote ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:11px;color:var(--ink3);white-space:nowrap">제외 사유</span>
+      ${inp('exclNote', r.exclNote, 420)}
+      <span style="font-size:11px;color:var(--ink3)">정산서에 함께 표기됩니다</span>
+    </div>` : `<div style="font-size:11px;color:var(--ink3);margin-bottom:12px">
+      프로모션·기업 구매 등 인세 대상이 아닌 물량은 <b>제외 부수</b>에 넣으세요. 사유란이 함께 열립니다.</div>`}
+
     <div style="font-size:11px;color:var(--ink3);line-height:1.7;margin-bottom:6px">
       저자명 · 계좌번호 · 인세율은 <b>도서 단위로 저장</b>되어 다음 회차에도 그대로 쓰입니다.
       나머지 값은 이 회차에만 적용됩니다.</div>
@@ -6964,7 +7057,7 @@ function royDetail(round, r){
       판매 부수 = SCM 판매(교보·예스24·알라딘·영풍) ${r.c.scm.toLocaleString()}
       + 쿠팡·북센·도소매 출고 ${r.c.store.toLocaleString()}
       ${ROY_STORE.length ? '' : '<b style="color:var(--warn)"> — 서점별 탭 미연결로 0</b>'}
-      · 순 출고 = 판매 − 반품 · 권당 지급액 = 정가 × 인세율
+      · 순 출고 = 판매 − 반품${r.excl>0?' − 제외':''} · 권당 지급액 = 정가 × 인세율
     </div>
     ${r.multi ? `<div style="margin-bottom:14px;padding:11px 13px;background:var(--surface2);
         border:1px solid var(--border);border-radius:var(--r2)">
@@ -6982,7 +7075,7 @@ function royDetail(round, r){
     ${r.authors.length > 1 ? `<div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:800;color:var(--ink2);margin-bottom:7px">저자별 배분 · 각자에게 보낼 정산서를 따로 받으세요</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${r.authors.map((a,i) => `<button onclick="ROY.author=${i};renderRoyalty()"
+        ${r.authors.map((a,i) => `<button onclick="ROY.author=${i};renderRoyalty();royOpen()"
           style="border:1px solid ${ROY.author===i?'var(--accent)':'var(--border2)'};
           background:${ROY.author===i?'var(--accent-dim)':'var(--surface)'};color:var(--ink);
           border-radius:var(--r3);padding:7px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;text-align:left">
@@ -7017,7 +7110,11 @@ function roySheetSVG(round, r){
     ['지급일', /^\d{4}-\d{2}-\d{2}$/.test(payDate)
       ? `${payDate.slice(0,4)}년 ${payDate.slice(5,7)}월 ${payDate.slice(8,10)}일` : (payDate || '—')]];
   const sale = [['정가(원)', r.price.toLocaleString()], ['판매 부수', r.sold.toLocaleString()],
-    ['반품 부수', r.ret.toLocaleString()], ['순 출고 부수', r.net.toLocaleString()]];
+    ['반품 부수', r.ret.toLocaleString()]];
+  if (r.excl > 0) sale.push([
+    '제외 부수' + (r.exclNote ? ` (${r.exclNote})` : ''),
+    r.excl.toLocaleString()]);
+  sale.push(['순 출고 부수', r.net.toLocaleString()]);
   if (r.multi) {
     r.parts.forEach(p => sale.push([
       `${(p.rate*100).toFixed(0)}% 구간 (${p.from.toLocaleString()}~${p.to.toLocaleString()}부)`,
@@ -7093,7 +7190,7 @@ function royPrint(){
 function royRecord(round, r){
   return { round: round.key, roundLabel: round.label, title: r.b.title, isbn: r.b.isbn || '',
     author: r.author || '', from: r.sp.from, to: r.sp.to,
-    sold: r.sold, ret: r.ret, net: r.net, price: r.price, rate: r.rate,
+    sold: r.sold, ret: r.ret, excl: r.excl, exclNote: r.exclNote, net: r.net, price: r.price, rate: r.rate,
     per: r.per, amount: r.amount, at: ymd(new Date()) };
 }
 
@@ -7145,9 +7242,9 @@ function royArchiveCard(){
   </div>`;
 }
 function royExportArchive(){
-  const head = ['회차','도서','저자','정산시작','정산종료','판매부수','반품부수','순출고','정가','인세율','권당지급액','정산금액','발행일'];
+  const head = ['회차','도서','저자','정산시작','정산종료','판매부수','반품부수','제외부수','제외사유','순출고','정가','인세율','권당지급액','정산금액','발행일'];
   const body = ROY.archive.map(x => [x.roundLabel||x.round, x.title, x.author||'', x.from, x.to,
-    x.sold, x.ret, x.net, x.price, (x.rate*100).toFixed(0)+'%', x.per, x.amount, x.at]);
+    x.sold, x.ret, x.excl||0, x.exclNote||'', x.net, x.price, (x.rate*100).toFixed(0)+'%', x.per, x.amount, x.at]);
   downloadCSV([head].concat(body), '인세정산이력.csv');
 }
 
