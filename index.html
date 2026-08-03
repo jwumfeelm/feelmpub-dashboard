@@ -4,6 +4,15 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Feelm 콘텐츠사업본부 대시보드</title>
+<!-- 바탕화면 설치(PWA) — 크롬 '설치' 후 주소창 없는 창으로 열린다 -->
+<meta name="theme-color" content="#0F1620">
+<meta name="description" content="필름 콘텐츠사업본부 실적 대시보드">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="필름 대시보드">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -531,6 +540,8 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
         <button onclick="copyWeekReport(this)" title="슬랙에 붙일 주간 리포트 복사"
           style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
           padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">주간 리포트 복사</button>
+        <button onclick="openWidget()" title="작은 위젯 창으로 열기" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">위젯</button>
+        <button onclick="doInstall()" id="installBtn" style="display:none;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600" title="바탕화면에 설치">설치</button>
         <button onclick="toggleFullscreen()" id="fsBtn" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:600;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
     </div>
@@ -580,6 +591,10 @@ const CFG = {
     weekSales:"105549750",    // 판매량_주차별
     daySalesStore: "2121676287", // 판매량_일별_서점 (판매일|도서|서점|판매부수)
     members:       "729104187",  // 구성원 (이름|팀|생일|입사일|노출여부)
+    // 출고 RAW — 서점별 출고. 행이 많아 인세 정산 탭을 열 때만 불러온다
+    shipRaw:       "2011452740",
+    // 인세정산용_정보 (ISBN|도서명|저자명|지분|은행|계좌번호|예금주|출간일|구간 인세율)
+    authors:       "1944752545",
   },
   // 마케팅 캠페인 별도 구글 시트
   mktSheetId: "1SgFVN8aOV7TIz_9PsP3xncnU1HwvquY-i7gCq6XNOno",
@@ -707,6 +722,52 @@ function channelLinkFor(kind, acct){
 }
 
 // 그로스 — 채널
+// 인세 누적 시작점 — 이 달부터의 판매만 누적해 구간 인세를 계산한다.
+// 그 이전 판매분은 과거 방식으로 이미 정산이 끝났으므로 세지 않는다.
+const ROY_BASE_YM = '2026-01';
+
+// 구간 인세율 읽기
+// 단일:  1구간 인세율 10, 나머지 비움
+// 구간:  1구간 인세율 7 / 1구간 상한 10000 / 2구간 인세율 8 (마지막 구간은 상한 비움)
+function readTiers(r){
+  const out = [];
+  for (let i = 1; i <= 4; i++){
+    const rate = toNum(r[`${i}구간 인세율`]);
+    const cap  = toNum(r[`${i}구간 상한`]);
+    if (!rate) continue;
+    out.push({ rate: rate > 1 ? rate/100 : rate, cap: cap > 0 ? cap : Infinity });
+  }
+  // 상한 순으로 정렬하고 마지막은 무한대로
+  out.sort((a,b) => a.cap - b.cap);
+  if (out.length) out[out.length-1].cap = Infinity;
+  return out;
+}
+
+// 누적 시작 ~ 종료 구간에 걸친 인세액. from 은 이미 팔린 누적부수.
+function tierAmount(tiers, price, already, qty){
+  if (!tiers || !tiers.length) return {amount:0, parts:[]};
+  const parts = [];
+  let left = qty, cum = already, amount = 0;
+  for (const t of tiers){
+    if (left <= 0) break;
+    const room = t.cap - cum;
+    if (room <= 0) continue;
+    const take = Math.min(left, room);
+    const per = Math.round(price * t.rate);
+    amount += take * per;
+    parts.push({ rate: t.rate, qty: take, per, sub: take * per, from: cum + 1, to: cum + take });
+    cum  += take;
+    left -= take;
+  }
+  return {amount, parts};
+}
+
+// 인세 정산 — 기간이 자유로우므로 월별 원본 행을 그대로 보관한다
+const ROY_SCM  = [];   // {title, isbn, ym, qty}
+const ROY_SHIP = [];   // {title, ym, ship, ret, price, rate}
+const ROY_STORE = [];  // {title, ym, store, qty} — 출고 RAW
+const ROY_AUTHORS = []; // {isbn, title, name, share, bank, account, holder}
+
 const CH_PERF    = [];   // 계정별 월 실적 {구분, 계정, items:{항목:[12]}}
 const CH_CONTENT = [];   // 콘텐츠 단위 실적
 const CH_WEEKLY  = [];   // 주차별 팔로워 {구분, 계정, points:[{date, v}]}
@@ -1698,6 +1759,9 @@ function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales
       altTitles:   String(r['출고표기명']||r['출고 표기명']||'')
                      .split(/[,|;\n]/).map(x=>x.trim()).filter(Boolean),
       pubDate:     r['출간일']||'',
+      // 인세 — 저자명과 구간 인세율 (도서 목록 시트)
+      author:      String(r['저자명']||r['저자']||'').trim(),
+      tiers:       readTiers(r),
       isStrategic: (r['전략도서 여부']||'').toString().toLowerCase()==='true',
       // 도서 목록의 '과거*' 열은 2024년 이전분이 아니라 전체 누적 스냅샷이므로
       // 여기에 2025년 이후 실적을 더하면 이중 계상됨. 스냅샷은 따로 보관 후 max로 결합.
@@ -1886,6 +1950,15 @@ function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales
       const d = new Date(y, mo-1-11, 1);
       return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);
     })();
+    ROY_SHIP.splice(0, ROY_SHIP.length, ...ship.map(r => ({
+      title: String(r['도서명']||'').trim(),
+      ym:    String(r['연도·월']||'').slice(0,7),
+      ship:  toNum(r['출고부수']),
+      ret:   toNum(r['반품부수']),
+      price: toNum(r['정가']),
+      rate:  toNum(r['종이책 인세율']),
+    })).filter(x => x.ym));
+
     ship.forEach(r => {
       const b = findBook(r);
       if(!b) return;
@@ -1928,6 +2001,13 @@ function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales
       d.setMonth(d.getMonth() - i);
       cur3m.push(d.toISOString().slice(0,7));
     }
+
+    ROY_SCM.splice(0, ROY_SCM.length, ...scm.map(r => ({
+      title: String(r['도서명']||'').trim(),
+      isbn:  String(r['ISBN']||'').trim(),
+      ym:    String(r['연도·월']||'').slice(0,7),
+      qty:   toNum(r['총판매(부)']),
+    })).filter(x => x.ym));
 
     scm.forEach(r => {
       const ym = r['연도·월'] || '';
@@ -2053,6 +2133,9 @@ function initApp(){
   stampConfNote();
   initEasterEggs();
   initCmdk();
+  royLoadArchive();
+  royMetaLoad();
+  initInstall();
   window.addEventListener('hashchange', function(){ applyHash(); renderPills(); renderActive(); });
   initShortcuts();
 
@@ -2155,6 +2238,7 @@ function renderActive(){
   else if(activeTab==='channel') renderChannel();
   else if(activeTab==='publish') renderPublish();
   else if(activeTab==='books')    renderBooks();
+  else if(activeTab==='royalty')  { renderRoyalty(); loadShipRaw(); }
   else if(activeTab==='calendar') renderCalendar();
   else if(activeTab==='data')    renderData();
 }
@@ -2917,7 +3001,7 @@ function renderShip(){
   document.getElementById('tab-ship').innerHTML=`
     <!-- 상단 KPI -->
     <div class="g4 gap">
-      <div class="kpi"><div class="kpi-lbl">월 출고 매출</div><div class="kpi-val">${won(mShip)}</div><div class="kpi-sub">공급가 기준</div></div>
+      <div class="kpi"><div class="kpi-lbl">월 출고 매출</div><div class="kpi-val">${won(mShip)}</div>${cmpTag(M_SHIP_SALES,m)}<div class="kpi-sub">공급가 기준</div></div>
       <div class="kpi"><div class="kpi-lbl">월 출고 부수</div><div class="kpi-val">${mShipQty.toLocaleString()}</div><div class="kpi-sub">${MONTHS[m]} 합계</div></div>
       <div class="kpi"><div class="kpi-lbl">월 반품 부수</div><div class="kpi-val warn">${mRetQty.toLocaleString()}</div><div class="kpi-sub">반품액 ${won(mRet)}</div></div>
       <div class="kpi"><div class="kpi-lbl">월 반품률</div><div class="kpi-val ${retPct>=15?'bad':retPct>=10?'warn':'good'}">${retPct}%</div><div class="kpi-sub">순매출 ${won(mNet)}</div></div>
@@ -3068,7 +3152,7 @@ function renderMkt(){
     <div class="sec-label gap2">당월 실적</div>
     <div class="g4">
       <div class="kpi"><div class="kpi-lbl">월 판매 부수</div><div class="kpi-val">${mScmQty.toLocaleString()}<span style="font-size:15px;font-weight:400">부</span></div><div class="kpi-sub">SCM 집계</div></div>
-      <div class="kpi"><div class="kpi-lbl">월 마케팅 비용</div><div class="kpi-val">${won(mMkt)}</div><div class="kpi-sub">${MONTHS[m]} 집행</div></div>
+      <div class="kpi"><div class="kpi-lbl">월 마케팅 비용</div><div class="kpi-val">${won(mMkt)}</div>${cmpTag(M_MKT_COST,m,true)}<div class="kpi-sub">${MONTHS[m]} 집행</div></div>
       <div class="kpi"><div class="kpi-lbl">월 ROI</div><div class="kpi-val ${mRoi>=150?'good':mRoi>=100?'warn':'bad'}">${mRoi}%</div><div class="kpi-sub">순매출 ÷ 마케팅비</div></div>
       <div class="kpi"><div class="kpi-lbl">구매유치비 (평균)</div><div class="kpi-val ${mCpa<8000?'good':mCpa<12000?'warn':'bad'}">${mCpa.toLocaleString()}원</div><div class="kpi-sub">마케팅비 ÷ SCM</div></div>
     </div>
@@ -3320,7 +3404,7 @@ function renderCost(){
   document.getElementById('tab-cost').innerHTML=`
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">당월 비용</div>
-        <div class="kpi-val">${won(cs.total)}</div>
+        <div class="kpi-val">${won(cs.total)}</div>${cmpTag(MONTHS.map((_,i)=>costSplit(i).total),m,true)}
         <div class="kpi-sub">${cs.plan>0?`지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>`:'전액 지출 완료'}</div>
         ${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>
       <div class="kpi"><div class="kpi-lbl">비용률${help('비용률')}</div>
@@ -6424,6 +6508,647 @@ function anomalyCard(){
   </div>`;
 }
 
+/* ── 인세 정산 ──
+   주기: 1~6월 판매 → 그해 7월 정산 / 7~12월 판매 → 다음해 1월 정산
+   출간일이 정산월로부터 2개월 이내면 그 회차는 건너뛰고 다음 회차에 출간월부터 몰아서 정산한다. */
+const ROY = { round:'', book:'', author:0, edit:{}, archive:[], q:'', aq:'' };
+// 저자명·인세율·계좌는 시트에 없으면 여기에 저장해 다음 회차에도 재사용한다
+const ROY_META = {};
+function royMetaKey(b){ return String(b.isbn || b.title || '').trim(); }
+function royMetaLoad(){
+  try { Object.assign(ROY_META, JSON.parse(localStorage.getItem('feelm-royalty-meta') || '{}')); } catch(e){}
+}
+function royMetaSave(){
+  try { localStorage.setItem('feelm-royalty-meta', JSON.stringify(ROY_META)); } catch(e){}
+}
+function royMeta(b, field, fallback){
+  const m = ROY_META[royMetaKey(b)];
+  const v = m && m[field];
+  return (v === undefined || v === '') ? (fallback === undefined ? '' : fallback) : v;
+}
+function roySetMeta(b, field, v){
+  const k = royMetaKey(b);
+  ROY_META[k] = ROY_META[k] || {};
+  ROY_META[k][field] = v;
+  royMetaSave();
+  renderRoyalty();
+}
+
+function royRounds(){
+  // 지금 판매가 쌓이고 있는 회차부터 과거로 8회차.
+  // 1=상반기분(그해 7월 지급) 2=하반기분(다음해 1월 지급)
+  const out = [];
+  const now = new Date();
+  const nowYm = ymd(now).slice(0,7);
+  let y = now.getFullYear(), h = (now.getMonth() + 1) >= 7 ? 2 : 1;
+  for (let i = 0; i < 8; i++){
+    const coverStart = h === 1 ? `${y}-01` : `${y}-07`;
+    const coverEnd   = h === 1 ? `${y}-06` : `${y}-12`;
+    const payYm      = h === 1 ? `${y}-07` : `${y+1}-01`;
+    // 지급월이 지났으면 완료, 판매 기간이 진행 중이면 집계 중
+    const state = nowYm >= payYm ? 'done' : (nowYm <= coverEnd ? 'open' : 'due');
+    out.push({ key:`${y}-${h}`, y, h, coverStart, coverEnd, payYm, state,
+      stateLabel: state === 'done' ? '지급 완료' : (state === 'open' ? '집계 중' : '지급 예정'),
+      label:`${y}년 ${h===1?'상반기':'하반기'}분 · ${payYm.slice(0,4)}년 ${+payYm.slice(5,7)}월 지급` });
+    if (h === 1) { h = 2; y -= 1; } else { h = 1; }
+  }
+  return out;
+}
+const ymAdd = (ym, n) => {
+  const y = +ym.slice(0,4), m = +ym.slice(5,7) + n;
+  const yy = y + Math.floor((m-1)/12), mm = ((m-1)%12+12)%12 + 1;
+  return yy + '-' + String(mm).padStart(2,'0');
+};
+const ymDiff = (a, b) => (+a.slice(0,4) - +b.slice(0,4)) * 12 + (+a.slice(5,7) - +b.slice(5,7));
+
+// 이 회차에서 이 도서를 정산하는가, 한다면 어느 기간인가
+function roySpan(pubYm, round){
+  if (!pubYm) return {ok:true, from:round.coverStart, to:round.coverEnd, carried:false};
+  if (pubYm > round.coverEnd) return {ok:false, why:'출간 전'};
+  // 이 도서가 처음 정산되는 회차를 찾는다 (정산월 − 출간월 > 2 인 첫 회차)
+  const all = royRounds().slice().reverse();          // 오래된 순
+  let first = null;
+  for (const r of all){
+    if (pubYm > r.coverEnd) continue;
+    if (ymDiff(r.payYm, pubYm) > 2) { first = r; break; }
+  }
+  if (!first) return {ok:false, why:'출간 2개월 이내 — 다음 회차로 이월'};
+  if (round.key === first.key) return {ok:true, from:pubYm, to:round.coverEnd, carried: pubYm < round.coverStart};
+  if (round.payYm < first.payYm) return {ok:false, why:'출간 2개월 이내 — 다음 회차로 이월'};
+  return {ok:true, from:round.coverStart, to:round.coverEnd, carried:false};
+}
+
+const royNorm = v => String(v||'').replace(/\s/g,'').replace(/？/g,'?');
+// 누적 시작(ROY_BASE_YM)부터 before 직전월까지 팔린 부수 — 구간 인세 판정용
+function roySoldBefore(title, before){
+  const key = royNorm(title);
+  const ok = ym => ym >= ROY_BASE_YM && ym < before;
+  let n = 0;
+  ROY_SCM.forEach(r => { if (royNorm(r.title) === key && ok(r.ym)) n += r.qty; });
+  const CBD = ['쿠팡','북센','도소매'];
+  ROY_STORE.forEach(r => { if (royNorm(r.title) === key && ok(r.ym) && CBD.indexOf(String(r.store).trim()) >= 0) n += r.qty; });
+  ROY_SHIP.forEach(r => { if (royNorm(r.title) === key && ok(r.ym)) n -= r.ret; });
+  return Math.max(0, Math.round(n));
+}
+
+function royCalc(title, from, to){
+  const key = royNorm(title);
+  const inRange = ym => ym >= from && ym <= to;
+  let scm = 0, store = 0, ret = 0, price = 0, rate = 0, shipAll = 0;
+  ROY_SCM.forEach(r => { if (royNorm(r.title) === key && inRange(r.ym)) scm += r.qty; });
+  ROY_SHIP.forEach(r => {
+    if (royNorm(r.title) !== key) return;
+    if (r.price) price = r.price;
+    if (r.rate)  rate  = r.rate;
+    if (inRange(r.ym)) { ret += r.ret; shipAll += r.ship; }
+  });
+  const CBD = ['쿠팡','북센','도소매'];
+  ROY_STORE.forEach(r => {
+    if (royNorm(r.title) === key && inRange(r.ym) && CBD.indexOf(String(r.store).trim()) >= 0) store += r.qty;
+  });
+  if (rate > 1) rate = rate / 100;
+  return {scm, store, ret, price, rate: rate || 0.1, shipAll, hasStore: ROY_STORE.length > 0};
+}
+
+/* 아카이브 */
+function royLoadArchive(){
+  try { ROY.archive = JSON.parse(localStorage.getItem('feelm-royalty') || '[]'); }
+  catch(e) { ROY.archive = []; }
+}
+function roySaveArchive(){
+  try { localStorage.setItem('feelm-royalty', JSON.stringify(ROY.archive.slice(-500))); } catch(e){}
+}
+function royArchiveAdd(rec){
+  const i = ROY.archive.findIndex(x => x.round === rec.round && x.title === rec.title);
+  if (i >= 0) ROY.archive[i] = rec; else ROY.archive.push(rec);
+  roySaveArchive();
+}
+function royArchiveDel(round, title){
+  ROY.archive = ROY.archive.filter(x => !(x.round === round && x.title === title));
+  roySaveArchive(); renderRoyalty();
+}
+
+/* 출고 RAW 지연 로드 — 서점별 출고부수 (쿠팡·북센·도소매).
+   행이 많아 인세 정산 탭을 열 때 한 번만 불러온다. */
+let ROY_RAW_STATE = 'idle';   // idle | loading | ok | fail
+async function loadShipRaw(){
+  if (ROY_RAW_STATE === 'loading' || ROY_RAW_STATE === 'ok') return;
+  ROY_RAW_STATE = 'loading';
+  renderRoyalty();
+  try {
+    const base = `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/`;
+    const url = CFG.gids.shipRaw
+      ? `${base}export?format=csv&gid=${CFG.gids.shipRaw}`
+      : `${base}gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('출고 RAW')}`;
+    const res = await fetch(url, {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const g = parseCSVGrid(await res.text());
+    const hi = findHeaderRow(g, ['서점','도서','출고']);
+    if (hi < 0) throw new Error('헤더(서점·도서·출고)를 찾지 못했습니다');
+    const h = g[hi].map(v => String(v||'').trim());
+    const cStore = h.indexOf('서점');
+    const cBook  = h.indexOf('도서');
+    const cQty   = h.indexOf('출고');
+    let cYm = h.indexOf('연도월(변환)');
+    if (cYm < 0) cYm = h.indexOf('연도월');
+    const cDate = h.indexOf('날짜');
+    // 서점은 병합 셀이라 첫 행에만 있다 — 아래로 이어 채운다
+    let store = '';
+    const out = [];
+    g.slice(hi + 1).forEach(r => {
+      const st = String(r[cStore]||'').trim();
+      if (st) store = st;
+      const title = String(r[cBook]||'').trim();
+      const qty = toNum(r[cQty]);
+      if (!title || !qty) return;
+      let ym = cYm >= 0 ? String(r[cYm]||'').slice(0,7) : '';
+      if (!/^\d{4}-\d{2}$/.test(ym) && cDate >= 0) {
+        const d = parseAnyDate(r[cDate]);
+        if (d) ym = ymd(d).slice(0,7);
+      }
+      if (!/^\d{4}-\d{2}$/.test(ym)) return;
+      out.push({title, ym, store, qty});
+    });
+    ROY_STORE.splice(0, ROY_STORE.length, ...out);
+    await loadAuthors();
+    ROY_RAW_STATE = out.length ? 'ok' : 'fail';
+    console.info('[출고 RAW] 서점별 출고', out.length + '행');
+  } catch(e) {
+    ROY_RAW_STATE = 'fail';
+    console.warn('[출고 RAW] 로드 실패:', e);
+  }
+  renderRoyalty();
+}
+
+// 저자 정보 — 공저는 행을 여러 개 쓴다. 지분을 비우면 균등 분배.
+async function loadAuthors(){
+  try {
+    const base = `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/`;
+    const url = CFG.gids.authors
+      ? `${base}export?format=csv&gid=${CFG.gids.authors}`
+      : `${base}gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('인세정산용_정보')}`;
+    const res = await fetch(url, {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const g = parseCSVGrid(await res.text());
+    const hi = findHeaderRow(g, ['저자명']);
+    if (hi < 0) throw new Error('헤더(저자명)를 찾지 못했습니다');
+    const objs = gridToObjs(g, hi);
+    ROY_AUTHORS.splice(0, ROY_AUTHORS.length, ...objs.map(o => ({
+      isbn:    String(o['ISBN']||'').trim(),
+      title:   String(o['도서명']||'').trim(),
+      name:    String(o['저자명']||o['저자']||'').trim(),
+      share:   toNum(o['지분(%)'] || o['지분']),
+      bank:    String(o['은행']||o['은행명']||'').trim(),
+      account: String(o['계좌번호']||'').trim(),
+      holder:  String(o['예금주']||'').trim(),
+      pubDate: String(o['출간일']||'').trim(),
+      tiers:   readTiers(o),
+    })).filter(x => x.name));
+    console.info('[인세정산용_정보]', ROY_AUTHORS.length + '행');
+  } catch(e) { console.warn('[인세정산용_정보] 로드 실패:', e); }
+}
+
+// 이 도서의 저자 목록. 시트에 없으면 도서 목록의 저자명 한 명으로 본다.
+function royAuthorsOf(b){
+  const key = royNorm(b.title), isbn = String(b.isbn||'').trim();
+  let list = ROY_AUTHORS.filter(a => (isbn && a.isbn === isbn) || (a.title && royNorm(a.title) === key));
+  if (!list.length) {
+    const nm = String(b.author||'').trim();
+    list = nm ? [{name:nm, share:0, bank:'', account:'', holder:''}] : [];
+  }
+  // 지분 비우면 균등 분배
+  const given = list.filter(a => a.share > 0);
+  const rest  = list.length - given.length;
+  const used  = given.reduce((x,a) => x + a.share, 0);
+  const each  = rest > 0 ? Math.max(0, 100 - used) / rest : 0;
+  return list.map(a => ({...a, shareP: (a.share > 0 ? a.share : each) / 100}));
+}
+
+/* 인세 정산 화면 */
+function royKey(round, title){ return round + '|' + title; }
+function royEsc(t){ return String(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function royEdit(round, title, field, v){
+  const k = royKey(round, title);
+  ROY.edit[k] = ROY.edit[k] || {};
+  ROY.edit[k][field] = v;
+  renderRoyalty();
+}
+function royVal(round, title, field, auto){
+  const e = ROY.edit[royKey(round, title)];
+  const v = e && e[field];
+  return (v === undefined || v === '') ? auto : v;
+}
+function royReset(round, title){ delete ROY.edit[royKey(round, title)]; renderRoyalty(); }
+function roySelect(t){ ROY.book = t; ROY.author = 0; renderRoyalty(); }
+function roySetRound(k){ ROY.round = k; ROY.book = ''; renderRoyalty(); }
+function roySearch(v){ ROY.q = String(v||'').trim(); renderRoyalty(); }
+function royArchSearch(v){ ROY.aq = String(v||'').trim(); renderRoyalty(); }
+// 도서명·저자명·ISBN 어느 쪽으로 쳐도 걸린다
+function royMatch(r, q){
+  if (!q) return true;
+  const n = v => String(v||'').toLowerCase().replace(/\s/g,'');
+  const k = n(q);
+  return n(r.b.title).indexOf(k) >= 0 || n(r.author).indexOf(k) >= 0 || n(r.b.isbn).indexOf(k) >= 0;
+}
+function lastDay(ym){
+  const y = +ym.slice(0,4), m = +ym.slice(5,7);
+  return ym + '-' + String(new Date(y, m, 0).getDate()).padStart(2,'0');
+}
+
+// 출간일 표기가 제각각이다 — '2025. 5. 28.' '2025.05.28' '2025-5-8' 모두 받는다
+function royPubDate(v){
+  const d = parseAnyDate(v);
+  if (d) return ymd(d);
+  const m = String(v||'').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (m) return `${m[1]}-${String(+m[2]).padStart(2,'0')}-${String(+m[3]).padStart(2,'0')}`;
+  const m2 = String(v||'').match(/(\d{4})\D+(\d{1,2})/);
+  if (m2) return `${m2[1]}-${String(+m2[2]).padStart(2,'0')}-01`;
+  return '';
+}
+
+function royRows(round){
+  return (BOOKS || []).filter(b => b.title).map(b => {
+    // 출간일은 인세정산용_정보가 정본. 비었으면 도서 목록으로 대체하되 표시로 알린다.
+    const ov = ROY_AUTHORS.find(a => (b.isbn && a.isbn === b.isbn) || (a.title && royNorm(a.title) === royNorm(b.title)));
+    const pubSheet = royPubDate(ov && ov.pubDate);
+    const pub = pubSheet || royPubDate(b.pubDate);
+    const pubYm = pub ? pub.slice(0,7) : '';
+    const pubFallback = !pubSheet && !!pub;   // 인세 탭에 출간일이 안 적혀 있음
+    const sp = roySpan(pubYm, round);
+    if (!sp.ok) return {b, pub, pubYm, pubFallback, hasInfo: !!ov, skip: sp.why};
+    const c = royCalc(b.title, sp.from, sp.to);
+    // 정가·인세율: 회차별 수정값 > 도서 메타(수동 입력) > 시트값
+    const price = +royVal(round.key, b.title, 'price', royMeta(b, 'price', c.price)) || 0;
+    const rateP = +royVal(round.key, b.title, 'rate2', royMeta(b, 'rate', (c.rate*100).toFixed(0))) || 0;
+    const rate  = rateP / 100;
+    const author = royVal(round.key, b.title, 'author', royMeta(b, 'author', b.author || ''));
+    const sold  = +royVal(round.key, b.title, 'sold', c.scm + c.store) || 0;
+    const ret   = +royVal(round.key, b.title, 'ret',  c.ret) || 0;
+    const net   = sold - ret;
+    // 구간 인세: 도서 목록에 구간이 있으면 그걸 쓰고, 없으면 단일 요율
+    // 인세율도 인세정산용_정보가 정본
+    const tiers = (ov && ov.tiers && ov.tiers.length) ? ov.tiers
+                : ((b.tiers && b.tiers.length) ? b.tiers : [{rate, cap: Infinity}]);
+    const already = roySoldBefore(b.title, sp.from);
+    const tr = tierAmount(tiers, price, already, Math.max(0, net));
+    const per = tr.parts.length === 1 ? tr.parts[0].per : Math.round(price * rate);
+    const amount = tr.parts.length ? tr.amount : net * Math.round(price * rate);
+    // 화면에 찍는 요율도 실제 적용된 구간을 따라간다 (단일 구간일 때)
+    const rateShown = tr.parts.length === 1 ? tr.parts[0].rate : (tiers[0] ? tiers[0].rate : rate);
+    return {b, pub, pubYm, pubFallback, hasInfo: !!ov, sp, c, sold, ret, net, price,
+            rate: rateShown, per, amount, author,
+            tiers, already, parts: tr.parts, multi: tr.parts.length > 1,
+            authors: royAuthorsOf(b),
+            edited: !!ROY.edit[royKey(round.key, b.title)]};
+  });
+}
+
+function renderRoyalty(){
+  const el = document.getElementById('tab-royalty');
+  const rounds = royRounds();
+  if (!ROY.round) ROY.round = rounds[0].key;
+  const round = rounds.find(r => r.key === ROY.round) || rounds[0];
+  const rows = royRows(round);
+  const target = rows.filter(r => !r.skip && (r.sold || r.ret));
+  const skipped = rows.filter(r => r.skip && r.skip.indexOf('이월') >= 0);
+  const shown = target.filter(r => royMatch(r, ROY.q));
+  const sumShown = shown.reduce((a,r) => a + r.amount, 0);
+  const noInfo = target.filter(r => !r.hasInfo);
+  const noPub  = target.filter(r => r.hasInfo && r.pubFallback);
+  const sel = ROY.book ? target.find(r => r.b.title === ROY.book) : null;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <select onchange="roySetRound(this.value)" style="border:1px solid var(--border2);background:var(--surface);
+        color:var(--ink);border-radius:var(--r3);padding:8px 12px;font-family:var(--sans);font-size:13px;font-weight:700">
+        ${rounds.map(r => `<option value="${r.key}" ${r.key===round.key?'selected':''}>${esc(r.label)} — ${esc(r.stateLabel)}</option>`).join('')}
+      </select>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;padding:4px 9px;
+           border-radius:var(--r4);background:${round.state==='done'?'var(--good-dim)':(round.state==='open'?'var(--accent-dim)':'var(--warn-dim)')};
+           color:${round.state==='done'?'var(--good)':(round.state==='open'?'var(--accent-deep)':'var(--warn)')}">${esc(round.stateLabel)}</span>
+      <span style="font-size:12px;color:var(--ink3)">판매 ${round.coverStart} ~ ${round.coverEnd} · 지급 ${round.payYm}
+        ${round.state==='open'?`· <b style="color:var(--ink2)">${round.coverEnd} 까지 집계 후 확정</b>`:''}</span>
+      <input value="${esc(ROY.q)}" oninput="roySearch(this.value)" placeholder="도서명 · 저자명 · ISBN 검색"
+        style="margin-left:auto;width:230px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
+        border-radius:var(--r3);padding:7px 12px;font-family:var(--sans);font-size:12px;outline:none">
+      <span style="font-size:12px;color:var(--ink2)">대상 <b style="color:var(--ink)">${shown.length}</b>${ROY.q?`/${target.length}`:''}종 · 합계 <b style="color:var(--ink)">${won(sumShown)}</b></span>
+    </div>
+
+    ${ROY_RAW_STATE === 'loading' ? `<div class="card gap" style="border-left:3px solid var(--accent)">
+      <div style="font-size:12px;color:var(--ink2)">출고 RAW 에서 서점별 출고를 불러오는 중입니다…</div></div>` : ''}
+    ${ROY_RAW_STATE === 'fail' ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
+      <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:5px">서점별 출고를 불러오지 못했습니다</div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.7">
+        쿠팡·북센·도소매 출고부수가 빠져 <b>판매 부수에 SCM 판매분만</b> 반영됩니다.
+        <b>출고 RAW</b> 탭의 GID 를 알려주시면 연결됩니다 (해당 탭을 연 주소창 <b>#gid=</b> 뒤 숫자).<br>
+        그때까지는 표에서 <b>판매 부수를 직접 입력</b>해 쓰실 수 있습니다.</div>
+    </div>` : ''}
+
+    <div class="card gap">
+      <div class="card-title">정산 대상 <small>${esc(round.label)} · 행을 누르면 정산서가 열립니다</small></div>
+      ${shown.length ? `<table>
+        <tr><th style="width:250px">도서 · 저자</th><th class="right" style="width:92px">판매 부수</th>
+            <th class="right" style="width:80px">반품</th><th class="right" style="width:92px">순 출고</th>
+            <th class="right" style="width:76px">정가</th><th class="right" style="width:58px">인세율</th>
+            <th class="right" style="width:78px">권당</th><th class="right" style="width:112px">정산 금액</th>
+            <th style="width:96px">정산 기간</th></tr>
+        ${shown.slice().sort((a,b)=>b.amount-a.amount).map(r => `
+          <tr style="cursor:pointer;${sel&&sel.b.title===r.b.title?'background:var(--accent-dim)':''}"
+              onclick="roySelect('${royEsc(r.b.title)}')">
+            <td><b style="font-size:12px">${esc(r.b.title)}</b>
+              ${r.edited?'<span style="font-size:10px;color:var(--accent-deep);margin-left:5px">수정됨</span>':''}
+              ${r.sp.carried?'<span style="font-size:10px;color:var(--warn);margin-left:5px">이월분</span>':''}
+              ${!r.hasInfo?'<span style="font-size:10px;color:var(--bad);margin-left:5px">정보 미등록</span>':''}
+              ${r.pubFallback?'<span style="font-size:10px;color:var(--warn);margin-left:5px">출간일 미기입</span>':''}
+              <div style="font-size:10px;color:var(--ink3);margin-top:2px">${r.authors.length ? r.authors.map(a=>esc(a.name)+(r.authors.length>1?` ${Math.round(a.shareP*100)}%`:'')).join(' · ')
+  : '<span style="color:var(--warn)">저자 미입력</span>'}${r.b.isbn?` · ${esc(r.b.isbn)}`:''}</div></td>
+            <td class="right">${r.sold.toLocaleString()}</td>
+            <td class="right" style="color:var(--bad)">${r.ret.toLocaleString()}</td>
+            <td class="right"><b>${r.net.toLocaleString()}</b></td>
+            <td class="right">${r.price.toLocaleString()}</td>
+            <td class="right">${r.multi
+              ? `<span title="${r.parts.map(p=>(p.rate*100).toFixed(0)+'% '+p.qty.toLocaleString()+'부').join(' + ')}"
+                   style="cursor:help">${[...new Set(r.parts.map(p=>(p.rate*100).toFixed(0)))].join('/')}%</span>`
+              : (r.rate*100).toFixed(0)+'%'}</td>
+            <td class="right">${r.per.toLocaleString()}</td>
+            <td class="right"><b style="font-size:12.5px">${r.amount.toLocaleString()}</b></td>
+            <td style="font-size:10px;color:var(--ink3)">${r.sp.from} ~ ${r.sp.to}</td>
+          </tr>`).join('')}
+      </table>` : `<div class="empty-row">${ROY.q?'검색 결과가 없습니다':'이 회차에 정산할 도서가 없습니다'}</div>`}
+    </div>
+
+    ${skipped.length ? `<div class="card gap">
+      <div class="card-title">다음 회차로 이월 <small>출간일이 지급월로부터 2개월 이내</small></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${skipped.map(r => `<span style="font-size:11.5px;padding:5px 10px;background:var(--surface3);
+          border-radius:var(--r4);color:var(--ink2)"><b style="color:var(--ink)">${esc(r.b.title)}</b>
+          <span style="color:var(--ink3);margin-left:5px">${esc(r.pubYm)} 출간</span></span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${(noInfo.length || noPub.length) ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
+      <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:6px">인세정산용_정보 탭에 채울 것이 있습니다</div>
+      ${noInfo.length ? `<div style="font-size:12px;color:var(--ink2);line-height:1.7;margin-bottom:6px">
+        <b>미등록 ${noInfo.length}종</b> — 저자·계좌·인세율이 없어 정산서를 만들 수 없습니다.<br>
+        <span style="color:var(--ink3)">${noInfo.slice(0,8).map(r=>esc(r.b.title)).join(' · ')}${noInfo.length>8?` 외 ${noInfo.length-8}종`:''}</span></div>` : ''}
+      ${noPub.length ? `<div style="font-size:12px;color:var(--ink2);line-height:1.7">
+        <b>출간일 미기입 ${noPub.length}종</b> — 도서 목록 값으로 대신 계산했습니다. 이월 판정이 달라질 수 있습니다.<br>
+        <span style="color:var(--ink3)">${noPub.slice(0,8).map(r=>esc(r.b.title)).join(' · ')}${noPub.length>8?` 외 ${noPub.length-8}종`:''}</span></div>` : ''}
+    </div>` : ''}
+
+    ${sel ? royDetail(round, sel) : ''}
+    ${royArchiveCard()}`;
+}
+
+function royDetail(round, r){
+  const k = round.key, t = r.b.title, T = royEsc(t);
+  const inp = (f, v, w, ta) => `<input value="${esc(String(v))}"
+    onchange="royEdit('${k}','${T}','${f}',this.value)"
+    style="width:${w||120}px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
+    border-radius:var(--r4);padding:5px 9px;font-family:var(--sans);font-size:12px;text-align:${ta||'left'}">`;
+  const author  = r.author;
+  const account = royVal(k, t, 'account', royMeta(r.b, 'account', ''));
+  const payDate = royVal(k, t, 'payDate', round.payYm + '-27');
+  const pubD    = royVal(k, t, 'pubDate', r.pub);
+  const fromD   = royVal(k, t, 'fromD', r.sp.from + '-01');
+  const toD     = royVal(k, t, 'toD', lastDay(r.sp.to));
+  const L = x => `<span style="font-size:11px;color:var(--ink3)">${x}</span>`;
+  // 도서 단위로 저장 — 다음 회차에도 그대로 쓰인다
+  const meta = (f, v, w, ta) => `<input value="${esc(String(v))}"
+    onchange="roySetMeta(BOOKS.find(x=>x.title==='${T}'), '${f}', this.value)"
+    style="width:${w||120}px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
+    border-radius:var(--r4);padding:5px 9px;font-family:var(--sans);font-size:12px;text-align:${ta||'left'}">`;
+
+  return `<div class="card gap" style="border-left:3px solid var(--accent)">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px">
+      <div class="card-title" style="margin:0">${esc(t)} <small>저자 발송용 정산서</small></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="royReset('${k}','${T}')" style="border:1px solid var(--border2);background:var(--surface);
+          color:var(--ink3);border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11px;
+          font-weight:700;cursor:pointer">수정 초기화</button>
+        <button onclick="royPrint()" style="border:1px solid var(--border2);background:var(--surface);
+          color:var(--ink2);border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11px;
+          font-weight:700;cursor:pointer">PDF</button>
+        <button onclick="royDownload()" style="border:1px solid var(--accent);background:var(--accent);color:#FFF;
+          border-radius:var(--r3);padding:6px 13px;font-family:var(--sans);font-size:11px;font-weight:800;
+          cursor:pointer">PNG 다운로드</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
+        ${L('저자명')}${meta('author', author, 180)}
+        ${L('계좌번호')}${meta('account', account, 250)}
+        ${L('출간일')}${inp('pubDate', pubD, 130)}
+        ${L('지급일')}${inp('payDate', payDate, 130)}
+      </div>
+      <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
+        ${L('정산 시작')}${inp('fromD', fromD, 130)}
+        ${L('정산 종료')}${inp('toD', toD, 130)}
+        ${L('정가')}${inp('price', r.price, 110, 'right')}
+        ${L('인세율(%)')}${meta('rate', (r.rate*100).toFixed(0), 110, 'right')}
+      </div>
+      <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
+        ${L('판매 부수')}${inp('sold', r.sold, 110, 'right')}
+        ${L('반품 부수')}${inp('ret', r.ret, 110, 'right')}
+        ${L('순 출고')}<b style="font-size:13px;width:110px;display:inline-block;text-align:right">${r.net.toLocaleString()}</b>
+        ${L('정산 금액')}<b style="font-size:15px;width:110px;display:inline-block;text-align:right;
+          color:var(--accent-deep)">${r.amount.toLocaleString()}</b>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--ink3);line-height:1.7;margin-bottom:6px">
+      저자명 · 계좌번호 · 인세율은 <b>도서 단위로 저장</b>되어 다음 회차에도 그대로 쓰입니다.
+      나머지 값은 이 회차에만 적용됩니다.</div>
+    <div style="font-size:11px;color:var(--ink3);line-height:1.7;margin-bottom:14px">
+      판매 부수 = SCM 판매(교보·예스24·알라딘·영풍) ${r.c.scm.toLocaleString()}
+      + 쿠팡·북센·도소매 출고 ${r.c.store.toLocaleString()}
+      ${ROY_STORE.length ? '' : '<b style="color:var(--warn)"> — 서점별 탭 미연결로 0</b>'}
+      · 순 출고 = 판매 − 반품 · 권당 지급액 = 정가 × 인세율
+    </div>
+    ${r.multi ? `<div style="margin-bottom:14px;padding:11px 13px;background:var(--surface2);
+        border:1px solid var(--border);border-radius:var(--r2)">
+      <div style="font-size:11px;font-weight:800;color:var(--ink2);margin-bottom:7px">구간별 인세
+        <span style="font-weight:500;color:var(--ink3)">· ${ROY_BASE_YM} 이후 누적 ${r.already.toLocaleString()}부에서 이어짐</span></div>
+      ${r.parts.map(p => `<div style="display:flex;gap:12px;font-size:12px;color:var(--ink2);padding:3px 0">
+        <span style="width:52px;font-weight:700;color:var(--ink)">${(p.rate*100).toFixed(0)}%</span>
+        <span style="width:150px;color:var(--ink3)">${p.from.toLocaleString()} ~ ${p.to.toLocaleString()}부</span>
+        <span style="width:80px;text-align:right">${p.qty.toLocaleString()}부</span>
+        <span style="width:80px;text-align:right">× ${p.per.toLocaleString()}</span>
+        <span style="width:110px;text-align:right;font-weight:700;color:var(--ink)">${p.sub.toLocaleString()}</span>
+      </div>`).join('')}
+    </div>` : ''}
+
+    ${r.authors.length > 1 ? `<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:800;color:var(--ink2);margin-bottom:7px">저자별 배분 · 각자에게 보낼 정산서를 따로 받으세요</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${r.authors.map((a,i) => `<button onclick="ROY.author=${i};renderRoyalty()"
+          style="border:1px solid ${ROY.author===i?'var(--accent)':'var(--border2)'};
+          background:${ROY.author===i?'var(--accent-dim)':'var(--surface)'};color:var(--ink);
+          border-radius:var(--r3);padding:7px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;text-align:left">
+          <b>${esc(a.name)}</b> <span style="color:var(--ink3)">${Math.round(a.shareP*100)}%</span>
+          <div style="font-size:11px;color:var(--ink2);margin-top:2px">${won(Math.round(r.amount*a.shareP))}</div>
+        </button>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div style="overflow-x:auto">${roySheetSVG(round, r)}</div>
+  </div>`;
+}
+
+/* 저자 발송용 정산서 */
+function roySheetSVG(round, r){
+  const k = round.key, t = r.b.title;
+  // 공저면 선택한 저자 기준으로 발행한다
+  const a = (r.authors && r.authors[ROY.author]) || (r.authors && r.authors[0]) || {name:'', shareP:1};
+  const share = (r.authors && r.authors.length > 1) ? (a.shareP || 0) : 1;
+  const author = a.name || royVal(k, t, 'author', r.b.author || '');
+  const acctSheet = [a.bank, a.account, a.holder].filter(Boolean).join(' ');
+  const account = royVal(k, t, 'account', acctSheet || '');
+  const payDate = royVal(k, t, 'payDate', round.payYm + '-27');
+  const pubD    = royVal(k, t, 'pubDate', r.pub);
+  const fromD   = royVal(k, t, 'fromD', r.sp.from + '-01');
+  const toD     = royVal(k, t, 'toD', lastDay(r.sp.to));
+  const dot = v => String(v||'').replace(/-/g,'/');
+  const W = 720, PAD = 32, LBL = 200, RH = 30, F = 'Pretendard, sans-serif';
+
+  const basic = [['도서명', t], ['저자명', author], ['출간일', dot(pubD)],
+    ['정산기간', dot(fromD) + ' ~ ' + dot(toD)], ['계좌번호', account || '—'],
+    ['지급일', /^\d{4}-\d{2}-\d{2}$/.test(payDate)
+      ? `${payDate.slice(0,4)}년 ${payDate.slice(5,7)}월 ${payDate.slice(8,10)}일` : (payDate || '—')]];
+  const sale = [['정가(원)', r.price.toLocaleString()], ['판매 부수', r.sold.toLocaleString()],
+    ['반품 부수', r.ret.toLocaleString()], ['순 출고 부수', r.net.toLocaleString()]];
+  if (r.multi) {
+    r.parts.forEach(p => sale.push([
+      `${(p.rate*100).toFixed(0)}% 구간 (${p.from.toLocaleString()}~${p.to.toLocaleString()}부)`,
+      `${p.qty.toLocaleString()}부 × ${p.per.toLocaleString()}원 = ${p.sub.toLocaleString()}원`]));
+  } else {
+    sale.push(['인세율(%)', (r.rate*100).toFixed(0) + '%']);
+    sale.push(['권당 지급액(원)', r.per.toLocaleString()]);
+  }
+  if (share < 1) {
+    sale.push(['도서 인세 합계(원)', r.amount.toLocaleString()]);
+    sale.push([`저자 지분 (${Math.round(share*100)}%)`, Math.round(r.amount*share).toLocaleString()]);
+  }
+  sale.push(['정산 금액(원)', Math.round(r.amount * share).toLocaleString()]);
+  const H = PAD*2 + 44 + (1+basic.length)*RH + 34 + (1+sale.length)*RH;
+
+  const out = []; let y = PAD + 34;
+  // 제목은 판매 연도 기준 (지급 연도가 아니다)
+  const title = `${round.y}년 ${round.h===1?'상반기':'하반기'} 인세 정산 내역`;
+  out.push(`<text x="${W/2}" y="${y}" text-anchor="middle" font-size="16" font-weight="700" fill="#111" font-family="${F}">${esc(title)}</text>`);
+  out.push(`<line x1="${W/2-125}" x2="${W/2+125}" y1="${y+6}" y2="${y+6}" stroke="#111" stroke-width="1"/>`);
+  y += 30;
+
+  const block = (head, rows, hi) => {
+    const top = y;
+    out.push(`<rect x="${PAD}" y="${y}" width="${W-PAD*2}" height="${RH}" fill="#EDF0DC" stroke="#000"/>`);
+    out.push(`<text x="${W/2}" y="${y+RH/2+5}" text-anchor="middle" font-size="13" font-weight="700" fill="#111" font-family="${F}">${esc(head)}</text>`);
+    y += RH;
+    rows.forEach(([a,b], i) => {
+      const last = hi && i === rows.length-1;
+      out.push(`<rect x="${PAD}" y="${y}" width="${LBL}" height="${RH}" fill="#DCE6F2" stroke="#000"/>`);
+      out.push(`<rect x="${PAD+LBL}" y="${y}" width="${W-PAD*2-LBL}" height="${RH}" fill="${last?'#FFFBDC':'#FFF'}" stroke="#000"/>`);
+      out.push(`<text x="${PAD+LBL/2}" y="${y+RH/2+4.5}" text-anchor="middle" font-size="12" font-weight="600" fill="#111" font-family="${F}">${esc(a)}</text>`);
+      out.push(`<text x="${PAD+LBL+(W-PAD*2-LBL)/2}" y="${y+RH/2+4.5}" text-anchor="middle" font-size="${last?13:12}" font-weight="${last?800:400}" fill="${last?'#B3243C':'#111'}" font-family="${F}">${esc(b)}</text>`);
+      y += RH;
+    });
+    out.push(`<rect x="${PAD}" y="${top}" width="${W-PAD*2}" height="${y-top}" fill="none" stroke="#000" stroke-width="1.8"/>`);
+    y += 34;
+  };
+  block('기본 사항', basic, false);
+  block('종이책 판매 정산 내역', sale, true);
+
+  return `<svg id="roySvg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
+    xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;border:1px solid var(--border);border-radius:var(--r3)">
+    <rect width="${W}" height="${H}" fill="#FFF"/>${out.join('')}</svg>`;
+}
+
+// PDF — 브라우저 인쇄 대화상자에서 'PDF로 저장' 선택
+function royPrint(){
+  const svg = document.getElementById('roySvg');
+  if (!svg) return;
+  const rounds = royRounds();
+  const round = rounds.find(x => x.key === ROY.round) || rounds[0];
+  const r = royRows(round).find(x => x.b.title === ROY.book);
+  if (r) royArchiveAdd(royRecord(round, r));
+  const cs = getComputedStyle(document.documentElement);
+  let src = new XMLSerializer().serializeToString(svg);
+  src = src.replace(/var\((--[a-z0-9-]+)\)/gi, (m0, n) => (cs.getPropertyValue(n) || '#888').trim());
+  const w = window.open('', '_blank', 'width=860,height=1000');
+  if (!w) { alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.'); return; }
+  w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8">
+    <title>인세정산_${esc(ROY.book)}_${round.payYm}</title>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+    <style>@page{size:A4;margin:14mm}
+      body{margin:0;font-family:Pretendard,sans-serif;display:flex;justify-content:center;padding:20px}
+      svg{width:100%;max-width:720px;height:auto}
+      @media print{body{padding:0}}</style></head>
+    <body>${src}<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>`);
+  w.document.close();
+  setTimeout(renderRoyalty, 400);
+}
+
+// 정산 이력 한 건
+function royRecord(round, r){
+  return { round: round.key, roundLabel: round.label, title: r.b.title, isbn: r.b.isbn || '',
+    author: r.author || '', from: r.sp.from, to: r.sp.to,
+    sold: r.sold, ret: r.ret, net: r.net, price: r.price, rate: r.rate,
+    per: r.per, amount: r.amount, at: ymd(new Date()) };
+}
+
+function royDownload(){
+  const svg = document.getElementById('roySvg');
+  if (!svg) return;
+  const rounds = royRounds();
+  const round = rounds.find(x => x.key === ROY.round) || rounds[0];
+  const r = royRows(round).find(x => x.b.title === ROY.book);
+  if (r) royArchiveAdd(royRecord(round, r));
+  svgToPng(svg, '인세정산_' + String(ROY.book||'').replace(/[\\/:*?"<>|]/g,'') + '_' + round.payYm, 2);
+  setTimeout(renderRoyalty, 400);
+}
+
+function royArchiveCard(){
+  if (!ROY.archive.length) return '';
+  const n = v => String(v||'').toLowerCase().replace(/\s/g,'');
+  const q = n(ROY.aq);
+  const all = ROY.archive.slice().reverse();
+  const list = q ? all.filter(x => n(x.title).indexOf(q)>=0 || n(x.author).indexOf(q)>=0
+                    || n(x.isbn).indexOf(q)>=0 || n(x.roundLabel).indexOf(q)>=0) : all;
+  const sum = list.reduce((a,x)=>a+(x.amount||0), 0);
+  return `<div class="card gap">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div class="card-title" style="margin:0">정산 이력 <small>발행 ${list.length}${ROY.aq?`/${all.length}`:''}건 · 누계 ${won(sum)}</small></div>
+      <input value="${esc(ROY.aq)}" oninput="royArchSearch(this.value)" placeholder="도서 · 저자 · 회차 검색"
+        style="margin-left:auto;width:200px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
+        border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11.5px;outline:none">
+      <button onclick="royExportArchive()" style="border:1px solid var(--border2);background:var(--surface);
+        color:var(--ink2);border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11px;
+        font-weight:700;cursor:pointer">CSV</button>
+    </div>
+    <table>
+      <tr><th style="width:170px">회차</th><th>도서</th><th style="width:96px">저자</th>
+          <th style="width:132px">정산 기간</th><th class="right" style="width:84px">순 출고</th>
+          <th class="right" style="width:112px">정산 금액</th><th style="width:84px">발행일</th><th style="width:36px"></th></tr>
+      ${list.map(x => `<tr>
+        <td style="font-size:11px;color:var(--ink2)">${esc(x.roundLabel||x.round)}</td>
+        <td><b style="font-size:12px">${esc(x.title)}</b></td>
+        <td style="font-size:11px;color:var(--ink2)">${esc(x.author||'—')}</td>
+        <td style="font-size:11px;color:var(--ink3)">${esc(x.from)} ~ ${esc(x.to)}</td>
+        <td class="right">${(x.net||0).toLocaleString()}</td>
+        <td class="right"><b>${(x.amount||0).toLocaleString()}</b></td>
+        <td style="font-size:11px;color:var(--ink3)">${esc(x.at||'')}</td>
+        <td><span onclick="royArchiveDel('${royEsc(x.round)}','${royEsc(x.title)}')" title="이력 삭제"
+          style="cursor:pointer;color:var(--ink5);font-size:13px">&#10005;</span></td>
+      </tr>`).join('')}
+    </table>
+  </div>`;
+}
+function royExportArchive(){
+  const head = ['회차','도서','저자','정산시작','정산종료','판매부수','반품부수','순출고','정가','인세율','권당지급액','정산금액','발행일'];
+  const body = ROY.archive.map(x => [x.roundLabel||x.round, x.title, x.author||'', x.from, x.to,
+    x.sold, x.ret, x.net, x.price, (x.rate*100).toFixed(0)+'%', x.per, x.amount, x.at]);
+  downloadCSV([head].concat(body), '인세정산이력.csv');
+}
+
 /* ── 통합 검색 ── */
 var CMDK = {open:false, sel:0, items:[]};
 
@@ -6504,6 +7229,50 @@ function initCmdk(){
     if (k === 'arrowup')   { e.preventDefault(); CMDK.sel = Math.max(0, CMDK.sel-1); cmdkRender(); }
     if (k === 'enter')     { e.preventDefault(); cmdkGo(CMDK.sel); }
   });
+}
+
+/* ── 바탕화면 설치(PWA) ── */
+let DEFERRED_INSTALL = null;
+// 위젯 — 고른 지표만 보는 작은 창
+function openWidget(){
+  const w = 380, h = 460;
+  const x = Math.max(0, screen.availWidth - w - 40), y = 80;
+  window.open('widget.html', 'feelmWidget',
+    `popup=yes,width=${w},height=${h},left=${x},top=${y},resizable=yes,scrollbars=no`);
+}
+
+function initInstall(){
+  // 서비스 워커 — 오프라인에서도 마지막 화면이 뜨게 한다
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(e => console.warn('[SW] 등록 실패', e));
+  }
+  const btn = document.getElementById('installBtn');
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    DEFERRED_INSTALL = e;
+    if (btn) btn.style.display = '';
+  });
+  window.addEventListener('appinstalled', () => {
+    DEFERRED_INSTALL = null;
+    if (btn) btn.style.display = 'none';
+  });
+  // 이미 설치해서 앱 창으로 열었으면 버튼을 숨긴다
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    if (btn) btn.style.display = 'none';
+  }
+}
+async function doInstall(){
+  if (!DEFERRED_INSTALL) {
+    alert('브라우저 메뉴에서 설치할 수 있습니다.\n\n'
+        + '· 크롬/엣지: 주소창 오른쪽 설치 아이콘, 또는 메뉴 → 앱 → 이 사이트 설치\n'
+        + '· 사파리(아이폰): 공유 → 홈 화면에 추가');
+    return;
+  }
+  DEFERRED_INSTALL.prompt();
+  try { await DEFERRED_INSTALL.userChoice; } catch(e) {}
+  DEFERRED_INSTALL = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
 }
 
 function initEasterEggs(){
