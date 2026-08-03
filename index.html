@@ -798,11 +798,25 @@ function royFlag(v){ return /^(yes|true|y|o|1|체크|예)$/i.test(String(v||'').
 
 // SCM(실판매) 데이터가 오는 서점. 이 넷은 04_마케팅실적의 총판매를 그대로 쓴다.
 const ROY_SCM_STORES = ['교보문고','교보','예스','예스24','알라딘','영풍'];
-// 그 외 거래처(쿠팡·북센·도소매·기타현매 등)는 실판매를 알 수 없어 출고의 80%를 실판매로 본다.
+
+// 인세 대상 도매 거래처 — 여기 적힌 곳만 출고의 80%를 실판매로 환산한다.
+// "SCM 이 없으면 전부"로 두면 기타(현매)·자유서적 같은 곳까지 들어가 기존 정산과 어긋난다.
+const ROY_WHOLESALE_STORES = ['쿠팡', '북센', '도소매'];
+// 인세 대상에서 명시적으로 제외 (도매 목록에 섞여 들어와도 걸러낸다)
+const ROY_EXCLUDE_STORES = ['자유서적', '기타', '증정', '저자구매'];
 const WHOLESALE_RATE = 0.8;
+
+const royStoreKey = v => String(v||'').replace(/\s/g,'');
 function isScmStore(name){
-  const n = String(name||'').replace(/\s/g,'');
-  return ROY_SCM_STORES.some(x => n.indexOf(x.replace(/\s/g,'')) >= 0);
+  const n = royStoreKey(name);
+  return ROY_SCM_STORES.some(x => n.indexOf(royStoreKey(x)) >= 0);
+}
+// 80% 환산 대상인가
+function isWholesaleStore(name){
+  const n = royStoreKey(name);
+  if (!n) return false;
+  if (ROY_EXCLUDE_STORES.some(x => n.indexOf(royStoreKey(x)) >= 0)) return false;
+  return ROY_WHOLESALE_STORES.some(x => n.indexOf(royStoreKey(x)) >= 0);
 }
 
 // 전자책 — 플랫폼별 순매출을 담당자가 직접 확인해 입력한다.
@@ -6725,7 +6739,7 @@ function roySoldBefore(title, before){
   let n = 0;
   ROY_SCM.forEach(r => { if (royNorm(r.title) === key && ok(r.ym)) n += r.qty; });
   let ws = 0;
-  ROY_STORE.forEach(r => { if (royNorm(r.title) === key && ok(r.ym) && !isScmStore(r.store)) ws += r.qty; });
+  ROY_STORE.forEach(r => { if (royNorm(r.title) === key && ok(r.ym) && isWholesaleStore(r.store)) ws += r.qty; });
   n += Math.round(ws * WHOLESALE_RATE);
   ROY_SHIP.forEach(r => { if (royNorm(r.title) === key && ok(r.ym)) n -= r.ret; });
   return Math.max(0, Math.round(n));
@@ -6742,9 +6756,9 @@ function royCalc(title, from, to){
     if (r.rate)  rate  = r.rate;
     if (inRange(r.ym)) { ret += r.ret; shipAll += r.ship; }
   });
-  // SCM 이 없는 모든 거래처의 출고 (쿠팡·북센·도소매·기타현매 …)
+  // 인세 대상 도매 거래처만 (쿠팡·북센·도소매)
   ROY_STORE.forEach(r => {
-    if (royNorm(r.title) === key && inRange(r.ym) && !isScmStore(r.store)) store += r.qty;
+    if (royNorm(r.title) === key && inRange(r.ym) && isWholesaleStore(r.store)) store += r.qty;
   });
   if (rate > 1) rate = rate / 100;
   // 인세율은 지어내지 않는다. 시트에 없으면 0 으로 두고 화면에서 '미입력'으로 알린다.
