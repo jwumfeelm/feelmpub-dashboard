@@ -744,6 +744,19 @@ function channelLinkFor(kind, acct){
 // 그 이전 판매분은 과거 방식으로 이미 정산이 끝났으므로 세지 않는다.
 const ROY_BASE_YM = '2026-01';
 
+// 전자책 — 플랫폼별 순매출을 담당자가 직접 확인해 입력한다.
+// 부수가 아니라 '순 매출액 × 인세율' 로 계산한다.
+const EBOOK_PLATFORMS = ['교보','예스24','알라딘','리디','밀리의서재','네이버시리즈','북큐브','기타'];
+function ebSum(round, title){
+  return EBOOK_PLATFORMS.reduce((a, p) => a + (+royVal(round, title, 'eb_' + p, 0) || 0), 0);
+}
+function ebCalc(round, title){
+  const sales = ebSum(round, title);
+  const price = +royVal(round, title, 'ebPrice', 0) || 0;
+  const rate  = (+royVal(round, title, 'ebRate', 0) || 0) / 100;
+  return {sales, price, rate, amount: Math.round(sales * rate), on: sales > 0 || rate > 0};
+}
+
 // 구간 인세율 읽기
 // 단일:  1구간 인세율 10, 나머지 비움
 // 구간:  1구간 인세율 7 / 1구간 상한 10000 / 2구간 인세율 8 (마지막 구간은 상한 비움)
@@ -6658,6 +6671,7 @@ function royArchiveDel(round, title){
 /* 출고 RAW 지연 로드 — 서점별 출고부수 (쿠팡·북센·도소매).
    행이 많아 인세 정산 탭을 열 때 한 번만 불러온다. */
 let ROY_RAW_STATE = 'idle';   // idle | loading | ok | fail
+let ROY_RAW_ERR = '';         // 실패 사유 — 화면과 콘솔에 그대로 보여준다
 async function loadShipRaw(){
   if (ROY_RAW_STATE === 'loading' || ROY_RAW_STATE === 'ok') return;
   ROY_RAW_STATE = 'loading';
@@ -6668,10 +6682,11 @@ async function loadShipRaw(){
       ? `${base}export?format=csv&gid=${CFG.gids.shipRaw}`
       : `${base}gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('출고 RAW')}`;
     const res = await fetch(url, {cache:'no-store'});
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const g = parseCSVGrid(await res.text());
+    if (!res.ok) throw new Error(`시트를 못 받았습니다 (HTTP ${res.status}) — GID 나 공유 설정을 확인해 주세요`);
+    const txt = await res.text();
+    const g = parseCSVGrid(txt);
     const hi = findHeaderRow(g, ['서점','도서','출고']);
-    if (hi < 0) throw new Error('헤더(서점·도서·출고)를 찾지 못했습니다');
+    if (hi < 0) throw new Error(`헤더(서점·도서·출고)를 못 찾았습니다 — 첫 행: ${(g[0]||[]).slice(0,8).join(' | ')}`);
     const h = g[hi].map(v => String(v||'').trim());
     const cStore = h.indexOf('서점');
     const cBook  = h.indexOf('도서');
@@ -6698,10 +6713,12 @@ async function loadShipRaw(){
     });
     ROY_STORE.splice(0, ROY_STORE.length, ...out);
     await loadAuthors();
-    ROY_RAW_STATE = out.length ? 'ok' : 'fail';
+    if (!out.length) throw new Error(`읽을 행이 없습니다 (전체 ${g.length}행, 헤더 ${hi+1}행째) — 열 위치를 확인해 주세요`);
+    ROY_RAW_STATE = 'ok'; ROY_RAW_ERR = '';
     console.info('[출고 RAW] 서점별 출고', out.length + '행');
   } catch(e) {
     ROY_RAW_STATE = 'fail';
+    ROY_RAW_ERR = (e && e.message) ? e.message : String(e);
     console.warn('[출고 RAW] 로드 실패:', e);
   }
   renderRoyalty();
@@ -6851,7 +6868,8 @@ function royRows(round){
     const amount = tr.parts.length ? tr.amount : net * Math.round(price * rate);
     // 화면에 찍는 요율도 실제 적용된 구간을 따라간다 (단일 구간일 때)
     const rateShown = tr.parts.length === 1 ? tr.parts[0].rate : (tiers[0] ? tiers[0].rate : rate);
-    return {b, pub, pubYm, pubFallback, hasInfo: !!ov, noRate, sp, c, sold, ret, excl, exclNote, net, price,
+    const eb = ebCalc(round.key, b.title);
+    return {b, pub, pubYm, pubFallback, hasInfo: !!ov, noRate, sp, c, sold, ret, excl, exclNote, net, price, eb,
             rate: rateShown, per, amount: noRate ? 0 : amount, author,
             tiers, already, parts: tr.parts, multi: tr.parts.length > 1,
             authors: royAuthorsOf(b),
@@ -6898,11 +6916,14 @@ function renderRoyalty(){
     ${ROY_RAW_STATE === 'loading' ? `<div class="card gap" style="border-left:3px solid var(--accent)">
       <div style="font-size:12px;color:var(--ink2)">출고 RAW 에서 서점별 출고를 불러오는 중입니다…</div></div>` : ''}
     ${ROY_RAW_STATE === 'fail' ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
-      <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:5px">서점별 출고를 불러오지 못했습니다</div>
+      <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:5px">서점별 출고(출고 RAW)를 불러오지 못했습니다</div>
       <div style="font-size:12px;color:var(--ink2);line-height:1.7">
         쿠팡·북센·도소매 출고부수가 빠져 <b>판매 부수에 SCM 판매분만</b> 반영됩니다.
-        <b>출고 RAW</b> 탭의 GID 를 알려주시면 연결됩니다 (해당 탭을 연 주소창 <b>#gid=</b> 뒤 숫자).<br>
-        그때까지는 표에서 <b>판매 부수를 직접 입력</b>해 쓰실 수 있습니다.</div>
+        인세정산용_정보 탭과는 무관한 문제입니다.<br>
+        ${ROY_RAW_ERR ? `<span style="color:var(--ink3)">사유: ${esc(ROY_RAW_ERR)}</span><br>` : ''}
+        <button onclick="ROY_RAW_STATE='idle';loadShipRaw()" style="margin-top:7px;border:1px solid var(--border2);
+          background:var(--surface);color:var(--ink2);border-radius:var(--r3);padding:5px 11px;
+          font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer">다시 시도</button></div>
     </div>` : ''}
 
     <div class="card gap">
@@ -7085,6 +7106,30 @@ function royDetail(round, r){
       </div>
     </div>` : ''}
 
+    <div style="margin:16px 0;padding:14px 15px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
+        <span style="font-size:11px;font-weight:800;color:var(--ink2)">전자책 (전송물)</span>
+        <span style="font-size:11px;color:var(--ink3)">플랫폼별 순매출을 직접 확인해 넣으세요. 비워두면 정산서에 안 나옵니다.</span>
+        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px">
+          ${L('정가')}${inp('ebPrice', r.eb.price || '', 96, 'right')}
+          ${L('인세율(%)')}${inp('ebRate', (r.eb.rate*100) || '', 76, 'right')}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px">
+        ${EBOOK_PLATFORMS.map(pf => `<div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:11px;color:var(--ink3);width:66px;flex-shrink:0">${esc(pf)}</span>
+          ${inp('eb_' + pf, royVal(k, t, 'eb_' + pf, '') || '', 110, 'right')}
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:22px;align-items:baseline;margin-top:12px;padding-top:11px;border-top:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--ink3)">순 매출액</span>
+        <b style="font-size:14px;color:var(--ink)">${r.eb.sales.toLocaleString()}</b>
+        <span style="font-size:11px;color:var(--ink3)">× ${(r.eb.rate*100).toFixed(0)}%</span>
+        <span style="font-size:11px;color:var(--ink3);margin-left:auto">전자책 정산 금액</span>
+        <b style="font-size:15px;color:var(--accent-deep)">${r.eb.amount.toLocaleString()}</b>
+      </div>
+    </div>
+
     <div style="overflow-x:auto">${roySheetSVG(round, r)}</div>
   </div>`;
 }
@@ -7128,7 +7173,17 @@ function roySheetSVG(round, r){
     sale.push([`저자 지분 (${Math.round(share*100)}%)`, Math.round(r.amount*share).toLocaleString()]);
   }
   sale.push(['정산 금액(원)', Math.round(r.amount * share).toLocaleString()]);
-  const H = PAD*2 + 44 + (1+basic.length)*RH + 34 + (1+sale.length)*RH;
+  // 전송물(전자책) — 입력이 있을 때만 붙인다
+  const eb = r.eb || {sales:0, price:0, rate:0, amount:0, on:false};
+  const ebRows = eb.on ? [
+    ['정가(원)', eb.price ? eb.price.toLocaleString() : '—'],
+    ['순 매출액(원)', eb.sales.toLocaleString()],
+    ['인세율(%)', (eb.rate*100).toFixed(0) + '%'],
+    ['정산 금액(원)', Math.round(eb.amount * share).toLocaleString()],
+  ] : [];
+  const H = PAD*2 + 44 + (1+basic.length)*RH + 34 + (1+sale.length)*RH
+          + (ebRows.length ? 34 + (1+ebRows.length)*RH : 0)
+          + (ebRows.length ? 34 + 2*RH : 0);
 
   const out = []; let y = PAD + 34;
   // 제목은 판매 연도 기준 (지급 연도가 아니다)
@@ -7155,6 +7210,11 @@ function roySheetSVG(round, r){
   };
   block('기본 사항', basic, false);
   block('종이책 판매 정산 내역', sale, true);
+  if (ebRows.length) {
+    block('전송물 판매 정산 내역', ebRows, true);
+    const paper = Math.round(r.amount * share), ebook = Math.round(eb.amount * share);
+    block('합계', [['종이책 + 전송물(원)', (paper + ebook).toLocaleString()]], true);
+  }
 
   return `<svg id="roySvg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
     xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;border:1px solid var(--border);border-radius:var(--r3)">
