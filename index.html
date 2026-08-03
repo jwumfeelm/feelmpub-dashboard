@@ -1045,6 +1045,26 @@ document.addEventListener('DOMContentLoaded',()=>{
   const btn=document.getElementById('lockBtn');
   const pw=document.getElementById('lockPw');
   const err=document.getElementById('lockErr');
+  // 로그인 전에 00_설정만 미리 읽어 비밀번호를 최신으로 맞춘다.
+  // 시트를 못 읽으면 마지막으로 확인된 값(localStorage)이나 코드 기본값을 쓴다.
+  (function primePw(){
+    try { const v = localStorage.getItem('feelm-pw'); if (v) CFG.pw = v; } catch(e){}
+    if (!CFG.sheetId || !CFG.gids.setting) return;
+    const url = `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/export?format=csv&gid=${CFG.gids.setting}`;
+    fetch(url, {cache:'no-store'})
+      .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
+      .then(txt => {
+        const g = parseCSVGrid(txt);
+        const hi = findHeaderRow(g, ['항목']);
+        if (hi < 0) return;
+        const row = gridToObjs(g, hi).find(x => String(x['항목']||'').trim() === '대시보드 비밀번호');
+        if (!row) return;
+        const v = pickPw(row);
+        if (v) { CFG.pw = v; try { localStorage.setItem('feelm-pw', v); } catch(e){} }
+      })
+      .catch(e => console.warn('[비밀번호] 시트 확인 실패 — 마지막 값 사용:', e));
+  })();
+
   function unlock(){
     if(pw.value===CFG.pw){
       document.getElementById('lock').classList.add('hidden');
@@ -1717,6 +1737,17 @@ async function loadSheets() {
   }
 }
 
+// 비밀번호는 연도와 무관하게 C2 한 칸에 적는 규칙 (시트에도 그렇게 안내돼 있음).
+// 첫 연도 열부터 왼쪽→오른쪽으로 훑어 처음 나오는 값을 쓴다.
+function pickPw(row){
+  const keys = Object.keys(row).filter(k => /^\d{4}$/.test(k)).sort();   // 2025, 2026, …
+  for (const k of keys.concat(['값','내용'])) {
+    const v = String(row[k] || '').trim();
+    if (v) return v;
+  }
+  return '';
+}
+
 /* ─────────────────────────────────────
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
@@ -1731,8 +1762,8 @@ function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales
     }
     const rowPw = setting.find(r => r['항목']==='대시보드 비밀번호');
     if (rowPw) {
-      const pw = (rowPw['2025'] || '').trim();
-      if (pw) CFG.pw = pw;
+      const pw = pickPw(rowPw);
+      if (pw) { CFG.pw = pw; try { localStorage.setItem('feelm-pw', pw); } catch(e){} }
     }
     // 채널 링크 (H열=채널명, I열=링크)
     const linkRows = setting.filter(r => r['채널명'] && r['링크']);
@@ -7277,15 +7308,20 @@ function royDetail(round, r){
     onchange="royEdit('${k}','${T}','${f}',this.value)"
     style="width:${w||120}px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
     border-radius:var(--r4);padding:5px 9px;font-family:var(--sans);font-size:12px;text-align:${ta||'left'}">`;
-  const author  = r.author;
-  const account = royVal(k, t, 'account', royMeta(r.b, 'account', ''));
+  // 저자·계좌는 인세정산용_정보 탭이 정본 (공저면 지금 선택된 저자)
+  const a = (r.authors && (r.authors[ROY.author] || r.authors[0])) || {};
+  const author  = a.name || '';
+  const account = [a.bank, a.account, a.holder].filter(Boolean).join(' ');
   const payDate = royVal(k, t, 'payDate', round.payYm + '-27');
   const pubD    = royVal(k, t, 'pubDate', r.pub);
   const fromD   = royVal(k, t, 'fromD', r.sp.from + '-01');
   const toD     = royVal(k, t, 'toD', lastDay(r.sp.to));
   const L = x => `<span style="font-size:11px;color:var(--ink3)">${x}</span>`;
   // 시트에서 오는 값 — 여기서 고치지 않고 인세정산용_정보 탭에서 고친다
-  const ro = v => `<span style="font-size:12px;font-weight:600;color:var(--ink)">${esc(String(v||'—'))}</span>`;
+  // 비어 있으면 대시 대신 어디서 채우는지 알려준다
+  const ro = (v, where) => String(v||'').trim()
+    ? `<span style="font-size:12px;font-weight:600;color:var(--ink)">${esc(String(v))}</span>`
+    : `<span style="font-size:11.5px;color:var(--warn)">${esc(where || '시트에 미입력')}</span>`;
   const dotDate = v => String(v||'').replace(/-/g,'/');
 
   return `<div class="card gap" style="border-left:3px solid var(--accent)">
@@ -7305,9 +7341,9 @@ function royDetail(round, r){
     </div>
     <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:12px">
       <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
-        ${L('저자명')}${ro(author)}
-        ${L('계좌번호')}${ro(account)}
-        ${L('출간일')}${ro(dotDate(pubD))}
+        ${L('저자명')}${ro(author, '인세정산용_정보 탭 저자명 비어 있음')}
+        ${L('계좌번호')}${ro(account, '인세정산용_정보 탭 은행·계좌번호·예금주 비어 있음')}
+        ${L('출간일')}${ro(dotDate(pubD), '출간일 비어 있음')}
         ${L('지급일')}${inp('payDate', payDate, 130)}
       </div>
       <div style="display:grid;grid-template-columns:auto auto;gap:8px 12px;align-items:center">
