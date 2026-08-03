@@ -189,6 +189,47 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
   .tab-btn{font-size:12px;padding:8px 9px}
 }
 
+/* 인세 정산 로딩 — 화면 한가운데. 기다리는 시간을 기분 좋게 만드는 자리다. */
+#royLoad{position:fixed;inset:0;z-index:1250;display:none;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 44%, rgba(255,255,255,.97) 0%, rgba(245,247,250,.98) 70%);
+  backdrop-filter:blur(2px)}
+#royLoad.on{display:flex;animation:fadeIn var(--d) var(--ease) both}
+#royLoad .in{display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center;padding:24px}
+#royLoad .cap{font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1.5}
+#royLoad .sub{font-size:13px;color:var(--ink3);line-height:1.7}
+#royLoad .bar{width:190px;height:3px;border-radius:2px;background:var(--ink5);overflow:hidden}
+#royLoad .bar i{display:block;height:3px;width:40%;border-radius:2px;background:var(--accent);
+  animation:royBar 1.5s ease-in-out infinite}
+@keyframes royBar{0%{transform:translateX(-110%)}100%{transform:translateX(360%)}}
+
+/* 인세 정산 로딩 — 책이 한 권씩 쌓이고 동전이 톡 떨어진다 */
+@keyframes bookIn{
+  0%   {transform:translateY(-40px) rotate(-10deg);opacity:0}
+  16%  {transform:translateY(2px)   rotate(1.5deg);opacity:1}
+  24%  {transform:translateY(-4px)  rotate(0deg)}
+  30%  {transform:translateY(0)     rotate(0deg)}
+  86%  {transform:translateY(0)     rotate(0deg);opacity:1}
+  100% {transform:translateY(0)     rotate(0deg);opacity:0}
+}
+@keyframes coinDrop{
+  0%   {transform:translateY(-26px) scaleX(1);opacity:0}
+  35%  {opacity:1}
+  60%  {transform:translateY(0) scaleX(1)}
+  70%  {transform:translateY(0) scaleX(.42)}
+  82%  {transform:translateY(0) scaleX(1)}
+  92%  {transform:translateY(0) scaleX(.72)}
+  100% {transform:translateY(0) scaleX(1);opacity:1}
+}
+@keyframes shelfPulse{0%,100%{opacity:.22}50%{opacity:.4}}
+.roy-load{display:flex;align-items:center;gap:16px}
+.roy-load svg{flex-shrink:0}
+.roy-load .bk{animation:bookIn 2.4s var(--ease) infinite;transform-origin:50% 100%}
+.roy-load .coin{animation:coinDrop 1.5s ease-in-out infinite;transform-origin:50% 100%;transform-box:fill-box}
+.roy-load .shelf{animation:shelfPulse 2s ease-in-out infinite}
+.roy-load .msg{font-size:12.5px;color:var(--ink2);line-height:1.65}
+.roy-load .dots::after{content:'';animation:royDots 1.4s steps(4,end) infinite}
+@keyframes royDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
 /* 인세 정산서 모달 */
 #royModal{position:fixed;inset:0;z-index:1300;display:none;align-items:flex-start;justify-content:center;
   background:rgba(15,22,32,.5);backdrop-filter:blur(3px);padding:32px 20px;overflow-y:auto}
@@ -527,6 +568,13 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 </div>
 
 <!-- APP -->
+<div id="royLoad"><div class="in">
+  <div id="royLoadArt"></div>
+  <div><div class="cap" id="royLoadCap"></div>
+    <div class="sub" id="royLoadSub" style="margin-top:9px"></div></div>
+  <div class="bar"><i></i></div>
+</div></div>
+
 <div id="royModal"><div class="box" style="position:relative">
   <button class="x" onclick="royClose()" title="닫기">&#10005;</button>
   <div id="royModalBody"></div>
@@ -6675,6 +6723,7 @@ let ROY_RAW_ERR = '';         // 실패 사유 — 화면과 콘솔에 그대로
 async function loadShipRaw(){
   if (ROY_RAW_STATE === 'loading' || ROY_RAW_STATE === 'ok') return;
   ROY_RAW_STATE = 'loading';
+  royLoadShow();
   renderRoyalty();
   try {
     const base = `https://docs.google.com/spreadsheets/d/${CFG.sheetId}/`;
@@ -6721,6 +6770,7 @@ async function loadShipRaw(){
     ROY_RAW_ERR = (e && e.message) ? e.message : String(e);
     console.warn('[출고 RAW] 로드 실패:', e);
   }
+  royLoadHide();
   renderRoyalty();
 }
 
@@ -6766,6 +6816,89 @@ function royAuthorsOf(b){
   const used  = given.reduce((x,a) => x + a.share, 0);
   const each  = rest > 0 ? Math.max(0, 100 - used) / rest : 0;
   return list.map(a => ({...a, shareP: (a.share > 0 ? a.share : each) / 100}));
+}
+
+/* 로딩 카드 — 문구는 열 때마다 하나 골라 쓴다 */
+const ROY_LOAD_MSGS = [
+  '책을 한 권씩 세는 중입니다',
+  '서점마다 흩어진 숫자를 모으는 중입니다',
+  '판매 부수를 차곡차곡 쌓는 중입니다',
+  '저자님께 드릴 숫자를 맞춰보는 중입니다',
+  '반품까지 빠짐없이 챙기는 중입니다',
+];
+function royLoadArt(size){
+  const S = size || 190;
+  const books = [
+    {y:36, w:44, c:'#3A5BD9', d:0},
+    {y:28, w:38, c:'#6B8AF0', d:.16},
+    {y:20, w:41, c:'#2A44A8', d:.32},
+    {y:12, w:34, c:'#8AA0EE', d:.48},
+  ];
+  return `<div class="roy-load"><svg viewBox="0 0 72 56" width="${S}" height="${Math.round(S*56/72)}">
+    <ellipse class="shelf" cx="34" cy="51" rx="30" ry="3" fill="#0F1620"/>
+    ${books.map(b => `<g class="bk" style="animation-delay:${b.d}s">
+      <rect x="${34 - b.w/2}" y="${b.y}" width="${b.w}" height="7.4" rx="1.6" fill="${b.c}"/>
+      <rect x="${34 - b.w/2 + 2.6}" y="${b.y + 1.6}" width="2" height="4.2" rx="1" fill="#FFF" opacity=".55"/>
+    </g>`).join('')}
+    <g class="coin">
+      <ellipse cx="60" cy="47" rx="7" ry="7" fill="#FFD400"/>
+      <ellipse cx="60" cy="47" rx="4.4" ry="4.4" fill="none" stroke="#C9A200" stroke-width="1.1"/>
+    </g>
+  </svg></div>`;
+}
+
+// 화면 한가운데 로딩 — 멘트는 2.8초마다 바뀐다
+let ROY_LOAD_TIMER = null;
+function royLoadShow(){
+  const el = document.getElementById('royLoad');
+  if (!el) return;
+  const art = document.getElementById('royLoadArt');
+  const sub = document.getElementById('royLoadSub');
+  if (art) art.innerHTML = royLoadArt(190);
+  if (sub) sub.textContent = '출고·판매 기록이 많아 몇 초 걸립니다';
+  let i = Math.floor(Math.random() * ROY_LOAD_MSGS.length);
+  const tick = () => {
+    const cap = document.getElementById('royLoadCap');
+    if (cap) cap.textContent = ROY_LOAD_MSGS[i++ % ROY_LOAD_MSGS.length];
+  };
+  tick();
+  clearInterval(ROY_LOAD_TIMER);
+  ROY_LOAD_TIMER = setInterval(tick, 2800);
+  el.classList.add('on');
+}
+function royLoadHide(){
+  clearInterval(ROY_LOAD_TIMER); ROY_LOAD_TIMER = null;
+  const el = document.getElementById('royLoad');
+  if (el) el.classList.remove('on');
+}
+
+function royLoadCard(){
+  const msg = ROY_LOAD_MSGS[Math.floor(Date.now() / 4000) % ROY_LOAD_MSGS.length];
+  const books = [
+    {y:36, w:44, c:'#3A5BD9', d:0},
+    {y:28, w:38, c:'#6B8AF0', d:.14},
+    {y:20, w:41, c:'#2A44A8', d:.28},
+    {y:12, w:34, c:'#8AA0EE', d:.42},
+  ];
+  return `<div class="card gap">
+    <div class="roy-load">
+      <svg viewBox="0 0 72 56" width="72" height="56">
+        <ellipse class="shelf" cx="34" cy="51" rx="30" ry="3" fill="#0F1620"/>
+        ${books.map(b => `<g class="bk" style="animation-delay:${b.d}s">
+          <rect x="${34 - b.w/2}" y="${b.y}" width="${b.w}" height="7.4" rx="1.6" fill="${b.c}"/>
+          <rect x="${34 - b.w/2 + 2.6}" y="${b.y + 1.6}" width="2" height="4.2" rx="1" fill="#FFF" opacity=".55"/>
+        </g>`).join('')}
+        <g class="coin">
+          <ellipse cx="60" cy="47" rx="7" ry="7" fill="#FFD400"/>
+          <ellipse cx="60" cy="47" rx="4.4" ry="4.4" fill="none" stroke="#C9A200" stroke-width="1.1"/>
+        </g>
+      </svg>
+      <div class="msg">
+        <b style="color:var(--ink);font-size:13px">${esc(msg)}<span class="dots"></span></b><br>
+        <span style="color:var(--ink3);font-size:11.5px">출고·판매 기록이 많아 몇 초 걸립니다</span>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* 인세 정산 화면 */
@@ -6913,8 +7046,6 @@ function renderRoyalty(){
       <span style="font-size:12px;color:var(--ink2)">대상 <b style="color:var(--ink)">${shown.length}</b>${ROY.q?`/${target.length}`:''}종${ready.length<shown.length?` · <b style="color:var(--bad)">인세율 미입력 ${shown.length-ready.length}종</b>`:''} · 산출 가능 <b style="color:var(--ink)">${won(sumShown)}</b></span>
     </div>
 
-    ${ROY_RAW_STATE === 'loading' ? `<div class="card gap" style="border-left:3px solid var(--accent)">
-      <div style="font-size:12px;color:var(--ink2)">출고 RAW 에서 서점별 출고를 불러오는 중입니다…</div></div>` : ''}
     ${ROY_RAW_STATE === 'fail' ? `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
       <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:5px">서점별 출고(출고 RAW)를 불러오지 못했습니다</div>
       <div style="font-size:12px;color:var(--ink2);line-height:1.7">
