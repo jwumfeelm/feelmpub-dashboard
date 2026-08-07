@@ -6490,40 +6490,69 @@ function cmpTag(arr, i, lowerIsBetter){
 /* ── 차트 PNG 저장 ── */
 // 화면의 SVG 를 그대로 PNG 로 굽는다. 외부 라이브러리 없이 동작한다.
 function svgToPng(svgEl, filename, scale){
-  if (!svgEl) return;
-  const k = scale || 2;
-  const vb = (svgEl.getAttribute('viewBox')||'0 0 1000 300').split(/\s+/).map(Number);
-  const w = vb[2] || svgEl.clientWidth || 1000;
-  const h = vb[3] || svgEl.clientHeight || 300;
+  if (!svgEl) { alert('저장할 차트를 찾지 못했습니다.'); return; }
 
-  // CSS 변수를 실제 색으로 바꿔야 캔버스에서 렌더된다
+  // 크기 — viewBox 를 우선 쓰되 없거나 이상하면 실제 표시 크기로
+  const vb = (svgEl.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  const box = svgEl.getBoundingClientRect();
+  let w = (vb.length === 4 && vb[2] > 0) ? vb[2] : 0;
+  let h = (vb.length === 4 && vb[3] > 0) ? vb[3] : 0;
+  if (!w || !h) { w = Math.round(box.width) || 1000; h = Math.round(box.height) || 300; }
+  if (w < 60 || h < 40) { alert('이 차트는 너무 작아 저장할 수 없습니다.'); return; }
+
+  const k = scale || 2;
+  const pad = 34;                                   // 하단 표식 자리
+
+  // 원본을 복제하고, 클래스로만 칠해진 부분을 실제 색으로 굳힌다.
+  // 직렬화하면 문서 스타일시트가 따라가지 않아 색이 전부 빠지기 때문.
+  const clone = svgEl.cloneNode(true);
+  const live = svgEl.querySelectorAll('*');
+  const copy = clone.querySelectorAll('*');
+  const PROPS = ['fill','stroke','stroke-width','stroke-dasharray','stroke-dashoffset',
+                 'stroke-linecap','stroke-linejoin','opacity','fill-opacity','stroke-opacity',
+                 'stop-color','stop-opacity','font-size','font-weight','font-family',
+                 'letter-spacing','text-anchor','dominant-baseline','transform','visibility','display'];
+  for (let i = 0; i < live.length && i < copy.length; i++){
+    const cs = getComputedStyle(live[i]);
+    let css = '';
+    PROPS.forEach(pn => {
+      const v = cs.getPropertyValue(pn);
+      if (v && v !== 'none' || pn === 'fill' || pn === 'stroke') css += `${pn}:${v};`;
+    });
+    // 애니메이션 도중이면 최종 상태로 굳힌다
+    copy[i].setAttribute('style', css);
+    copy[i].removeAttribute('class');
+  }
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
+  if (!clone.getAttribute('viewBox')) clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
   const cs = getComputedStyle(document.documentElement);
-  let src = new XMLSerializer().serializeToString(svgEl);
-  src = src.replace(/var\((--[a-z0-9-]+)\)/gi, (m0, name) => (cs.getPropertyValue(name) || '#888').trim());
-  if (!/xmlns=/.test(src)) src = src.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  let src = new XMLSerializer().serializeToString(clone);
+  src = src.replace(/var\((--[a-z0-9-]+)[^)]*\)/gi, (m0, name) => (cs.getPropertyValue(name) || '#888').trim());
 
   const img = new Image();
-  const blob = new Blob([src], {type:'image/svg+xml;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(new Blob([src], {type:'image/svg+xml;charset=utf-8'}));
   img.onload = () => {
     const c = document.createElement('canvas');
-    c.width = w*k; c.height = h*k;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,c.width,c.height);
-    ctx.drawImage(img, 0, 0, c.width, c.height);
-    // 대외비 표식을 함께 굽는다
-    ctx.font = `700 ${11*k}px sans-serif`;
-    ctx.fillStyle = 'rgba(15,22,32,.45)';
-    ctx.textAlign = 'right';
-    ctx.fillText('대외비 · 콘텐츠사업본부 · ' + ymd(new Date()), c.width - 10*k, c.height - 9*k);
+    c.width = w * k; c.height = (h + pad) * k;
+    const g = c.getContext('2d');
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, w * k, h * k);
+    g.font = `700 ${11*k}px "Pretendard", sans-serif`;
+    g.fillStyle = 'rgba(15,22,32,.45)';
+    g.textAlign = 'right';
+    g.fillText('대외비 · 콘텐츠사업본부 · ' + ymd(new Date()), c.width - 12*k, c.height - 12*k);
     c.toBlob(b => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(b);
-      a.download = (filename || 'chart') + '.png';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-    });
-    URL.revokeObjectURL(url);
+      if (!b) { alert('이미지를 만들지 못했습니다.'); URL.revokeObjectURL(url); return; }
+      const a2 = document.createElement('a');
+      a2.href = URL.createObjectURL(b);
+      a2.download = (filename || 'chart') + '.png';
+      document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+      setTimeout(() => URL.revokeObjectURL(a2.href), 1000);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
   };
   img.onerror = () => { URL.revokeObjectURL(url); alert('이미지로 저장하지 못했습니다.'); };
   img.src = url;
@@ -6531,7 +6560,16 @@ function svgToPng(svgEl, filename, scale){
 // 버튼이 속한 카드 안의 첫 SVG 를 저장
 function savePng(btn, name){
   const card = btn.closest('.card') || document;
-  svgToPng(card.querySelector('svg'), name || 'chart');
+  // 카드 안에 아이콘용 작은 SVG 가 섞여 있어 첫 번째를 집으면 엉뚱한 게 저장된다.
+  // 화면에서 가장 넓은 SVG 를 실제 차트로 본다.
+  let best = null, area = 0;
+  card.querySelectorAll('svg').forEach(el => {
+    const b = el.getBoundingClientRect();
+    const a2 = b.width * b.height;
+    if (b.width >= 200 && a2 > area) { area = a2; best = el; }
+  });
+  if (!best) { alert('저장할 차트를 찾지 못했습니다.'); return; }
+  svgToPng(best, name || 'chart');
 }
 function pngBtn(name){
   return `<button onclick="savePng(this,'${name}')" title="PNG 로 저장"
