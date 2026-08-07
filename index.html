@@ -2278,6 +2278,7 @@ function initApp(){
   stampConfNote();
   initEasterEggs();
   initCmdk();
+  initSearchIME();
   (function(){
     const el = document.getElementById('royModal');
     if (el) el.addEventListener('click', e => { if (e.target === el) royClose(); });
@@ -4207,7 +4208,7 @@ function tblBar(id, placeholder, csvFn, extra){
   const st = tblState(id);
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     ${extra||''}
-    <input value="${esc(st.q)}" oninput="tblSearch('${id}',this.value)" placeholder="${esc(placeholder)}"
+    <input value="${esc(st.q)}" oninput="searchInput(this,v=>tblSearch('${id}',v))" placeholder="${esc(placeholder)}"
       style="border:1px solid var(--border2);background:var(--surface);color:var(--ink);border-radius:var(--r3);
       padding:6px 11px;font-family:var(--sans);font-size:12px;outline:none;width:190px">
     ${csvFn?`<button onclick="${csvFn}" title="CSV 내려받기" style="border:1px solid var(--border2);background:var(--surface);
@@ -4256,6 +4257,37 @@ function help(term){
     font-size:9px;font-weight:700;margin-left:4px;cursor:help;vertical-align:middle">?</span>`;
 }
 let bookQuery = "";
+/* 검색창 공통 처리
+   한글은 여러 번의 키 입력이 모여 한 글자가 된다(조합 중). 그 사이에 화면을 다시 그리면
+   입력창이 새로 만들어지면서 조합이 끊겨 한 글자씩만 입력된다.
+   그래서 조합이 끝날 때까지 기다렸다가 그리고, 그린 뒤 커서 위치를 되돌려 놓는다. */
+const SEARCH_IME = {};                 // id → 조합 중 여부
+function searchInput(el, apply){
+  const id = el.id || '';
+  if (id && SEARCH_IME[id]) return;    // 조합 중이면 아직 그리지 않는다
+  const pos = el.selectionStart;
+  apply(el.value);
+  if (!id) return;
+  const next = document.getElementById(id);
+  if (next && next !== document.activeElement) {
+    next.focus();
+    try { next.setSelectionRange(pos, pos); } catch(e) {}
+  }
+}
+// 조합 시작/끝을 잡아 그리는 시점을 미룬다
+function initSearchIME(){
+  document.addEventListener('compositionstart', e => {
+    if (e.target && e.target.id) SEARCH_IME[e.target.id] = true;
+  }, true);
+  document.addEventListener('compositionend', e => {
+    const el = e.target;
+    if (!el || !el.id) return;
+    SEARCH_IME[el.id] = false;
+    if (typeof el.oninput === 'function') el.oninput({target: el});
+    else el.dispatchEvent(new Event('input', {bubbles: true}));
+  }, true);
+}
+
 function onBookSearch(v){ bookQuery = String(v||"").trim(); renderBooks(); }
 
 // 표를 CSV 로 내려받기 — 회의 자료로 옮길 때
@@ -4346,7 +4378,7 @@ function renderBooks(){
           <small>${booksShowAll ? `전체 ${BOOKS.length}종` : `관리 대상 ${activeCount}종 · 최근 12개월 출고 1,000만원 이상`} · 컬럼 클릭 시 정렬 · 행 클릭 시 상세${COST_NOBOOK.배분시작 ? ` · 도서별 비용은 ${COST_NOBOOK.배분시작}부터 집계` : ''}</small>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <input id="bookSearch" value="${esc(bookQuery)}" oninput="onBookSearch(this.value)" placeholder="도서명 · ISBN 검색  ( / )"
+          <input id="bookSearch" value="${esc(bookQuery)}" oninput="searchInput(this,onBookSearch)" placeholder="도서명 · ISBN 검색  ( / )"
             style="border:1px solid var(--border2);background:var(--surface);color:var(--ink);border-radius:var(--r3);padding:6px 12px;font-family:var(--sans);font-size:12px;outline:none;width:200px">
           <button onclick="toggleBooksScope()" style="border:1px solid var(--border2);background:var(--surface);color:var(--ink2);border-radius:var(--r3);padding:6px 12px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
             ${booksShowAll ? `관리 대상만 (${activeCount}종)` : `전체 보기 (${BOOKS.length}종)`}
@@ -7196,7 +7228,7 @@ function renderRoyalty(){
            color:${round.state==='done'?'var(--good)':(round.state==='open'?'var(--accent-deep)':'var(--warn)')}">${esc(round.stateLabel)}</span>
       <span style="font-size:12px;color:var(--ink3)">판매 ${round.coverStart} ~ ${round.coverEnd} · 지급 ${round.payYm}
         ${round.state==='open'?`· <b style="color:var(--ink2)">${round.coverEnd} 까지 집계 후 확정</b>`:''}</span>
-      <input value="${esc(ROY.q)}" oninput="roySearch(this.value)" placeholder="도서명 · 저자명 · ISBN 검색"
+      <input value="${esc(ROY.q)}" oninput="searchInput(this,roySearch)" placeholder="도서명 · 저자명 · ISBN 검색"
         style="margin-left:auto;width:230px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
         border-radius:var(--r3);padding:7px 12px;font-family:var(--sans);font-size:12px;outline:none">
       <span style="font-size:12px;color:var(--ink2)">대상 <b style="color:var(--ink)">${shown.length}</b>${ROY.q?`/${target.length}`:''}종${ready.length<shown.length?` · <b style="color:var(--bad)">인세율 미입력 ${shown.length-ready.length}종</b>`:''} · 산출 가능 <b style="color:var(--ink)">${won(sumShown)}</b></span>
@@ -7667,7 +7699,7 @@ function royArchiveCard(){
   return `<div class="card gap">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
       <div class="card-title" style="margin:0">정산 이력 <small>발행 ${list.length}${ROY.aq?`/${all.length}`:''}건 · 누계 ${won(sum)}</small></div>
-      <input value="${esc(ROY.aq)}" oninput="royArchSearch(this.value)" placeholder="도서 · 저자 · 회차 검색"
+      <input value="${esc(ROY.aq)}" oninput="searchInput(this,royArchSearch)" placeholder="도서 · 저자 · 회차 검색"
         style="margin-left:auto;width:200px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
         border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11.5px;outline:none">
       <button onclick="royExportArchive()" style="border:1px solid var(--border2);background:var(--surface);
