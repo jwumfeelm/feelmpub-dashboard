@@ -1518,6 +1518,7 @@ async function loadPubSheets() {
       }
     } catch(e) { console.warn('[판권 수출] 로드 실패:', e); }
   }
+  if (activeTab === 'summary') renderSummary();
 }
 
 async function loadMktSheets() {
@@ -1668,6 +1669,8 @@ async function loadMktSheets() {
   } catch(e) {
     console.warn('마케팅 캠페인 시트 로드 실패:', e);
   }
+  // 늦게 도착한 출처가 데이터 신선도에 반영되도록 다시 그린다
+  if (activeTab === 'summary') renderSummary();
 }
 
 async function loadSheets() {
