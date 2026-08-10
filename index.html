@@ -261,10 +261,12 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
   background:var(--surface2);font-size:11px;color:var(--ink3)}
 
 /* 최상단 지표 구역 — 상단 밴드에서 이어지는 옅은 배경으로 아래 지표들과 구분 */
-.top-zone{margin:-18px -24px 22px;padding:22px 24px 24px;
+/* 위쪽 여백은 0 — 예전엔 화면 맨 위라 -18px 로 끌어올렸지만
+   지금은 데이터 신선도 카드가 위에 있어 그 카드를 덮어버린다 */
+.top-zone{margin:14px -24px 22px;padding:22px 24px 24px;
   background:linear-gradient(180deg,#E9EEF8 0%,#F1F4FA 55%,var(--bg) 100%);
   border-bottom:1px solid var(--border)}
-@media (max-width:900px){.top-zone{margin:-18px -14px 18px;padding:18px 14px 20px}}
+@media (max-width:900px){.top-zone{margin:12px -14px 18px;padding:18px 14px 20px}}
 
 /* MAIN */
 main{flex:1;padding:18px 24px 80px;width:100%;box-sizing:border-box}
@@ -8171,7 +8173,7 @@ function freshnessBanner(){
       ${bad.length ? `<div style="margin-left:auto;font-size:11px;color:var(--ink2);text-align:right;line-height:1.6">
         <b style="color:var(--warn)">갱신이 필요한 곳</b><br>${bad.slice(0,3).map(x=>esc(x.label)+' '+x.gap+'일').join(' · ')}</div>` : ''}
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:4px;display:grid;gap:0 22px;
+    <div style="border-top:1px solid var(--border);padding-top:6px;display:grid;gap:4px 22px;
          grid-template-columns:repeat(${cols}, minmax(0,1fr))">
       ${list.map(cell).join('')}
     </div>
