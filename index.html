@@ -3337,7 +3337,16 @@ function renderMkt(){
 const DTREND = { q:'', days:20, ma:false, ev:true, picked:[] };
 const DT_COLORS = ['#3A5BD9', '#E5484D', '#3DBE8B', '#F0A020', '#8B5CF6'];
 
-function dtSearch(v){ DTREND.q = String(v||'').trim(); renderMkt(); }
+// 검색어를 칠 때마다 탭 전체를 다시 그리면 입력창이 새로 만들어져 한글 조합이 끊긴다.
+// 그래서 입력창은 그대로 두고 후보 목록만 갈아끼운다.
+function dtSearch(v){
+  DTREND.q = String(v||'').trim();
+  dtPaintHits();
+}
+function dtPaintHits(){
+  const box = document.getElementById('dtHits');
+  if (box) box.innerHTML = dtHitsHTML();
+}
 function dtDays(n){ DTREND.days = +n; renderMkt(); }
 function dtMA(){ DTREND.ma = !DTREND.ma; renderMkt(); }
 function dtEv(){ DTREND.ev = !DTREND.ev; renderMkt(); }
@@ -3347,6 +3356,7 @@ function dtToggle(t){
   else { if (DTREND.picked.length >= 5) DTREND.picked.shift(); DTREND.picked.push(t); }
   DTREND.q = '';          // 고르면 목록을 닫는다 — 차트를 가리지 않게
   renderMkt();
+  setTimeout(() => { const el = document.getElementById('dtQ'); if (el) { el.value = ''; el.focus(); } }, 0);
 }
 function dtClear(){ DTREND.picked = []; renderMkt(); }
 
@@ -3416,6 +3426,45 @@ const DT_EV = {
   content: {c:'#8B95A5', label:'콘텐츠'},
 };
 
+// 기간 내 판매가 있는 도서 (검색 후보)
+function dtCandidates(){
+  const all = new Set();
+  Object.keys(DAY_SALES_STORE||{}).forEach(b =>
+    Object.keys(DAY_SALES_STORE[b]||{}).forEach(d => all.add(d)));
+  const dates = [...all].sort().slice(-DTREND.days);
+  return Object.keys(DAY_SALES_STORE||{})
+    .map(t => ({t, sum: dtSeries(t, dates).reduce((a,b)=>a+b,0)}))
+    .filter(x => x.sum > 0)
+    .sort((a,b) => b.sum - a.sum);
+}
+function dtHitsHTML(){
+  const nq = v => String(v||'').toLowerCase().replace(/\s/g,'');
+  const q = nq(DTREND.q);
+  if (!q) return '';
+  const hits = dtCandidates().filter(x => nq(x.t).indexOf(q) >= 0);
+  if (!hits.length) return `<div style="position:absolute;top:38px;left:0;z-index:40;width:330px;
+    background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);
+    box-shadow:var(--sh-lg);padding:11px 13px;font-size:12px;color:var(--ink3)">검색 결과가 없습니다</div>`;
+  return `<div style="position:absolute;top:38px;left:0;z-index:40;width:330px;max-height:250px;
+    overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);
+    box-shadow:var(--sh-lg)">
+    ${hits.slice(0,12).map(x => {
+      const on = DTREND.picked.indexOf(x.t) >= 0;
+      return `<div onclick="dtToggle('${esc(x.t).replace(/'/g,"\\'")}')"
+        style="display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;
+        ${on?'background:var(--accent-dim)':''}">
+        <span style="width:14px;height:14px;border-radius:4px;flex-shrink:0;
+          border:1.5px solid ${on?'var(--accent)':'var(--border2)'};
+          background:${on?'var(--accent)':'transparent'};color:#FFF;font-size:9px;
+          display:flex;align-items:center;justify-content:center">${on?'&#10003;':''}</span>
+        <span style="font-size:12px;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;
+          text-overflow:ellipsis">${esc(x.t)}</span>
+        <span style="font-size:11px;color:var(--ink3)">${x.sum.toLocaleString()}부</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderDailyTrend(){
   // 데이터가 있는 날짜 축
   const all = new Set();
@@ -3453,30 +3502,13 @@ function renderDailyTrend(){
   return `
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <div style="position:relative">
-      <input id="dtSearch" value="${esc(DTREND.q)}" oninput="searchInput(this,dtSearch)"
+      <input id="dtQ" value="${esc(DTREND.q)}" oninput="dtSearch(this.value)"
         placeholder="도서명 검색 후 선택 · 최대 5종"
         style="width:250px;border:1px solid var(--border2);background:var(--surface);color:var(--ink);
         border-radius:var(--r3);padding:7px 12px;font-family:var(--sans);font-size:12px;outline:none">
-      ${DTREND.q ? `<span onclick="dtSearch('')" title="검색 지우기"
-        style="position:absolute;right:9px;top:7px;cursor:pointer;color:var(--ink3);font-size:13px">&#10005;</span>` : ''}
-      ${hits.length ? `<div style="position:absolute;top:38px;left:0;z-index:40;width:330px;max-height:250px;
-        overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);
-        box-shadow:var(--sh-lg)">
-        ${hits.slice(0,12).map(x => {
-          const on = DTREND.picked.indexOf(x.t) >= 0;
-          return `<div onclick="dtToggle('${esc(x.t).replace(/'/g,"\\'")}')"
-            style="display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;
-            ${on?'background:var(--accent-dim)':''}">
-            <span style="width:14px;height:14px;border-radius:4px;flex-shrink:0;
-              border:1.5px solid ${on?'var(--accent)':'var(--border2)'};
-              background:${on?'var(--accent)':'transparent'};color:#FFF;font-size:9px;
-              display:flex;align-items:center;justify-content:center">${on?'&#10003;':''}</span>
-            <span style="font-size:12px;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;
-              text-overflow:ellipsis">${esc(x.t)}</span>
-            <span style="font-size:11px;color:var(--ink3)">${x.sum.toLocaleString()}부</span>
-          </div>`;
-        }).join('')}
-      </div>` : ''}
+      <span onclick="dtSearch('');document.getElementById('dtQ').value=''" title="검색 지우기"
+        style="position:absolute;right:9px;top:7px;cursor:pointer;color:var(--ink3);font-size:13px">&#10005;</span>
+      <div id="dtHits">${dtHitsHTML()}</div>
     </div>
     ${[14,20,30,60].map(n => `<button onclick="dtDays(${n})"
       style="border:1px solid ${DTREND.days===n?'var(--accent)':'var(--border2)'};
