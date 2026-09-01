@@ -4473,11 +4473,22 @@ function tblApply(id, list, fields){
     out = out.filter(o => fields.some(f => String(o[f]==null?'':o[f]).toLowerCase().replace(/\s/g,'').indexOf(q) >= 0));
   }
   if (st.key) {
+    // 날짜는 typeof 가 'object' 라 숫자 분기를 못 타고 문자열로 비교돼 뒤섞인다.
+    // 정렬 전에 값을 비교 가능한 형태로 바꾼다.
+    const val = o => {
+      const v = o[st.key];
+      if (v instanceof Date) return v.getTime();
+      if (v == null || v === '') return null;
+      return v;
+    };
     out = out.slice().sort((a,b)=>{
-      const x=a[st.key], y=b[st.key];
-      const nx=typeof x==='number', ny=typeof y==='number';
-      if (nx && ny) return (x-y)*st.dir;
-      return String(x==null?'':x).localeCompare(String(y==null?'':y),'ko')*st.dir;
+      const x = val(a), y = val(b);
+      // 빈 값은 방향과 무관하게 항상 뒤로
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      if (typeof x === 'number' && typeof y === 'number') return (x-y)*st.dir;
+      return String(x).localeCompare(String(y),'ko')*st.dir;
     });
   }
   return out;
