@@ -189,6 +189,83 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
   .tab-btn{font-size:12px;padding:8px 9px}
 }
 
+/* ── 출간 캘린더 ──
+   본부의 1년이 한 화면에 들어와야 한다. 12개월 × 등급 3줄. */
+.pc-head{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:16px}
+.pc-yr select{border:none;background:none;font-family:var(--sans);font-size:26px;font-weight:800;
+  letter-spacing:-.03em;color:var(--ink);cursor:pointer;padding:0;outline:none}
+.pc-yr .pc-sub{font-size:11.5px;color:var(--ink3);margin-top:1px;letter-spacing:.01em}
+.pc-gauges{display:flex;gap:8px;flex-wrap:wrap}
+.pc-gauge{border:1px solid var(--border2);background:var(--surface);border-radius:var(--r2);
+  padding:9px 13px 10px;cursor:pointer;text-align:left;min-width:132px;font-family:var(--sans);
+  transition:all .18s var(--ease)}
+.pc-gauge:hover{border-color:var(--gc);box-shadow:var(--sh-sm);transform:translateY(-1px)}
+.pc-gauge.on{border-color:var(--gc);background:var(--gs);box-shadow:inset 0 0 0 1px var(--gc)}
+.pc-gl{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--ink)}
+.pc-gl i{width:7px;height:7px;border-radius:2px;background:var(--gc);display:block}
+.pc-gl span{font-weight:500;color:var(--ink3);font-size:10px;margin-left:2px}
+.pc-gn{display:flex;align-items:baseline;gap:4px;margin:3px 0 6px}
+.pc-gn b{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.pc-gn span{font-size:11px;color:var(--ink3)}
+.pc-bar{height:3px;border-radius:2px;background:var(--ink5);overflow:hidden}
+.pc-bar i{display:block;height:3px;border-radius:2px;background:var(--gc);transition:width .5s var(--ease)}
+.pc-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.pc-sel{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);
+  border-radius:var(--r3);padding:7px 11px;font-family:var(--sans);font-size:12px;outline:none;cursor:pointer}
+.pc-tot{display:flex;align-items:baseline;gap:5px}
+.pc-tot b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.pc-tot span{font-size:11.5px;color:var(--ink3)}
+
+.pc-wrap{overflow-x:auto;padding-bottom:8px}
+.pc-grid{display:grid;grid-template-columns:104px repeat(12, minmax(112px,1fr));
+  min-width:1440px;gap:0}
+.pc-corner{border-bottom:1px solid var(--border2)}
+.pc-mh{position:relative;text-align:center;font-size:12.5px;font-weight:700;color:var(--ink2);
+  padding:0 0 9px;border-bottom:1px solid var(--border2);border-left:1px solid var(--border)}
+.pc-mh small{font-size:10px;font-weight:500;color:var(--ink3);margin-left:1px}
+.pc-mh em{position:absolute;left:50%;transform:translateX(-50%);bottom:-1px;font-style:normal;
+  font-size:9px;font-weight:700;color:var(--accent-deep);background:var(--accent-dim);
+  padding:1px 6px;border-radius:6px}
+.pc-mh.now{color:var(--accent-deep)}
+.pc-mh.half{border-left:1px solid var(--border2)}
+.pc-gh{padding:14px 12px 12px 0;border-bottom:1px solid var(--border);border-left:3px solid var(--gc)}
+.pc-gh b{display:block;font-size:14px;font-weight:800;color:var(--ink);letter-spacing:-.02em;
+  padding-left:10px}
+.pc-gh span{display:block;font-size:10.5px;color:var(--ink3);margin-top:2px;padding-left:10px}
+.pc-gh em{display:block;font-style:normal;font-size:10.5px;font-weight:700;margin-top:3px;padding-left:10px}
+.pc-cell{border-bottom:1px solid var(--border);border-left:1px solid var(--border);
+  padding:8px 5px;display:flex;flex-direction:column;gap:5px;min-height:64px}
+.pc-cell.now{background:rgba(58,91,217,.035)}
+.pc-cell.half{border-left:1px solid var(--border2)}
+
+.pc-slot{border-radius:var(--r3);padding:8px 9px;transition:all .16s var(--ease)}
+.pc-empty{border:1px dashed var(--border2);background:var(--surface2);text-align:center;
+  color:var(--ink5);font-size:11px;display:flex;align-items:center;justify-content:center;min-height:46px}
+.pc-empty:hover{border-color:var(--gc);color:var(--gc);background:var(--surface)}
+.pc-on{background:var(--gs);border:1px solid var(--gl);border-left:3px solid var(--gc);cursor:help}
+.pc-on:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
+.pc-dim{opacity:.26}
+.pc-t{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc-spine{font-style:normal;color:#C9971A;margin-left:3px;font-size:10px}
+.pc-w{font-size:10px;color:var(--ink3);margin-top:4px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.pc-w.pc-none{color:var(--ink5)}
+.pc-s{display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--ink3);margin-top:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-s i{width:5px;height:5px;border-radius:50%;background:var(--sc);flex-shrink:0;display:block}
+
+.pc-legend{display:flex;gap:15px;flex-wrap:wrap;align-items:center;margin-top:16px;
+  padding-top:13px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3)}
+.pc-legend span{display:inline-flex;align-items:center;gap:5px}
+.pc-legend i{width:9px;height:9px;border-radius:2px;display:block}
+.pc-legend .pc-div{width:1px;height:11px;background:var(--border2)}
+@media (max-width:900px){
+  .pc-head{gap:12px}
+  .pc-yr select{font-size:21px}
+  .pc-right{margin-left:0;width:100%}
+}
+
 /* 인세 정산 로딩 — 화면 한가운데. 기다리는 시간을 기분 좋게 만드는 자리다. */
 #royLoad{position:fixed;inset:0;z-index:980;display:none;align-items:center;justify-content:center;
   background:radial-gradient(circle at 50% 42%, #FFF 0%, var(--bg) 72%)}
@@ -7464,9 +7541,14 @@ function applyPubCal(rows0){
 /* ── 출간 캘린더 ──
    등급별로 슬롯을 먼저 깔고 기획이 확정되면 채운다.
    빈 칸이 몇 개인지 보이는 것이 이 화면의 목적이다. */
-const PCAL = { half:'', person:'' };
+const PCAL = { year:0, person:'', grade:'' };
 const PCAL_GRADES = ['전략','주력','일반'];
-const PCAL_GUIDE = { '전략':'분기 1종', '주력':'격월 1~2종', '일반':'월 2~3종' };
+// 등급별 정체성 — 색과 목표 체급을 함께 쥔다
+const PCAL_META = {
+  '전략': {c:'#B3243C', soft:'#FCEDF0', line:'#F0C4CE', guide:'분기 1종', goal:'3개월 5만 부'},
+  '주력': {c:'#3A5BD9', soft:'#EDF1FD', line:'#C3D0F5', guide:'격월 1~2종', goal:'3개월 1.5만 부'},
+  '일반': {c:'#1F8A6D', soft:'#E9F6F2', line:'#B9E2D6', guide:'월 2~3종', goal:'3개월 4천 부'},
+};
 // 상태는 시트에 적힌 대로 쓴다. 아래는 색만 정해두는 규칙 (부분 일치)
 const PCAL_STATUS = [
   [/계약|완료/,           {c:'var(--good)',        bg:'var(--good-dim)',   n:'계약'}],
@@ -7488,6 +7570,10 @@ function pcalKey(h){
   return m ? (+m[1]) * 10 + (m[2] === '상' ? 1 : 2) : 0;
 }
 
+function pcalYear(v){ PCAL.year = +v; renderPubCal(); }
+function pcalPerson(v){ PCAL.person = String(v||''); renderPubCal(); }
+function pcalGrade(g){ PCAL.grade = (PCAL.grade === g) ? '' : g; renderPubCal(); }
+
 function renderPubCal(){
   const el = document.getElementById('tab-pubcal');
   if (!PUB_CAL.length) {
@@ -7497,149 +7583,172 @@ function renderPubCal(){
         <b>출간_캘린더</b> 탭이 비어 있습니다. 아래 열을 만들고 슬롯을 먼저 깔아주세요.
         <div style="margin-top:9px;padding:10px 12px;background:var(--surface3);border-radius:var(--r3);
              font-size:11.5px;color:var(--ink);overflow-x:auto;white-space:nowrap">
-          반기 · 등급 · 슬롯월 · 도서명 · 저자 · 담당기획자 · 담당마케터 · 담당디자이너 · 상태 · 허리도서 · 비고
+          반기 · 등급 · 슬롯월 · 도서명 · 저자 · 기획자 · 마케터 · 디자이너 · 상태 · 허리도서 · 비고
         </div>
         <span style="color:var(--ink3)">한 행이 슬롯 하나입니다. 도서명을 비우면 미정 슬롯으로 표시됩니다.</span>
       </div></div>`;
     return;
   }
-  const halves = [...new Set(PUB_CAL.map(x => x.half))].sort((a,b) => pcalKey(a) - pcalKey(b));
-  if (!PCAL.half || halves.indexOf(PCAL.half) < 0) {
-    // 기본은 오늘이 속한 반기. 없으면 그 다음으로 가까운 미래 반기.
-    const now = new Date();
-    const cur = now.getFullYear() * 10 + (now.getMonth() < 6 ? 1 : 2);
-    PCAL.half = halves.find(h => pcalKey(h) === cur)
-             || halves.find(h => pcalKey(h) > cur)
-             || halves[halves.length - 1];
-  }
-  const rows = PUB_CAL.filter(x => x.half === PCAL.half);
-  const isH1 = /상/.test(PCAL.half);
-  const months = isH1 ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
 
-  // 담당자 목록
+  // 연도 단위로 본다 — 반기 두 개를 12개월로 이어 붙인다
+  const yrOf = h => { const m = String(h).match(/(\d{4})/); return m ? +m[1] : 0; };
+  const isH2 = h => /하/.test(String(h));
+  const years = [...new Set(PUB_CAL.map(x => yrOf(x.half)))].filter(Boolean).sort();
+  if (!PCAL.year || years.indexOf(PCAL.year) < 0) {
+    const now = new Date().getFullYear();
+    PCAL.year = years.find(y => y === now) || years.find(y => y > now) || years[years.length-1];
+  }
+  const Y = PCAL.year;
+  // 실제 월 = 하반기면 슬롯월 그대로(7~12), 상반기면 1~6. 시트가 1~6 으로만 적혀도 하반기면 +6
+  const realMonth = r => {
+    const m = r.month;
+    if (isH2(r.half)) return m <= 6 ? m + 6 : m;
+    return m;
+  };
+  const rows = PUB_CAL.filter(x => yrOf(x.half) === Y)
+    .map(r => ({...r, m: realMonth(r)}))
+    .filter(r => r.m >= 1 && r.m <= 12);
+
+  const MONS = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const filled = r => !!r.title;
   const people = [...new Set(rows.flatMap(r => [r.plan, r.mkter, r.design]).filter(Boolean))].sort();
   const mine = r => !PCAL.person || [r.plan, r.mkter, r.design].indexOf(PCAL.person) >= 0;
+  const cnt = g => { const gr = rows.filter(x => x.grade === g);
+    return {tot: gr.length, on: gr.filter(filled).length}; };
+  const totOn = rows.filter(filled).length;
+  const nowM = (new Date().getFullYear() === Y) ? new Date().getMonth() + 1 : 0;
 
-  const filled = r => !!r.title;
-  const cnt = g => {
-    const gr = rows.filter(x => x.grade === g);
-    return {tot: gr.length, on: gr.filter(filled).length};
-  };
-
-  const card = r => {
-    if (!filled(r)) return `<div style="flex:1;min-width:0;border:1px dashed var(--border2);border-radius:var(--r3);
-      padding:9px 6px;text-align:center;font-size:11px;color:var(--ink5);background:var(--surface2)">미정</div>`;
+  /* 슬롯 카드 */
+  const card = (r, meta) => {
+    if (!filled(r)) return `<div class="pc-slot pc-empty" style="--gc:${meta.c}">
+      <span>미정</span></div>`;
     const st = pcalStatus(r.status);
     const dim = PCAL.person && !mine(r);
     const who = [r.plan, r.mkter, r.design].filter(Boolean);
-    return `<div title="${esc([r.title, r.author && '저자 '+r.author, r.status,
-        r.plan && '기획 '+r.plan, r.mkter && '마케팅 '+r.mkter, r.design && '디자인 '+r.design,
-        r.spine && '허리도서', r.note].filter(Boolean).join('\n'))}"
-      style="flex:1;min-width:0;border:1px solid var(--border2);border-left:3px solid ${st.c};
-      border-radius:var(--r3);padding:8px 9px;background:${st.bg};opacity:${dim?0.3:1};cursor:help">
-      <div style="font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.35;
-        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
-        ${esc(r.title)}${r.spine ? '<span title="허리도서" style="color:var(--warn);margin-left:3px">◆</span>' : ''}</div>
-      ${who.length ? `<div style="font-size:10px;color:var(--ink3);margin-top:4px;white-space:nowrap;
-        overflow:hidden;text-overflow:ellipsis">${esc(who.join(' · '))}</div>` : ''}
+    const tip = [r.title, r.author && '저자 ' + r.author, r.status,
+      r.plan && '기획 ' + r.plan, r.mkter && '마케팅 ' + r.mkter, r.design && '디자인 ' + r.design,
+      r.spine && '허리도서', r.note].filter(Boolean).join('\n');
+    return `<div class="pc-slot pc-on${dim ? ' pc-dim' : ''}" style="--gc:${meta.c};--gs:${meta.soft};--gl:${meta.line}"
+      title="${esc(tip)}">
+      <div class="pc-t">${esc(r.title)}${r.spine ? '<i class="pc-spine" title="허리도서">◆</i>' : ''}</div>
+      ${who.length ? `<div class="pc-w">${esc(who.join(' · '))}</div>` : '<div class="pc-w pc-none">담당 미정</div>'}
+      <div class="pc-s" style="--sc:${st.c}"><i></i>${esc(r.status || '상태 미입력')}</div>
     </div>`;
   };
 
-  const totOn = rows.filter(filled).length;
   el.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-      <select onchange="pcalSetHalf(this.value)" style="border:1px solid var(--border2);background:var(--surface);
-        color:var(--ink);border-radius:var(--r3);padding:8px 12px;font-family:var(--sans);font-size:13px;font-weight:700">
-        ${halves.map(h => `<option value="${esc(h)}" ${h===PCAL.half?'selected':''}>${esc(h)}반기</option>`).join('')}
+  <div class="pc-head">
+    <div class="pc-yr">
+      <select onchange="pcalYear(this.value)">
+        ${years.map(y => `<option value="${y}" ${y===Y?'selected':''}>${y}년</option>`).join('')}
       </select>
+      <div class="pc-sub">출간 캘린더 · 슬롯을 먼저 깐다</div>
+    </div>
+    <div class="pc-gauges">
       ${PCAL_GRADES.map(g => {
-        const c = cnt(g);
-        const done = c.tot && c.on >= c.tot;
-        return `<span style="display:inline-flex;align-items:baseline;gap:6px;font-size:12px;color:var(--ink3)">
-          ${esc(g)} <b style="font-size:14px;color:${done?'var(--good)':(c.on?'var(--ink)':'var(--bad)')}">${c.on}</b>
-          <span style="color:var(--ink5)">/ ${c.tot}</span></span>`;
+        const c = cnt(g), M = PCAL_META[g], pct = c.tot ? c.on/c.tot*100 : 0;
+        const act = PCAL.grade === g;
+        return `<button class="pc-gauge${act?' on':''}" onclick="pcalGrade('${g}')" style="--gc:${M.c};--gs:${M.soft}">
+          <div class="pc-gl"><i></i>${g}<span>${M.goal}</span></div>
+          <div class="pc-gn"><b>${c.on}</b><span>/ ${c.tot}종</span></div>
+          <div class="pc-bar"><i style="width:${pct.toFixed(0)}%"></i></div>
+        </button>`;
       }).join('')}
-      <select onchange="pcalPerson(this.value)" style="margin-left:auto;border:1px solid var(--border2);
-        background:var(--surface);color:var(--ink2);border-radius:var(--r3);padding:7px 11px;
-        font-family:var(--sans);font-size:12px">
+    </div>
+    <div class="pc-right">
+      <select onchange="pcalPerson(this.value)" class="pc-sel">
         <option value="">담당자 전체</option>
         ${people.map(p => `<option value="${esc(p)}" ${p===PCAL.person?'selected':''}>${esc(p)}</option>`).join('')}
       </select>
-      <span style="font-size:12px;color:var(--ink2)">확보 <b style="color:var(--ink)">${totOn}</b>
-        <span style="color:var(--ink5)">/ ${rows.length}종</span></span>
+      <div class="pc-tot"><b>${totOn}</b><span>/ ${rows.length}종 확보</span></div>
     </div>
+  </div>
 
-    <div class="card">
-      <table style="table-layout:fixed;width:100%">
-        <tr><th style="width:96px"></th>
-          ${months.map(m => `<th style="text-align:center;font-size:12px;color:var(--ink2)">${m}월</th>`).join('')}</tr>
-        ${PCAL_GRADES.map(g => {
-          const gr = rows.filter(x => x.grade === g);
-          if (!gr.length) return '';
-          const c = cnt(g);
-          return `<tr>
-            <td style="vertical-align:top;padding-top:12px">
-              <div style="font-size:13px;font-weight:800;color:var(--ink)">${esc(g)}</div>
-              <div style="font-size:10.5px;color:var(--ink3);margin-top:2px">${esc(PCAL_GUIDE[g]||'')}</div>
-              <div style="font-size:10.5px;color:${c.on>=c.tot?'var(--good)':'var(--ink3)'};margin-top:1px">
-                ${c.on}/${c.tot}종</div>
-            </td>
-            ${months.map(m => {
-              const cell = gr.filter(x => x.month === m);
-              return `<td style="vertical-align:top;padding:8px 4px">
-                ${cell.length ? `<div style="display:flex;gap:5px">${cell.map(card).join('')}</div>`
-                  : '<div style="height:4px"></div>'}</td>`;
-            }).join('')}
-          </tr>`;
-        }).join('')}
-      </table>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--ink3)">
-        ${PCAL_STATUS.map(([,v]) => `<span style="display:inline-flex;align-items:center;gap:6px">
-          <span style="width:10px;height:10px;border-radius:2px;background:${v.c}"></span>${v.n}</span>`).join('')}
-        <span style="display:inline-flex;align-items:center;gap:6px">
-          <span style="width:10px;height:10px;border:1px dashed var(--border2);border-radius:2px"></span>미정</span>
-        <span style="display:inline-flex;align-items:center;gap:6px"><span style="color:var(--warn)">◆</span>허리도서</span>
-        <span style="margin-left:auto;color:var(--ink5)">카드에 마우스를 올리면 상세가 보입니다</span>
-      </div>
+  <div class="card pc-wrap">
+    <div class="pc-grid">
+      <div class="pc-corner"></div>
+      ${MONS.map(m => `<div class="pc-mh${m===nowM?' now':''}${m===7?' half':''}">
+        ${m}<small>월</small>${m===nowM?'<em>이번 달</em>':''}</div>`).join('')}
+      ${PCAL_GRADES.filter(g => !PCAL.grade || PCAL.grade === g).map(g => {
+        const gr = rows.filter(x => x.grade === g);
+        const M = PCAL_META[g], c = cnt(g);
+        return `<div class="pc-gh" style="--gc:${M.c};--gs:${M.soft}">
+            <b>${g}</b><span>${M.guide}</span>
+            <em style="color:${c.on>=c.tot&&c.tot?M.c:'var(--ink3)'}">${c.on}/${c.tot}종</em>
+          </div>
+          ${MONS.map(m => {
+            const cell = gr.filter(x => x.m === m);
+            return `<div class="pc-cell${m===nowM?' now':''}${m===7?' half':''}">
+              ${cell.map(r => card(r, M)).join('')}</div>`;
+          }).join('')}`;
+      }).join('')}
     </div>
+    <div class="pc-legend">
+      ${PCAL_GRADES.map(g => `<span><i style="background:${PCAL_META[g].c}"></i>${g}</span>`).join('')}
+      <span class="pc-div"></span>
+      ${PCAL_STATUS.map(([,v]) => `<span><i style="background:${v.c};border-radius:50%"></i>${v.n}</span>`).join('')}
+      <span><i style="border:1px dashed var(--border2);background:transparent"></i>미정</span>
+      <span><i style="background:none;color:#C9971A;width:auto">◆</i>허리도서</span>
+      <span style="margin-left:auto;color:var(--ink5)">카드에 마우스를 올리면 상세가 보입니다</span>
+    </div>
+  </div>
 
-    ${(() => {
-      const empty = PCAL_GRADES.map(g => ({g, ...cnt(g)})).filter(x => x.tot && x.on < x.tot);
-      if (!empty.length) return '';
-      return `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
-        <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:6px">채워야 할 슬롯</div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)">
-          ${empty.map(x => `<span><b style="color:var(--ink)">${esc(x.g)}</b>
-            <b style="color:var(--bad);margin-left:6px">${x.tot-x.on}종</b>
-            <span style="color:var(--ink3)"> 미정 · ${rows.filter(r=>r.grade===x.g && !r.title)
-              .map(r=>r.month+'월').join(', ')}</span></span>`).join('')}
-        </div>
-      </div>`;
-    })()}
-
-    <div class="card gap">
-      <div class="card-title">담당자별 배정 <small>${esc(PCAL.half)}반기 확보분 기준</small></div>
-      ${people.length ? `<table>
-        <tr><th>담당자</th><th class="right" style="width:90px">기획</th>
-          <th class="right" style="width:90px">마케팅</th><th class="right" style="width:90px">디자인</th>
-          <th class="right" style="width:90px">합계</th></tr>
-        ${people.map(p => {
-          const a = rows.filter(r => r.plan === p).length;
-          const b = rows.filter(r => r.mkter === p).length;
-          const c2 = rows.filter(r => r.design === p).length;
-          return `<tr><td><b style="font-size:12px">${esc(p)}</b></td>
-            <td class="right">${a||'<span style="color:var(--ink5)">—</span>'}</td>
-            <td class="right">${b||'<span style="color:var(--ink5)">—</span>'}</td>
-            <td class="right">${c2||'<span style="color:var(--ink5)">—</span>'}</td>
-            <td class="right"><b>${a+b+c2}</b></td></tr>`;
+  ${(() => {
+    const empty = PCAL_GRADES.map(g => ({g, ...cnt(g)})).filter(x => x.tot && x.on < x.tot);
+    const noD = rows.filter(r => r.title && !r.design);
+    const noP = rows.filter(r => r.title && !r.plan);
+    if (!empty.length && !noD.length && !noP.length) return '';
+    return `<div class="g2 gap">
+      ${empty.length ? `<div class="card" style="border-left:3px solid var(--warn)">
+        <div class="card-title">채워야 할 슬롯 <small>${Y}년</small></div>
+        ${empty.map(x => {
+          const M = PCAL_META[x.g];
+          const ms = rows.filter(r => r.grade===x.g && !r.title).map(r => r.m+'월');
+          return `<div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;
+            border-bottom:1px solid var(--border)">
+            <b style="font-size:12.5px;color:${M.c};width:44px">${x.g}</b>
+            <b style="font-size:15px;color:var(--bad)">${x.tot-x.on}종</b>
+            <span style="font-size:11.5px;color:var(--ink3)">${ms.join(', ')}</span>
+          </div>`;
         }).join('')}
-      </table>` : '<div class="empty-row">담당자가 아직 배정되지 않았습니다</div>'}
-      ${(() => {
-        const noD = rows.filter(r => r.title && !r.design);
-        return noD.length ? `<div style="font-size:11.5px;color:var(--warn);margin-top:10px">
-          디자이너 미배정 ${noD.length}종 — ${esc(noD.slice(0,6).map(r=>r.title).join(' · '))}${noD.length>6?` 외 ${noD.length-6}종`:''}</div>` : '';
-      })()}
+      </div>` : ''}
+      ${(noD.length || noP.length) ? `<div class="card">
+        <div class="card-title">담당 미배정 <small>확보분 기준</small></div>
+        ${noP.length ? `<div style="font-size:12px;color:var(--ink2);padding:7px 0;border-bottom:1px solid var(--border)">
+          <b style="color:var(--warn)">기획자 ${noP.length}종</b>
+          <span style="color:var(--ink3);margin-left:8px">${esc(noP.slice(0,4).map(r=>r.title).join(' · '))}${noP.length>4?` 외 ${noP.length-4}`:''}</span>
+        </div>` : ''}
+        ${noD.length ? `<div style="font-size:12px;color:var(--ink2);padding:7px 0">
+          <b style="color:var(--warn)">디자이너 ${noD.length}종</b>
+          <span style="color:var(--ink3);margin-left:8px">${esc(noD.slice(0,4).map(r=>r.title).join(' · '))}${noD.length>4?` 외 ${noD.length-4}`:''}</span>
+        </div>` : ''}
+      </div>` : ''}
     </div>`;
+  })()}
+
+  <div class="card gap">
+    <div class="card-title">담당자별 배정 <small>${Y}년 확보분 기준</small></div>
+    ${people.length ? `<table>
+      <tr><th>담당자</th><th class="right" style="width:80px">기획</th>
+        <th class="right" style="width:80px">마케팅</th><th class="right" style="width:80px">디자인</th>
+        <th class="right" style="width:80px">합계</th><th style="width:180px">분포</th></tr>
+      ${people.map(p => {
+        const a2 = rows.filter(r => r.plan === p).length;
+        const b2 = rows.filter(r => r.mkter === p).length;
+        const c2 = rows.filter(r => r.design === p).length;
+        const t2 = a2+b2+c2;
+        const mx = Math.max(...people.map(q =>
+          rows.filter(r=>r.plan===q).length + rows.filter(r=>r.mkter===q).length + rows.filter(r=>r.design===q).length), 1);
+        const n = v => v ? v : '<span style="color:var(--ink5)">—</span>';
+        return `<tr><td><b style="font-size:12px">${esc(p)}</b></td>
+          <td class="right">${n(a2)}</td><td class="right">${n(b2)}</td><td class="right">${n(c2)}</td>
+          <td class="right"><b>${t2}</b></td>
+          <td><div style="height:7px;border-radius:4px;background:var(--surface3);overflow:hidden">
+            <i style="display:block;height:7px;width:${(t2/mx*100).toFixed(0)}%;border-radius:4px;
+              background:var(--accent)"></i></div></td></tr>`;
+      }).join('')}
+    </table>` : '<div class="empty-row">담당자가 아직 배정되지 않았습니다</div>'}
+  </div>`;
 }
 
 /* 인세 정산 화면 */
