@@ -1504,7 +1504,7 @@ async function loadPubSheets() {
   if (CFG.pubGids.calendar) {
     try {
       const grid = await fetchPubSheet(CFG.pubGids.calendar);
-      const hi = findHeaderRow(grid, ['등급','슬롯월']);
+      const hi = findHeaderRow(grid, ['등급','도서명']);
       if (hi >= 0) {
         const objs = gridToObjs(grid, hi);
         PUB_CAL.splice(0, PUB_CAL.length, ...objs.map(o => ({
@@ -1513,9 +1513,9 @@ async function loadPubSheets() {
           month:  toNum(o['슬롯월']),
           title:  String(o['도서명']||'').trim(),
           author: String(o['저자']||'').trim(),
-          plan:   String(o['담당기획자']||'').trim(),
-          mkter:  String(o['담당마케터']||'').trim(),
-          design: String(o['담당디자이너']||'').trim(),
+          plan:   String(o['기획자']||o['담당기획자']||'').trim(),
+          mkter:  String(o['마케터']||o['담당마케터']||'').trim(),
+          design: String(o['디자이너']||o['담당디자이너']||'').trim(),
           status: String(o['상태']||'').trim(),
           spine:  royFlag(o['허리도서']),
           note:   String(o['비고']||'').trim(),
@@ -7454,11 +7454,18 @@ function royCarryOf(round, r){
 const PCAL = { half:'', person:'' };
 const PCAL_GRADES = ['전략','주력','일반'];
 const PCAL_GUIDE = { '전략':'분기 1종', '주력':'격월 1~2종', '일반':'월 2~3종' };
-const PCAL_STATUS = {
-  '계약완료': {c:'var(--good)',   bg:'var(--good-dim)'},
-  '기획확정': {c:'var(--accent-deep)', bg:'var(--accent-dim)'},
-  '검토중':   {c:'var(--warn)',   bg:'var(--warn-dim)'},
-};
+// 상태는 시트에 적힌 대로 쓴다. 아래는 색만 정해두는 규칙 (부분 일치)
+const PCAL_STATUS = [
+  [/계약|완료/,           {c:'var(--good)',        bg:'var(--good-dim)',   n:'계약'}],
+  [/기획\s*확정|승인/,    {c:'var(--accent-deep)', bg:'var(--accent-dim)', n:'기획확정'}],
+  [/검토|협의|서치|섭외|저자/, {c:'var(--warn)',    bg:'var(--warn-dim)',   n:'검토·섭외'}],
+];
+function pcalStatus(v){
+  const t = String(v||'').trim();
+  if (!t) return {c:'var(--ink3)', bg:'var(--surface3)'};
+  const hit = PCAL_STATUS.find(([re]) => re.test(t));
+  return hit ? hit[1] : {c:'var(--ink2)', bg:'var(--surface3)'};
+}
 function pcalSetHalf(v){ PCAL.half = v; renderPubCal(); }
 function pcalPerson(v){ PCAL.person = String(v||''); renderPubCal(); }
 
@@ -7509,7 +7516,7 @@ function renderPubCal(){
   const card = r => {
     if (!filled(r)) return `<div style="flex:1;min-width:0;border:1px dashed var(--border2);border-radius:var(--r3);
       padding:9px 6px;text-align:center;font-size:11px;color:var(--ink5);background:var(--surface2)">미정</div>`;
-    const st = PCAL_STATUS[r.status] || {c:'var(--ink2)', bg:'var(--surface3)'};
+    const st = pcalStatus(r.status);
     const dim = PCAL.person && !mine(r);
     const who = [r.plan, r.mkter, r.design].filter(Boolean);
     return `<div title="${esc([r.title, r.author && '저자 '+r.author, r.status,
@@ -7574,8 +7581,8 @@ function renderPubCal(){
         }).join('')}
       </table>
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--ink3)">
-        ${Object.keys(PCAL_STATUS).map(k => `<span style="display:inline-flex;align-items:center;gap:6px">
-          <span style="width:10px;height:10px;border-radius:2px;background:${PCAL_STATUS[k].c}"></span>${k}</span>`).join('')}
+        ${PCAL_STATUS.map(([,v]) => `<span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:2px;background:${v.c}"></span>${v.n}</span>`).join('')}
         <span style="display:inline-flex;align-items:center;gap:6px">
           <span style="width:10px;height:10px;border:1px dashed var(--border2);border-radius:2px"></span>미정</span>
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="color:var(--warn)">◆</span>허리도서</span>
