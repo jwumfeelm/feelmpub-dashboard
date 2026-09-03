@@ -1503,7 +1503,7 @@ async function loadPubSheets() {
   // 출간 캘린더 — 반기·등급·슬롯월 단위 슬롯
   if (CFG.pubGids.calendar) {
     try {
-      const grid = await fetchPubSheet(CFG.pubGids.calendar);
+      const grid = await fetchPubGrid(CFG.pubGids.calendar);
       const hi = findHeaderRow(grid, ['등급','도서명']);
       if (hi >= 0) {
         const objs = gridToObjs(grid, hi);
