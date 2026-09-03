@@ -7433,29 +7433,31 @@ function royCarryOf(round, r){
 }
 
 // 출간_캘린더 — 한 행이 슬롯 하나. 도서명이 비면 미정 슬롯.
-function applyPubCal(grid){
+function applyPubCal(rows0){
+  // fetchSheet 는 1행을 헤더로 삼은 객체 배열을 준다 (그리드가 아님)
   PUB_CAL.splice(0, PUB_CAL.length);
-  if (!grid || !grid.length) return;
-  const hi = findHeaderRow(grid, ['등급','도서명']);
-  if (hi < 0) { console.warn('[출간 캘린더] 헤더(등급·도서명)를 찾지 못했습니다. 첫 행:', grid[0]); return; }
-  const objs = gridToObjs(grid, hi);
-  const rows = objs.map(o => ({
-    half:   String(o['반기']||'').trim(),
-    grade:  String(o['등급']||'').trim(),
-    month:  toNum(o['슬롯월']),
-    title:  String(o['도서명']||'').trim(),
-    author: String(o['저자']||'').trim(),
-    plan:   String(o['기획자']||o['담당기획자']||'').trim(),
-    mkter:  String(o['마케터']||o['담당마케터']||'').trim(),
-    design: String(o['디자이너']||o['담당디자이너']||'').trim(),
-    status: String(o['상태']||'').trim(),
-    spine:  royFlag(o['허리도서']),
-    note:   String(o['비고']||'').trim(),
+  if (!Array.isArray(rows0) || !rows0.length) { console.info('[출간 캘린더] 데이터 없음'); return; }
+  const pick = (o, ...names) => {
+    for (const n of names) if (o[n] !== undefined) return String(o[n] || '').trim();
+    return '';
+  };
+  const rows = rows0.map(o => ({
+    half:   pick(o, '반기'),
+    grade:  pick(o, '등급'),
+    month:  toNum(pick(o, '슬롯월')),
+    title:  pick(o, '도서명'),
+    author: pick(o, '저자'),
+    plan:   pick(o, '기획자', '담당기획자'),
+    mkter:  pick(o, '마케터', '담당마케터'),
+    design: pick(o, '디자이너', '담당디자이너'),
+    status: pick(o, '상태'),
+    spine:  royFlag(pick(o, '허리도서')),
+    note:   pick(o, '비고'),
   })).filter(x => x.half && x.grade && x.month >= 1 && x.month <= 12);
   PUB_CAL.push(...rows);
-  console.info('[출간 캘린더]', rows.length + '슬롯 / 원본 ' + objs.length + '행');
-  if (!rows.length && objs.length)
-    console.warn('[출간 캘린더] 행은 읽었으나 반기·등급·슬롯월 중 비거나 잘못된 값이 있습니다. 첫 행:', objs[0]);
+  console.info('[출간 캘린더]', rows.length + '슬롯 / 원본 ' + rows0.length + '행');
+  if (!rows.length && rows0.length)
+    console.warn('[출간 캘린더] 행은 읽었으나 반기·등급·슬롯월 중 비거나 잘못된 값이 있습니다. 첫 행:', rows0[0]);
   if (activeTab === 'pubcal') renderPubCal();
 }
 
