@@ -623,6 +623,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
     <div id="tab-cost"     class="section"></div>
     <div id="tab-channel"  class="section"></div>
     <div id="tab-publish"  class="section"></div>
+    <div id="tab-pubcal"   class="section"></div>
     <div id="tab-books"    class="section"></div>
     <div id="tab-royalty"  class="section"></div>
     <div id="tab-data"     class="section"></div>
@@ -685,6 +686,7 @@ const CFG = {
   // 출판팀 — 출간 기획 및 제작 현황
   pubSheetId: "1fbLmOxOgFkAyC23WgTw1dkZScfvJq1z05nyGPNzTeE4",
   pubGids: {
+    calendar: "1947941997",   // 출간_캘린더 (반기·등급·슬롯월 단위 슬롯)
     plan:   "1068912334",   // 출간 관리 New
     rights: "1098489953",   // 외서 계약
     export: "619861282",    // 판권 수출
@@ -704,6 +706,7 @@ const TABS = [
   {div:true},
   {id:"calendar", label:"마케팅 캠페인"},
   {id:"publish",  label:"출간 관리"},
+  {id:"pubcal",   label:"출간 캘린더"},
   {id:"books",    label:"도서 DB"},
   {id:"royalty",  label:"인세 정산"},
   {div:true},
@@ -876,6 +879,8 @@ const ROY_SCM  = [];   // {title, isbn, ym, qty}
 const ROY_SHIP = [];   // {title, ym, ship, ret, price, rate}
 const ROY_STORE = [];  // {title, ym, store, qty} — 출고 RAW
 const ROY_AUTHORS = []; // {isbn, title, name, share, bank, account, holder}
+// 출간 캘린더 — 한 행이 슬롯 하나. 도서명이 비면 미정 슬롯.
+const PUB_CAL = [];
 
 const CH_PERF    = [];   // 계정별 월 실적 {구분, 계정, items:{항목:[12]}}
 const CH_CONTENT = [];   // 콘텐츠 단위 실적
@@ -1493,6 +1498,31 @@ async function loadPubSheets() {
     PUB_BOOKS.splice(0, PUB_BOOKS.length, ...books);
   } catch(e) {
     console.warn('[출간 관리] 로드 실패:', e);
+  }
+
+  // 출간 캘린더 — 반기·등급·슬롯월 단위 슬롯
+  if (CFG.pubGids.calendar) {
+    try {
+      const grid = await fetchPubSheet(CFG.pubGids.calendar);
+      const hi = findHeaderRow(grid, ['등급','슬롯월']);
+      if (hi >= 0) {
+        const objs = gridToObjs(grid, hi);
+        PUB_CAL.splice(0, PUB_CAL.length, ...objs.map(o => ({
+          half:   String(o['반기']||'').trim(),
+          grade:  String(o['등급']||'').trim(),
+          month:  toNum(o['슬롯월']),
+          title:  String(o['도서명']||'').trim(),
+          author: String(o['저자']||'').trim(),
+          plan:   String(o['담당기획자']||'').trim(),
+          mkter:  String(o['담당마케터']||'').trim(),
+          design: String(o['담당디자이너']||'').trim(),
+          status: String(o['상태']||'').trim(),
+          spine:  royFlag(o['허리도서']),
+          note:   String(o['비고']||'').trim(),
+        })).filter(x => x.half && x.grade && x.month >= 1 && x.month <= 12));
+        console.info('[출간 캘린더]', PUB_CAL.length + '슬롯');
+      }
+    } catch(e) { console.warn('[출간 캘린더] 로드 실패:', e); }
   }
 
   // 외서 계약 (GID 미입력이면 건너뜀)
@@ -2334,8 +2364,8 @@ function renderTabs(){
   }).join('');
 }
 // 상단 KPI 바 / 월별 추이 차트를 숨길 탭
-const HIDE_PILLS = ['books','data','publish','royalty'];
-const HIDE_TREND = ['channel','calendar','books','data','publish','royalty'];
+const HIDE_PILLS = ['books','data','publish','royalty','pubcal'];
+const HIDE_TREND = ['channel','calendar','books','data','publish','royalty','pubcal'];
 function applyTopVisibility(){
   const pillEl  = document.querySelector('.pill-bar-wrap');
   const trendEl = document.getElementById('trend-chart');
@@ -2397,6 +2427,7 @@ function renderActive(){
   else if(activeTab==='publish') renderPublish();
   else if(activeTab==='books')    renderBooks();
   else if(activeTab==='royalty')  { renderRoyalty(); loadShipRaw(); }
+  else if(activeTab==='pubcal')   renderPubCal();
   else if(activeTab==='calendar') renderCalendar();
   else if(activeTab==='data')    renderData();
 }
@@ -7415,6 +7446,180 @@ function royCarryOf(round, r){
   const rec = (ROY.archive || []).find(x =>
     x.title === r.b.title && x.carryTo === round.key && (x.author || '') === who);
   return rec ? (rec.carryAmt || 0) : 0;
+}
+
+/* ── 출간 캘린더 ──
+   등급별로 슬롯을 먼저 깔고 기획이 확정되면 채운다.
+   빈 칸이 몇 개인지 보이는 것이 이 화면의 목적이다. */
+const PCAL = { half:'', person:'' };
+const PCAL_GRADES = ['전략','주력','일반'];
+const PCAL_GUIDE = { '전략':'분기 1종', '주력':'격월 1~2종', '일반':'월 2~3종' };
+const PCAL_STATUS = {
+  '계약완료': {c:'var(--good)',   bg:'var(--good-dim)'},
+  '기획확정': {c:'var(--accent-deep)', bg:'var(--accent-dim)'},
+  '검토중':   {c:'var(--warn)',   bg:'var(--warn-dim)'},
+};
+function pcalSetHalf(v){ PCAL.half = v; renderPubCal(); }
+function pcalPerson(v){ PCAL.person = String(v||''); renderPubCal(); }
+
+// 반기 정렬 — '2027-상' 이 '2027-하' 보다 앞
+function pcalKey(h){
+  const m = String(h).match(/(\d{4})\s*[-–]?\s*(상|하)/);
+  return m ? (+m[1]) * 10 + (m[2] === '상' ? 1 : 2) : 0;
+}
+
+function renderPubCal(){
+  const el = document.getElementById('tab-pubcal');
+  if (!PUB_CAL.length) {
+    el.innerHTML = `<div class="card">
+      <div class="card-title">출간 캘린더</div>
+      <div style="font-size:12.5px;color:var(--ink2);line-height:1.8">
+        <b>출간_캘린더</b> 탭이 비어 있습니다. 아래 열을 만들고 슬롯을 먼저 깔아주세요.
+        <div style="margin-top:9px;padding:10px 12px;background:var(--surface3);border-radius:var(--r3);
+             font-size:11.5px;color:var(--ink);overflow-x:auto;white-space:nowrap">
+          반기 · 등급 · 슬롯월 · 도서명 · 저자 · 담당기획자 · 담당마케터 · 담당디자이너 · 상태 · 허리도서 · 비고
+        </div>
+        <span style="color:var(--ink3)">한 행이 슬롯 하나입니다. 도서명을 비우면 미정 슬롯으로 표시됩니다.</span>
+      </div></div>`;
+    return;
+  }
+  const halves = [...new Set(PUB_CAL.map(x => x.half))].sort((a,b) => pcalKey(a) - pcalKey(b));
+  if (!PCAL.half || halves.indexOf(PCAL.half) < 0) {
+    // 기본은 오늘이 속한 반기. 없으면 그 다음으로 가까운 미래 반기.
+    const now = new Date();
+    const cur = now.getFullYear() * 10 + (now.getMonth() < 6 ? 1 : 2);
+    PCAL.half = halves.find(h => pcalKey(h) === cur)
+             || halves.find(h => pcalKey(h) > cur)
+             || halves[halves.length - 1];
+  }
+  const rows = PUB_CAL.filter(x => x.half === PCAL.half);
+  const isH1 = /상/.test(PCAL.half);
+  const months = isH1 ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
+
+  // 담당자 목록
+  const people = [...new Set(rows.flatMap(r => [r.plan, r.mkter, r.design]).filter(Boolean))].sort();
+  const mine = r => !PCAL.person || [r.plan, r.mkter, r.design].indexOf(PCAL.person) >= 0;
+
+  const filled = r => !!r.title;
+  const cnt = g => {
+    const gr = rows.filter(x => x.grade === g);
+    return {tot: gr.length, on: gr.filter(filled).length};
+  };
+
+  const card = r => {
+    if (!filled(r)) return `<div style="flex:1;min-width:0;border:1px dashed var(--border2);border-radius:var(--r3);
+      padding:9px 6px;text-align:center;font-size:11px;color:var(--ink5);background:var(--surface2)">미정</div>`;
+    const st = PCAL_STATUS[r.status] || {c:'var(--ink2)', bg:'var(--surface3)'};
+    const dim = PCAL.person && !mine(r);
+    const who = [r.plan, r.mkter, r.design].filter(Boolean);
+    return `<div title="${esc([r.title, r.author && '저자 '+r.author, r.status,
+        r.plan && '기획 '+r.plan, r.mkter && '마케팅 '+r.mkter, r.design && '디자인 '+r.design,
+        r.spine && '허리도서', r.note].filter(Boolean).join('\n'))}"
+      style="flex:1;min-width:0;border:1px solid var(--border2);border-left:3px solid ${st.c};
+      border-radius:var(--r3);padding:8px 9px;background:${st.bg};opacity:${dim?0.3:1};cursor:help">
+      <div style="font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.35;
+        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+        ${esc(r.title)}${r.spine ? '<span title="허리도서" style="color:var(--warn);margin-left:3px">◆</span>' : ''}</div>
+      ${who.length ? `<div style="font-size:10px;color:var(--ink3);margin-top:4px;white-space:nowrap;
+        overflow:hidden;text-overflow:ellipsis">${esc(who.join(' · '))}</div>` : ''}
+    </div>`;
+  };
+
+  const totOn = rows.filter(filled).length;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <select onchange="pcalSetHalf(this.value)" style="border:1px solid var(--border2);background:var(--surface);
+        color:var(--ink);border-radius:var(--r3);padding:8px 12px;font-family:var(--sans);font-size:13px;font-weight:700">
+        ${halves.map(h => `<option value="${esc(h)}" ${h===PCAL.half?'selected':''}>${esc(h)}반기</option>`).join('')}
+      </select>
+      ${PCAL_GRADES.map(g => {
+        const c = cnt(g);
+        const done = c.tot && c.on >= c.tot;
+        return `<span style="display:inline-flex;align-items:baseline;gap:6px;font-size:12px;color:var(--ink3)">
+          ${esc(g)} <b style="font-size:14px;color:${done?'var(--good)':(c.on?'var(--ink)':'var(--bad)')}">${c.on}</b>
+          <span style="color:var(--ink5)">/ ${c.tot}</span></span>`;
+      }).join('')}
+      <select onchange="pcalPerson(this.value)" style="margin-left:auto;border:1px solid var(--border2);
+        background:var(--surface);color:var(--ink2);border-radius:var(--r3);padding:7px 11px;
+        font-family:var(--sans);font-size:12px">
+        <option value="">담당자 전체</option>
+        ${people.map(p => `<option value="${esc(p)}" ${p===PCAL.person?'selected':''}>${esc(p)}</option>`).join('')}
+      </select>
+      <span style="font-size:12px;color:var(--ink2)">확보 <b style="color:var(--ink)">${totOn}</b>
+        <span style="color:var(--ink5)">/ ${rows.length}종</span></span>
+    </div>
+
+    <div class="card">
+      <table style="table-layout:fixed;width:100%">
+        <tr><th style="width:96px"></th>
+          ${months.map(m => `<th style="text-align:center;font-size:12px;color:var(--ink2)">${m}월</th>`).join('')}</tr>
+        ${PCAL_GRADES.map(g => {
+          const gr = rows.filter(x => x.grade === g);
+          if (!gr.length) return '';
+          const c = cnt(g);
+          return `<tr>
+            <td style="vertical-align:top;padding-top:12px">
+              <div style="font-size:13px;font-weight:800;color:var(--ink)">${esc(g)}</div>
+              <div style="font-size:10.5px;color:var(--ink3);margin-top:2px">${esc(PCAL_GUIDE[g]||'')}</div>
+              <div style="font-size:10.5px;color:${c.on>=c.tot?'var(--good)':'var(--ink3)'};margin-top:1px">
+                ${c.on}/${c.tot}종</div>
+            </td>
+            ${months.map(m => {
+              const cell = gr.filter(x => x.month === m);
+              return `<td style="vertical-align:top;padding:8px 4px">
+                ${cell.length ? `<div style="display:flex;gap:5px">${cell.map(card).join('')}</div>`
+                  : '<div style="height:4px"></div>'}</td>`;
+            }).join('')}
+          </tr>`;
+        }).join('')}
+      </table>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--ink3)">
+        ${Object.keys(PCAL_STATUS).map(k => `<span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:2px;background:${PCAL_STATUS[k].c}"></span>${k}</span>`).join('')}
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border:1px dashed var(--border2);border-radius:2px"></span>미정</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="color:var(--warn)">◆</span>허리도서</span>
+        <span style="margin-left:auto;color:var(--ink5)">카드에 마우스를 올리면 상세가 보입니다</span>
+      </div>
+    </div>
+
+    ${(() => {
+      const empty = PCAL_GRADES.map(g => ({g, ...cnt(g)})).filter(x => x.tot && x.on < x.tot);
+      if (!empty.length) return '';
+      return `<div class="card gap" style="border-left:3px solid var(--warn);background:var(--warn-dim)">
+        <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:6px">채워야 할 슬롯</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)">
+          ${empty.map(x => `<span><b style="color:var(--ink)">${esc(x.g)}</b>
+            <b style="color:var(--bad);margin-left:6px">${x.tot-x.on}종</b>
+            <span style="color:var(--ink3)"> 미정 · ${rows.filter(r=>r.grade===x.g && !r.title)
+              .map(r=>r.month+'월').join(', ')}</span></span>`).join('')}
+        </div>
+      </div>`;
+    })()}
+
+    <div class="card gap">
+      <div class="card-title">담당자별 배정 <small>${esc(PCAL.half)}반기 확보분 기준</small></div>
+      ${people.length ? `<table>
+        <tr><th>담당자</th><th class="right" style="width:90px">기획</th>
+          <th class="right" style="width:90px">마케팅</th><th class="right" style="width:90px">디자인</th>
+          <th class="right" style="width:90px">합계</th></tr>
+        ${people.map(p => {
+          const a = rows.filter(r => r.plan === p).length;
+          const b = rows.filter(r => r.mkter === p).length;
+          const c2 = rows.filter(r => r.design === p).length;
+          return `<tr><td><b style="font-size:12px">${esc(p)}</b></td>
+            <td class="right">${a||'<span style="color:var(--ink5)">—</span>'}</td>
+            <td class="right">${b||'<span style="color:var(--ink5)">—</span>'}</td>
+            <td class="right">${c2||'<span style="color:var(--ink5)">—</span>'}</td>
+            <td class="right"><b>${a+b+c2}</b></td></tr>`;
+        }).join('')}
+      </table>` : '<div class="empty-row">담당자가 아직 배정되지 않았습니다</div>'}
+      ${(() => {
+        const noD = rows.filter(r => r.title && !r.design);
+        return noD.length ? `<div style="font-size:11.5px;color:var(--warn);margin-top:10px">
+          디자이너 미배정 ${noD.length}종 — ${esc(noD.slice(0,6).map(r=>r.title).join(' · '))}${noD.length>6?` 외 ${noD.length-6}종`:''}</div>` : '';
+      })()}
+    </div>`;
 }
 
 /* 인세 정산 화면 */
