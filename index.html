@@ -1685,7 +1685,10 @@ async function loadSheets() {
   const txt = document.getElementById('syncTxt');
 
   // GID 미설정이면 연동 불가
-  const allSet = Object.values(CFG.gids).every(g => g !== '');
+  // 핵심 시트만 검사한다. shipRaw·authors·pubCal 은 나중에 채워지는 선택 항목이라
+  // 여기에 넣으면 하나만 비어도 전체 연동이 멈춘다.
+  const REQUIRED_GIDS = ['setting','monthly','cost','ship','scm','bookList','weekSales'];
+  const allSet = REQUIRED_GIDS.every(k => (CFG.gids[k] || '') !== '');
   if (!CFG.sheetId || !allSet) {
     dot.className = 'sync-dot error';
     txt.textContent = '시트 ID/GID 미설정 — 데이터 없음';
