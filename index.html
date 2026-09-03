@@ -247,7 +247,15 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pc-dim{opacity:.26}
 .pc-t{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.35;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.pc-spine{font-style:normal;color:#C9971A;margin-left:3px;font-size:10px}
+.pc-badge{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:5px;
+  background:#8A6A12;color:#FFF;font-size:9.5px;font-weight:800;letter-spacing:.04em;line-height:1.5}
+.pc-sp{position:relative;border-left-style:double;border-left-width:5px}
+.pc-sp::after{content:'';position:absolute;inset:0;border-radius:var(--r3);pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(138,106,18,.32)}
+.pc-lg-sp{width:auto!important;height:auto!important;border-radius:5px!important;
+  background:#8A6A12;color:#FFF;font-size:9px;font-weight:800;padding:2px 6px;letter-spacing:.04em}
+.pc-tot-sp b{color:#8A6A12}
+.pc-tot-sp{padding-left:14px;border-left:1px solid var(--border2)}
 .pc-w{font-size:10px;color:var(--ink3);margin-top:4px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
 .pc-w.pc-none{color:var(--ink5)}
@@ -7628,9 +7636,10 @@ function renderPubCal(){
     const tip = [r.title, r.author && '저자 ' + r.author, r.status,
       r.plan && '기획 ' + r.plan, r.mkter && '마케팅 ' + r.mkter, r.design && '디자인 ' + r.design,
       r.spine && '허리도서', r.note].filter(Boolean).join('\n');
-    return `<div class="pc-slot pc-on${dim ? ' pc-dim' : ''}" style="--gc:${meta.c};--gs:${meta.soft};--gl:${meta.line}"
-      title="${esc(tip)}">
-      <div class="pc-t">${esc(r.title)}${r.spine ? '<i class="pc-spine" title="허리도서">◆</i>' : ''}</div>
+    return `<div class="pc-slot pc-on${dim ? ' pc-dim' : ''}${r.spine ? ' pc-sp' : ''}"
+      style="--gc:${meta.c};--gs:${meta.soft};--gl:${meta.line}" title="${esc(tip)}">
+      <div class="pc-t">${esc(r.title)}</div>
+      ${r.spine ? '<div class="pc-badge" title="6개월 이후 데일리 15부를 노리는 허리도서">허리</div>' : ''}
       ${who.length ? `<div class="pc-w">${esc(who.join(' · '))}</div>` : '<div class="pc-w pc-none">담당 미정</div>'}
       <div class="pc-s" style="--sc:${st.c}"><i></i>${esc(r.status || '상태 미입력')}</div>
     </div>`;
@@ -7661,6 +7670,9 @@ function renderPubCal(){
         ${people.map(p => `<option value="${esc(p)}" ${p===PCAL.person?'selected':''}>${esc(p)}</option>`).join('')}
       </select>
       <div class="pc-tot"><b>${totOn}</b><span>/ ${rows.length}종 확보</span></div>
+      ${(() => { const n = rows.filter(r => r.title && r.spine).length;
+        return n ? `<div class="pc-tot pc-tot-sp" title="6개월 이후 데일리 15부를 노리는 허리도서">
+          <b>${n}</b><span>종 허리</span></div>` : ''; })()}
     </div>
   </div>
 
@@ -7688,7 +7700,7 @@ function renderPubCal(){
       <span class="pc-div"></span>
       ${PCAL_STATUS.map(([,v]) => `<span><i style="background:${v.c};border-radius:50%"></i>${v.n}</span>`).join('')}
       <span><i style="border:1px dashed var(--border2);background:transparent"></i>미정</span>
-      <span><i style="background:none;color:#C9971A;width:auto">◆</i>허리도서</span>
+      <span><i class="pc-lg-sp">허리</i>6개월 이후 데일리 15부 목표</span>
       <span style="margin-left:auto;color:var(--ink5)">카드에 마우스를 올리면 상세가 보입니다</span>
     </div>
   </div>
