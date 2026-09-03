@@ -1500,31 +1500,6 @@ async function loadPubSheets() {
     console.warn('[출간 관리] 로드 실패:', e);
   }
 
-  // 출간 캘린더 — 반기·등급·슬롯월 단위 슬롯
-  if (CFG.pubGids.calendar) {
-    try {
-      const grid = await fetchPubGrid(CFG.pubGids.calendar);
-      const hi = findHeaderRow(grid, ['등급','도서명']);
-      if (hi >= 0) {
-        const objs = gridToObjs(grid, hi);
-        PUB_CAL.splice(0, PUB_CAL.length, ...objs.map(o => ({
-          half:   String(o['반기']||'').trim(),
-          grade:  String(o['등급']||'').trim(),
-          month:  toNum(o['슬롯월']),
-          title:  String(o['도서명']||'').trim(),
-          author: String(o['저자']||'').trim(),
-          plan:   String(o['기획자']||o['담당기획자']||'').trim(),
-          mkter:  String(o['마케터']||o['담당마케터']||'').trim(),
-          design: String(o['디자이너']||o['담당디자이너']||'').trim(),
-          status: String(o['상태']||'').trim(),
-          spine:  royFlag(o['허리도서']),
-          note:   String(o['비고']||'').trim(),
-        })).filter(x => x.half && x.grade && x.month >= 1 && x.month <= 12));
-        console.info('[출간 캘린더]', PUB_CAL.length + '슬롯');
-      }
-    } catch(e) { console.warn('[출간 캘린더] 로드 실패:', e); }
-  }
-
   // 외서 계약 (GID 미입력이면 건너뜀)
   if (CFG.pubGids.rights) {
     try {
@@ -1721,7 +1696,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members, pubCal] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
@@ -1736,9 +1711,13 @@ async function loadSheets() {
       CFG.gids.members
         ? fetchSheet(CFG.gids.members).catch(e => { console.warn('[구성원] 로드 실패:', e); return []; })
         : Promise.resolve([]),
+      CFG.gids.pubCal                                   // 출간_캘린더
+        ? fetchSheet(CFG.gids.pubCal).catch(e => { console.warn('[출간 캘린더] 로드 실패:', e); return []; })
+        : Promise.resolve([]),
     ]);
 
     applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members });
+    applyPubCal(pubCal);
     celebrate();
 
     SD.loaded = true;
@@ -7446,6 +7425,33 @@ function royCarryOf(round, r){
   const rec = (ROY.archive || []).find(x =>
     x.title === r.b.title && x.carryTo === round.key && (x.author || '') === who);
   return rec ? (rec.carryAmt || 0) : 0;
+}
+
+// 출간_캘린더 — 한 행이 슬롯 하나. 도서명이 비면 미정 슬롯.
+function applyPubCal(grid){
+  PUB_CAL.splice(0, PUB_CAL.length);
+  if (!grid || !grid.length) return;
+  const hi = findHeaderRow(grid, ['등급','도서명']);
+  if (hi < 0) { console.warn('[출간 캘린더] 헤더(등급·도서명)를 찾지 못했습니다. 첫 행:', grid[0]); return; }
+  const objs = gridToObjs(grid, hi);
+  const rows = objs.map(o => ({
+    half:   String(o['반기']||'').trim(),
+    grade:  String(o['등급']||'').trim(),
+    month:  toNum(o['슬롯월']),
+    title:  String(o['도서명']||'').trim(),
+    author: String(o['저자']||'').trim(),
+    plan:   String(o['기획자']||o['담당기획자']||'').trim(),
+    mkter:  String(o['마케터']||o['담당마케터']||'').trim(),
+    design: String(o['디자이너']||o['담당디자이너']||'').trim(),
+    status: String(o['상태']||'').trim(),
+    spine:  royFlag(o['허리도서']),
+    note:   String(o['비고']||'').trim(),
+  })).filter(x => x.half && x.grade && x.month >= 1 && x.month <= 12);
+  PUB_CAL.push(...rows);
+  console.info('[출간 캘린더]', rows.length + '슬롯 / 원본 ' + objs.length + '행');
+  if (!rows.length && objs.length)
+    console.warn('[출간 캘린더] 행은 읽었으나 반기·등급·슬롯월 중 비거나 잘못된 값이 있습니다. 첫 행:', objs[0]);
+  if (activeTab === 'pubcal') renderPubCal();
 }
 
 /* ── 출간 캘린더 ──
