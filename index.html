@@ -611,6 +611,34 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .sel{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:6px 11px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;cursor:pointer}
 
 /* SECTION DIVIDER */
+/* 본부 종합 — 한 줄 요약·일정·근거 */
+.sum-line{display:flex;align-items:center;gap:14px;padding:14px 20px;margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-sm)}
+.sum-line-t{flex:1;font-size:14px;color:var(--ink2);line-height:1.6;min-width:0}
+.sum-line-t b{color:var(--ink);font-weight:800;letter-spacing:-.01em}
+.sum-line-t b.good{color:var(--good)}.sum-line-t b.bad{color:var(--bad)}
+.sum-line-t span{color:var(--ink3)}
+.sum-line-t i{font-style:normal;color:var(--border2);margin:0 9px}
+.sum-detail{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);font-family:var(--sans);font-size:12px;font-weight:700;padding:6px 12px;border-radius:var(--r3);cursor:pointer;white-space:nowrap}
+.sum-detail.on{background:var(--ink);color:#FFF;border-color:var(--ink)}
+.sum-anom{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.sum-anom-h{font-size:11px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px}
+.sum-anom-h small{font-weight:500;letter-spacing:0;color:var(--ink5);margin-left:4px}
+.sum-anom>div{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px}
+.sum-anom>div span{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sum-anom>div b{flex:1;min-width:0;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sum-anom>div em{font-style:normal;font-weight:800;width:56px;text-align:right}
+.sum-anom>div small{color:var(--ink3);width:150px;text-align:right;white-space:nowrap}
+.sum-ev>div{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.sum-ev>div:last-child{border-bottom:0}
+.sum-ev .d{width:42px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.sum-ev .d.today{color:var(--accent-deep);font-weight:800}
+.sum-ev .k{font-size:10.5px;font-weight:800;color:var(--ink3);background:var(--surface3);border-radius:4px;padding:2px 6px;white-space:nowrap}
+.sum-ev .pub .k{color:var(--accent-deep);background:var(--accent-dim)}
+.sum-ev .warn .k{color:var(--warn);background:var(--warn-dim)}
+.sum-ev .bad .k{color:var(--bad);background:var(--bad-dim)}
+.sum-ev b{color:var(--ink);font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sum-ev small{margin-left:auto;color:var(--ink3);white-space:nowrap}
+.sum-tag{display:inline-block;margin-left:6px;font-size:10px;font-weight:800;color:var(--ink2);background:var(--surface3);border-radius:4px;padding:1px 5px;vertical-align:1px}
 .sec-label{font-size:11px;font-weight:800;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
@@ -3074,6 +3102,7 @@ function renderSummary(){
   const mCost=M_TOTAL_COST[m]||0, mProfit=M_PROFIT[m]||0, mTarget=M_TARGET[m]||1;
   const achPct=pct(mShip,mTarget);
   const retPct=pct(mRet,mShip);
+  const retPct1=mShip>0 ? (mRet/mShip*100).toFixed(1) : '0.0';   // 한 줄 요약·KPI 표시용 (소수 1자리)
   // 당월 출고 TOP10
   const mShipRank=[...BOOKS].map(b=>({title:b.title,author:b.author,qty:b.mShipQty,amt:b.mShipAmt,field:b.field}))
     .sort((a,b)=>b.qty-a.qty).slice(0,10);
@@ -3120,7 +3149,121 @@ function renderSummary(){
   document.getElementById('tab-summary').innerHTML=`
     ${freshnessBanner()}
 
-    <div class="top-zone">
+    ${(()=>{
+      /* 1층 — 이번 달을 한 줄로. 숫자는 굵게, 문제는 빨갛게 */
+      const cs = costSplit(m), pf = mNet - cs.total;
+      const yr4s = (document.getElementById('monthPicker').value||'').slice(0,4);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const live = pubBooksAll().filter(b => b.inDate || b.ship);
+      const dd = b => Math.round(((b.inDate || b.ship) - today) / 86400000);
+      const soon = live.filter(b => dd(b) >= 0 && dd(b) <= 21).length;
+      const late = live.filter(b => pcalRisk(b).overdue.length).length;
+      const pubCnt = live.filter(b => b.ship && String(b.ship.getFullYear()) === yr4s && b.ship < today).length;
+      const B = (v, cls) => `<b class="${cls||''}">${v}</b>`;
+      const parts = [
+        `${MONTHS[m]} 출고 ${B(won(mShip))} <span>목표 ${won(mTarget)}의</span> ${B(achPct + '%', achPct >= 100 ? 'good' : (achPct < 70 && m < new Date().getMonth() ? 'bad' : ''))}`,
+        `반품률 ${B(retPct1 + '%', retPct >= 15 ? 'bad' : '')}`,
+        `손익 ${B((pf >= 0 ? '+' : '') + won(pf), pf >= 0 ? 'good' : 'bad')}`,
+        `${yr4s}년 출간 ${B(pubCnt + '종')}`,
+        soon ? `3주 내 입고 ${B(soon + '종')}` : '',
+        late ? `공정 지연 ${B(late + '종', 'bad')}` : '',
+      ].filter(Boolean);
+      return `<div class="sum-line">
+        <div class="sum-line-t">${parts.join('<i>·</i>')}</div>
+        <button class="sum-detail${DETAIL ? ' on' : ''}" onclick="toggleDetail()" title="근거 표와 보조 지표를 펼치거나 접습니다">${DETAIL ? '간단히' : '자세히'}</button>
+      </div>`;
+    })()}
+
+    <div class="g4 gap">
+      <div class="kpi"><div class="kpi-lbl">달성 매출</div><div class="kpi-val">${won(mShip)}</div>${cmpTag(M_SHIP_SALES,m)}<div class="kpi-sub">목표 ${won(mTarget)} · ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
+      <div class="kpi"><div class="kpi-lbl">순매출</div><div class="kpi-val">${won(mNet)}</div>${cmpTag(M_NET_SALES,m)}<div class="kpi-sub">반품 ${won(mRet)} · <span style="${retPct>=15?'color:var(--bad);font-weight:700':''}">${retPct1}%</span></div>${spark(M_NET_SALES,m)}</div>
+      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">총 비용</div><div class="kpi-val">${won(cs.total)}</div>${cmpTag(MONTHS.map((_,i)=>costSplit(i).total),m,true)}<div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅 + 출판 + 경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
+      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − 총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
+    </div>
+
+    <div class="g2 gap">
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="card-title">이슈 · 액션</div>
+        <div class="notice-grid" style="flex:1">${issues.map(i=>`
+          <div class="notice ${i.type}">
+            <div class="n-label">${i.label}</div>
+            <div class="n-val">${i.val}</div>
+            <div class="n-sub">${i.sub}</div>
+          </div>`).join('')}</div>
+        ${(()=>{
+          const list = anomalies().slice(0, 4);
+          if (!list.length) return '';
+          const f = (v, k) => k==='pct' ? v.toFixed(1)+'%' : (k==='num' ? Math.round(v).toLocaleString() : won(Math.round(v)));
+          return `<div class="sum-anom">
+            <div class="sum-anom-h">눈에 띄는 변화 <small>최근 평균 대비</small></div>
+            ${list.map(a => { const p = Math.round((a.ratio-1)*100), col = a.good ? 'var(--good)' : 'var(--bad)';
+              return `<div><span style="background:${col}"></span><b>${esc(a.label)}</b><em style="color:${col}">${p>0?'+':''}${p}%</em><small>${f(a.cur,a.fmt)} · 평균 ${f(a.avg,a.fmt)}</small></div>`; }).join('')}
+          </div>`;
+        })()}
+      </div>
+
+      ${(()=>{
+        /* 이달 일정 — 입고·배본, 생일, 입사 기념일, 외서 계약 만료를 한 줄씩 날짜순으로 */
+        const ym = (document.getElementById('monthPicker').value||'').slice(0,7);
+        const Y = +ym.slice(0,4), mm = ym.slice(5,7);
+        const today = new Date(); today.setHours(0,0,0,0);
+        const nowMD = ('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2);
+        const ev = [];
+        pubBooksAll().forEach(b => {
+          [['입고', b.inDate], ['배본', b.ship]].forEach(([k, d]) => {
+            if (d && ymd(d).slice(0,7) === ym) ev.push({md: ymd(d).slice(5), kind: k, who: b.title, sub: '', cls: 'pub'});
+          });
+        });
+        (MEMBERS||[]).forEach(p => {
+          if (p.birth && p.birth.slice(0,2) === mm) ev.push({md: p.birth, kind:'생일', who: p.name, sub: p.team || '', cls:''});
+          if (p.joinYear && p.joinedMD && p.joinedMD.slice(0,2) === mm && Y > +p.joinYear) ev.push({md: p.joinedMD, kind:'입사', who: p.name, sub: (Y - +p.joinYear) + '주년', cls:''});
+        });
+        (PUB_RIGHTS||[]).forEach(r => {
+          const end = parseAnyDate(r['종료일']); if (!end) return;
+          const d = Math.round((end - today) / 86400000);
+          if (ymd(end).slice(0,7) === ym || (d >= 0 && d <= 60)) ev.push({md: ymd(end).slice(5), kind:'계약 만료', who: String(r['도서명']||'').trim(), sub: String(r['에이전시']||'').trim() + (d >= 0 ? ` · D-${d}` : ''), cls: d <= 30 ? 'bad' : 'warn', sortKey: ymd(end)});
+        });
+        ev.forEach(e => { e.sortKey = e.sortKey || (ym + '-' + e.md.slice(3)); });
+        ev.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+        return `<div class="card">
+          <div class="card-title">이달 일정 <small>${MONTHS[m]}</small></div>
+          ${ev.length ? `<div class="sum-ev">${ev.slice(0, 14).map(e => {
+            const isToday = e.md === nowMD;
+            return `<div class="${e.cls}"><span class="d${isToday ? ' today' : ''}">${isToday ? '오늘' : e.md.replace('-','/')}</span><span class="k">${e.kind}</span><b>${esc(e.who)}</b><small>${esc(e.sub)}</small></div>`; }).join('')}
+            ${ev.length > 14 ? `<div class="empty-row" style="padding:6px 0">외 ${ev.length - 14}건</div>` : ''}</div>`
+          : '<div class="empty-row">이번 달 일정이 없습니다</div>'}
+        </div>`;
+      })()}
+    </div>
+
+    ${DETAIL ? `
+    <div class="sec-label gap2">근거</div>
+
+    <div class="card">
+      <div class="card-title">도서별 이번 달 <small>출고 상위 10종 + 전략도서 · 행을 누르면 상세</small></div>
+      <table>
+        <tr><th>도서</th><th class="right">당월 출고</th><th class="right">당월 판매 <small>SCM</small></th><th class="right">누적 판매율</th><th class="right">시중재고</th><th class="right">출고액</th></tr>
+        ${(()=>{
+          const scm = b => b.stores ? Object.values(b.stores).reduce((a,v)=>a+v,0) : 0;
+          const top = [...BOOKS].sort((a,b)=>b.mShipQty-a.mShipQty).slice(0,10);
+          const rows = top.concat(BOOKS.filter(b => b.isStrategic && top.indexOf(b) < 0));
+          if (!rows.length) return '<tr><td colspan="6" class="empty-row">데이터 없음</td></tr>';
+          return rows.map(b => {
+            const st = b.cumShipQty>0 ? Math.round(b.cumSalesQty/b.cumShipQty*100) : 0;
+            const market = Math.max(0, b.cumShipQty - b.cumSalesQty);
+            return `<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
+              <td><b>${esc(b.title)}</b>${b.isStrategic ? '<span class="sum-tag">전략</span>' : ''}</td>
+              <td class="right">${b.mShipQty.toLocaleString()}부</td>
+              <td class="right">${scm(b).toLocaleString()}부</td>
+              <td class="right"><b style="color:${st>=70?'var(--good)':st>=40?'var(--ink)':'var(--ink2)'}">${st}%</b></td>
+              <td class="right">${market.toLocaleString()}부</td>
+              <td class="right">${won(b.mShipAmt)}</td>
+            </tr>`; }).join('');
+        })()}
+      </table>
+    </div>
+
+    <div class="top-zone gap">
     ${(()=>{
       const yr4s = (document.getElementById('monthPicker').value||'').slice(0,4);
       const Y = +yr4s;
@@ -3142,109 +3285,73 @@ function renderSummary(){
       const curPer = per[m], prevPer = m>0 ? per[m-1] : null;
       const delta  = (curPer!=null && prevPer) ? (curPer/prevPer-1)*100 : null;
 
-      /* 메인 차트 — 월별 인당 순매출(막대) + 재직 인원(선, 우축).
-         월별 실적 추이와 같은 무게로 그린다. 좌표는 픽셀 그대로 쓰고
-         preserveAspectRatio 를 건드리지 않는다 (점선 애니메이션이 늘어나 끊겨 보임). */
+      /* 월별 인당 순매출(막대) + 재직 인원(선, 우축). 좌표는 픽셀 그대로, preserveAspectRatio 는 건드리지 않는다 */
       const chart = (()=>{
         if(idx.length<2) return '';
-        const W=1000,H=250,P={t:26,r:64,b:44,l:76};
+        const W=1000,H=220,P={t:26,r:64,b:44,l:76};
         const cW=W-P.l-P.r, cH=H-P.t-P.b;
         const mxV=Math.max(...idx.map(i=>per[i]))*1.12;
         const hc=i=>headcountAt(Y,i);
-        const mxH=Math.max(...idx.map(hc))*1.55;   // 선을 위쪽에 띄워 막대 값 라벨과 겹치지 않게
+        const mxH=Math.max(...idx.map(hc))*1.55;
         const bw=Math.min(72, cW/idx.length*0.62);
         const xc=k=>P.l+(k+0.5)*(cW/idx.length);
         const yV=v=>P.t+cH-(v/mxV)*cH;
         const yH=v=>P.t+cH-(v/mxH)*cH*0.92;
-
         const grid=[0,.25,.5,.75,1].map(f=>{
           const yy=P.t+cH-f*cH;
           return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/>`
             +`<text x="${P.l-10}" y="${yy+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${fmtAmt(mxV*f)}</text>`
             +`<text x="${P.l+cW+10}" y="${yy+4}" fill="#B7C0CA" font-size="10" font-family="inherit">${Math.round(mxH*f)}${f===1?'명':''}</text>`;
         }).join('');
-
         const bars=idx.map((i,k)=>{
           const cur=i===m, h=Math.max(2,cH-(yV(per[i])-P.t));
-          return `<rect x="${xc(k)-bw/2}" y="${yV(per[i])}" width="${bw}" height="${h}" rx="3"
-                    fill="${cur?'url(#perBarCur)':'url(#perBar)'}"/>`
+          return `<rect x="${xc(k)-bw/2}" y="${yV(per[i])}" width="${bw}" height="${h}" rx="3" fill="${cur?'#3A5BD9':'#CDD4DE'}"/>`
             +`<text x="${xc(k)}" y="${yV(per[i])-9}" fill="${cur?'#0F1620':'#55606E'}" font-size="11"
                  font-weight="${cur?800:600}" text-anchor="middle" font-family="inherit">${fmtAmt(Math.round(per[i]))}</text>`;
         }).join('');
-
         const hpts=idx.map((i,k)=>xc(k)+','+yH(hc(i))).join('L');
-        const hdots=idx.map((i,k)=>`<circle cx="${xc(k)}" cy="${yH(hc(i))}" r="${i===m?4.5:3}" fill="#FFF"
-            stroke="#7C8794" stroke-width="${i===m?2.4:1.6}"/>`).join('');
-        // 인원 라벨은 기준월만 — 매달 찍으면 막대 값과 뒤엉킨다 (우측 축으로 규모는 읽힌다)
-        const hlab=idx.map((i,k)=> i!==m ? '' : `<text x="${xc(k)}" y="${yH(hc(i))-12}" fill="#55606E" font-size="10"
-            font-weight="800" text-anchor="middle" font-family="inherit">${hc(i)}명</text>`).join('');
-        const mlab=idx.map((i,k)=>`<text x="${xc(k)}" y="${P.t+cH+22}" fill="${i===m?'#0F1620':'#96A1AE'}"
-            font-size="11" font-weight="${i===m?800:400}" text-anchor="middle" font-family="inherit">${MONTHS[i]}</text>`).join('');
-
-        return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:250px;display:block">
-          <defs>
-            <linearGradient id="perBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#6B8AF0" stop-opacity=".9"/><stop offset="100%" stop-color="#6B8AF0" stop-opacity=".38"/></linearGradient>
-            <linearGradient id="perBarCur" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#3A5BD9"/><stop offset="100%" stop-color="#3A5BD9" stop-opacity=".55"/></linearGradient>
-          </defs>
+        const hdots=idx.map((i,k)=>`<circle cx="${xc(k)}" cy="${yH(hc(i))}" r="${i===m?4.5:3}" fill="#FFF" stroke="#7C8794" stroke-width="${i===m?2.4:1.6}"/>`).join('');
+        const hlab=idx.map((i,k)=> i!==m ? '' : `<text x="${xc(k)}" y="${yH(hc(i))-12}" fill="#55606E" font-size="10" font-weight="800" text-anchor="middle" font-family="inherit">${hc(i)}명</text>`).join('');
+        const mlab=idx.map((i,k)=>`<text x="${xc(k)}" y="${P.t+cH+22}" fill="${i===m?'#0F1620':'#96A1AE'}" font-size="11" font-weight="${i===m?800:400}" text-anchor="middle" font-family="inherit">${MONTHS[i]}</text>`).join('');
+        return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:220px;display:block">
           ${grid}${bars}
-          <path d="M${hpts}" data-draw fill="none" stroke="#7C8794" stroke-width="1.8"
-                stroke-dasharray="none" stroke-linejoin="round"/>
+          <path d="M${hpts}" data-draw fill="none" stroke="#7C8794" stroke-width="1.8" stroke-dasharray="none" stroke-linejoin="round"/>
           ${hdots}${hlab}${mlab}
         </svg>`;
       })();
 
-      const tile = (label, val, fmt, note, accent, delay) => `
-        <div class="rise" style="--d:${delay}ms;flex:1;min-width:170px;padding:18px 20px;
-             background:var(--surface);border:1px solid ${accent?'var(--border2)':'var(--border)'};border-radius:var(--r2)">
-          <div style="font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
-               color:${accent?'var(--accent-deep)':'var(--ink3)'}">${label}</div>
-          <div style="font-size:${accent?34:26}px;font-weight:800;letter-spacing:-.04em;color:var(--ink);
-               line-height:1;margin-top:10px" data-count="${val}" data-fmt="${fmt}">0</div>
-          <div style="font-size:11px;color:var(--ink3);margin-top:7px;line-height:1.5">${note}</div>
+      const tile = (label, val, fmt, note) => `
+        <div style="flex:1;min-width:150px">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3)">${label}</div>
+          <div style="font-size:24px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1;margin-top:8px" data-count="${val}" data-fmt="${fmt}">0</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:6px;line-height:1.5">${note}</div>
         </div>`;
 
-      return `<div class="card gap" style="position:relative;overflow:hidden;
-           background:linear-gradient(150deg,var(--accent-dim) 0%,var(--surface) 40%);border-color:var(--border2)">
-        <div style="position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-on-dark))"></div>
-
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
-          <div class="card-title" style="margin:0;font-size:16px">인당 생산성
-            <small>${yr4s}년 ${months}개월 누적 · 평균 ${avgN.toFixed(1)}명 기준</small></div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:11px;color:var(--ink3)">${MONTHS[m]} 재직 ${N}명 · ${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')}</span>
-            ${pngBtn('인당생산성')}
-          </div>
+      return `<div class="card">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div class="card-title">인당 생산성 <small>${yr4s}년 ${months}개월 누적 · 평균 ${avgN.toFixed(1)}명 · ${MONTHS[m]} 재직 ${N}명 (${Object.keys(tc).map(t=>`${esc(t)} ${tc[t]}`).join(' · ')})</small></div>
+          ${pngBtn('인당생산성')}
         </div>
-
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin:6px 0 16px">
           ${tile('인당 순매출'+help('인당 순매출'), Math.round(cumNet/avgN), 'won',
               `월평균 ${won(Math.round(cumNet/avgN/months))}` +
-              (delta!=null?` · <b style="color:${delta>=0?'var(--good)':'var(--bad)'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}%</b> 전월 대비`:''), true, 0)}
-          ${tile('인당 손익', Math.round(cumProf/avgN), 'wonS', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`, false, 80)}
+              (delta!=null?` · <b style="color:${delta>=0?'var(--good)':'var(--bad)'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}%</b> 전월 대비`:''))}
+          ${tile('인당 손익', Math.round(cumProf/avgN), 'wonS', `본부 합계 ${cumProf>=0?'+':''}${won(cumProf)}`)}
           ${tile('인당 출간'+help('인당 출간'), avgPub ? (pubCnt/avgPub).toFixed(1) : '0.0', 'dec',
-              avgPub ? `출판팀 ${curPub}명 기준 · ${yr4s}년 ${pubCnt}종` : `${yr4s}년 ${pubCnt}종 출간`, false, 160)}
-          ${tile('인당 비용', Math.round(cumCost/avgN), 'won', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`, false, 240)}
+              avgPub ? `출판팀 ${curPub}명 기준 · ${yr4s}년 ${pubCnt}종` : `${yr4s}년 ${pubCnt}종 출간`)}
+          ${tile('인당 비용', Math.round(cumCost/avgN), 'won', `순매출 대비 ${cumNet>0?Math.round(cumCost/cumNet*100):0}%`)}
         </div>
-
-        <div class="rise" style="--d:300ms;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:16px 18px 10px">
-          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px">
-            <span style="font-size:11px;font-weight:800;color:var(--ink2)">월별 인당 순매출</span>
-            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)">
-              <span style="width:14px;height:9px;border-radius:2px;background:var(--accent)"></span>인당 순매출 (좌)</span>
-            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)">
-              <svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="#7C8794" stroke-width="1.8"/></svg>재직 인원 (우)</span>
-          </div>
-          ${chart}
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:800;color:var(--ink2)">월별 인당 순매출</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)"><span style="width:14px;height:9px;border-radius:2px;background:var(--accent)"></span>인당 순매출 (좌)</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)"><svg width="16" height="6"><line x1="0" y1="3" x2="16" y2="3" stroke="#7C8794" stroke-width="1.8"/></svg>재직 인원 (우)</span>
         </div>
-
+        ${chart}
         ${(()=>{
           const gaps = rosterGapMonths(Y, m);
           const noLeavers = !rosterHasLeavers();
           if(!gaps.length && !noLeavers) return '';
-          return `<div style="margin-top:14px;padding:11px 13px;background:var(--warn-dim);border-radius:var(--r2);
-            font-size:11px;color:var(--ink2);line-height:1.65">
+          return `<div style="margin-top:12px;padding:10px 13px;background:var(--warn-dim);border-radius:var(--r2);font-size:11px;color:var(--ink2);line-height:1.65">
             <b style="color:var(--warn)">인원 이력이 불완전합니다.</b>
             ${gaps.length ? `<b>${gaps.map(i=>MONTHS[i]).join(' · ')}</b> 의 재직 인원이 ${MONTHS[m]} 대비 크게 적게 잡혔습니다. ` : ''}
             ${noLeavers ? '구성원 시트에 <b>퇴사일</b>이 입력된 행이 하나도 없습니다. ' : ''}
@@ -3254,153 +3361,47 @@ function renderSummary(){
     })()}
     </div>
 
-    ${CMP!=='none' ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:14px;
-      background:var(--accent-dim);border:1px solid var(--border2);border-radius:var(--r2);font-size:11px;color:var(--ink2)">
-      <b style="color:var(--accent-deep)">전월 대비 표시 중</b>
-      <span>주요 지표 아래에 전월 값과 증감률이 함께 나옵니다.</span></div>` : ''}
-
-    ${anomalyCard()}
-
-    <!-- 상단 KPI 6개 -->
-    <div class="g6 gap">
-      <div class="kpi"><div class="kpi-lbl">당월 목표 매출</div><div class="kpi-val">${won(mTarget)}</div><div class="kpi-sub">${MONTHS[m]} 기준</div>${spark(M_TARGET,m)}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 달성 매출</div><div class="kpi-val">${won(mShip)}</div>${cmpTag(M_SHIP_SALES,m)}<div class="kpi-sub">목표 대비 ${achPct}%<div class="kpi-bar-wrap"><div class="kpi-bar" style="width:${Math.min(100,achPct)}%"></div></div></div>${spark(M_SHIP_SALES,m)}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 반품·반품률</div><div class="kpi-val">${retPct}%</div><div class="kpi-sub">반품액 ${won(mRet)}</div>${spark(M_RETURN,m,{color:'var(--bad)'})}</div>
-      <div class="kpi"><div class="kpi-lbl">당월 순매출</div><div class="kpi-val">${won(mNet)}</div>${cmpTag(M_NET_SALES,m)}<div class="kpi-sub">출고 − 반품</div>${spark(M_NET_SALES,m)}</div>
-      ${(()=>{const cs=costSplit(m);return `<div class="kpi"><div class="kpi-lbl">당월 총 비용</div><div class="kpi-val">${won(cs.total)}</div>${cmpTag(MONTHS.map((_,i)=>costSplit(i).total),m,true)}<div class="kpi-sub">${cs.plan > 0 ? `지출 ${won(cs.fixed)} · <span style="color:var(--warn)">예정 ${won(cs.plan)}</span>` : '마케팅+출판+경상비'}</div>${spark(M_TOTAL_COST,m,{color:'var(--ink3)'})}</div>`})()}
-      ${(()=>{const cs=costSplit(m);const pf=mNet-cs.total;return `<div class="kpi"><div class="kpi-lbl">당월 예상 손익</div><div class="kpi-val ${pf>=0?'good':'bad'}">${pf>=0?'+':''}${won(pf)}</div><div class="kpi-sub">순매출 − ${cs.plan>0?'(지출+예정) ':''}총 비용</div>${spark(M_PROFIT,m)}</div>`})()}
-    </div>
-
-    <!-- 중단: 항목별 매출 추이 + 이슈 -->
-    <div class="sec-label gap2">월별 실적 분석</div>
-    <div class="g2">
+    <div class="g2e gap">
       <div class="card">
-        <div class="card-title">도서별 누적 출고 비중 <small>부수 기준 상위 10개</small></div>
+        <div class="card-title">도서별 누적 출고 비중 <small>부수 기준 상위 10종</small></div>
         ${topBooks.length ? topBooks.map((b,i) => {
           const pct2 = totalCumQty ? Math.round(b.cumShipQty/totalCumQty*1000)/10 : 0;
           const maxPct = totalCumQty ? Math.round(topBooks[0].cumShipQty/totalCumQty*1000)/10 : 1;
           const barW = Math.round(pct2/maxPct*100);
-          const isBest = i===0;
           return `<div style="margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;font-weight:600;color:var(--ink1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.title)}</span>
-              ${isBest ? `<span style="font-size:10px;font-weight:700;background:#3A5BD9;color:#0F1620;padding:2px 7px;border-radius:var(--r);letter-spacing:.5px">BEST</span>` : ''}
-              <span style="font-size:12px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--ink1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.title)}</span>
+              <span style="font-size:11.5px;color:var(--ink3);white-space:nowrap">${b.cumShipQty.toLocaleString()}부 · ${pct2}%</span>
             </div>
-            <div style="background:var(--ink5);border-radius:var(--r3);height:10px;overflow:hidden">
-              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${isBest?'#1B2430':colors10[i]};height:10px;border-radius:var(--r3)"></div>
+            <div style="background:var(--ink5);border-radius:var(--r3);height:8px;overflow:hidden">
+              <div class="bar-grow" style="--w:${barW}%;--d:${i*70}ms;background:${i===0?'#1B2430':'#CDD4DE'};height:8px;border-radius:var(--r3)"></div>
             </div>
           </div>`;
-        }).join('') : '<div style="color:var(--ink3);font-size:13px;padding:20px 0">데이터 없음</div>'}
+        }).join('') : '<div class="empty-row">데이터 없음</div>'}
       </div>
-      <div class="card" style="display:flex;flex-direction:column">
-        <div class="card-title">주요 이슈 · 액션</div>
-        <div class="notice-grid" style="flex:1">${issues.map(i=>`
-          <div class="notice ${i.type}">
-            <div class="n-label">${i.label}</div>
-            <div class="n-val">${i.val}</div>
-            <div class="n-sub">${i.sub}</div>
-          </div>`).join('')}</div>
-      </div>
+      ${(()=>{
+        if(!PUB_EXPORT.length) return '<div></div>';
+        const cnt = PUB_EXPORT.length;
+        const titles = new Set(PUB_EXPORT.map(r=>String(r['도서명']||'').trim()).filter(Boolean));
+        const nations = new Set(PUB_EXPORT.map(r=>String(r['국가']||'').trim()).filter(Boolean));
+        const done = PUB_EXPORT.filter(r=>/출간완료/.test(String(r['진행현황']||''))).length;
+        const box = (v,u,l) => `<div style="flex:1;min-width:90px">
+          <div style="font-size:24px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1">${v}<span style="font-size:13px;font-weight:700">${u}</span></div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:5px">${l}</div></div>`;
+        const byNation = {};
+        PUB_EXPORT.forEach(r=>{ const n=String(r['국가']||'').trim(); if(n) byNation[n]=(byNation[n]||0)+1; });
+        const top = Object.keys(byNation).sort((a,b)=>byNation[b]-byNation[a]).slice(0,6);
+        return `<div class="card">
+          <div class="card-title">판권 수출 <small>누적</small></div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+            ${box(cnt,'건','계약')}${box(titles.size,'종','도서')}${box(nations.size,'개국','수출국')}${box(done,'건','출간 완료')}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${top.map(n=>`<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);border-radius:var(--rp);padding:3px 10px;font-size:11px;font-weight:700;color:var(--ink2)">${esc(n)}<span style="color:var(--ink3);font-weight:500">${byNation[n]}</span></span>`).join('')}
+          </div></div>`;
+      })()}
     </div>
-
-    ${(()=>{
-      if(!PUB_EXPORT.length) return '';
-      const cnt = PUB_EXPORT.length;
-      const titles = new Set(PUB_EXPORT.map(r=>String(r['도서명']||'').trim()).filter(Boolean));
-      const nations = new Set(PUB_EXPORT.map(r=>String(r['국가']||'').trim()).filter(Boolean));
-      const done = PUB_EXPORT.filter(r=>/출간완료/.test(String(r['진행현황']||''))).length;
-      const box = (v,u,l) => `<div style="flex:1;min-width:110px">
-        <div style="font-size:28px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1">${v}<span style="font-size:15px;font-weight:700">${u}</span></div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:5px">${l}</div></div>`;
-      const byNation = {};
-      PUB_EXPORT.forEach(r=>{ const n=String(r['국가']||'').trim(); if(n) byNation[n]=(byNation[n]||0)+1; });
-      const top = Object.keys(byNation).sort((a,b)=>byNation[b]-byNation[a]).slice(0,6);
-      return `<div class="card gap2">
-        <div class="card-title">판권 수출 <small>누적 · 출판팀 시트</small></div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
-          ${box(cnt,'건','계약')}${box(titles.size,'종','도서')}${box(nations.size,'개국','수출국')}${box(done,'건','출간 완료')}
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${top.map(n=>`<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);border-radius:var(--rp);padding:4px 11px;font-size:11px;font-weight:700;color:var(--ink2)">
-            ${esc(n)}<span style="color:var(--ink3);font-weight:500">${byNation[n]}</span></span>`).join('')}
-        </div></div>`;
-    })()}
-
-    ${(()=>{
-      if(!MEMBERS.length) return '';
-      const mm = (document.getElementById('monthPicker').value||'').slice(5,7);
-      const nowMD = (()=>{const d=new Date();return ('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
-      const inMonth = arr => arr.filter(x=>x.md && x.md.slice(0,2)===mm).sort((a,b)=>a.md.localeCompare(b.md));
-      const bs = inMonth(MEMBERS.map(m=>({...m, md:m.birth})));
-      const as = inMonth(MEMBERS.filter(m=>m.joinYear).map(m=>({...m, md:m.joinedMD})))
-                   .filter(m=>+(document.getElementById('monthPicker').value||'').slice(0,4) > +m.joinYear);
-      const row = (m, sub) => {
-        const today = m.md === nowMD;
-        return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px">
-          <span style="width:38px;color:${today?'var(--accent-deep)':'var(--ink3)'};font-weight:${today?800:500}">${today?'오늘':m.md.replace('-','/')}</span>
-          <b style="color:var(--ink);font-weight:700">${esc(m.name)}</b>
-          ${m.team?`<span style="color:var(--ink3);font-size:11px">${esc(m.team)}</span>`:''}
-          <span style="margin-left:auto;color:var(--ink3);font-size:11px">${sub}</span></div>`;
-      };
-      return `<div class="g2 gap2">
-        <div class="card"><div class="card-title">이달의 생일</div>
-          ${bs.length ? bs.map(m=>row(m,'')).join('') : '<div class="empty-row">이번 달은 없습니다</div>'}</div>
-        <div class="card"><div class="card-title">입사 기념일</div>
-          ${as.length ? as.map(m=>row(m, (+(document.getElementById('monthPicker').value||'').slice(0,4) - +m.joinYear)+'주년')).join('') : '<div class="empty-row">이번 달은 없습니다</div>'}</div>
-      </div>`;
-    })()}
-
-    <!-- 중하단: TOP 10 -->
-    <div class="sec-label gap2">당월 출고·판매 TOP 10</div>
-    <div class="g2e">
-      <div class="card">
-        <div class="card-title">월 출고 도서 TOP 10 <small>부수 기준</small></div>
-        <table>
-          <tr><th>#</th><th>도서</th><th class="right">출고 부수</th><th class="right">출고액</th></tr>
-          ${(()=>{const medalBg=['#EEF1FE','#F9FAFC','#F9FAFC'];const medalNum=['#2A44A8','#55606E','#2A44A8'];return mShipRank.map((r,i)=>`<tr style="${i<3?`background:${medalBg[i]}`:''}">
-            <td style="color:${i<3?medalNum[i]:'var(--ink3)'};font-weight:800;font-size:${i<3?14:12}px">${i+1}</td>
-            <td><b>${esc(r.title)}</b></td>
-            <td class="right">${r.qty.toLocaleString()}부</td>
-            <td class="right">${won(r.amt)}</td>
-          </tr>`).join('')})()}
-        </table>
-      </div>
-      <div class="card">
-        <div class="card-title">월 판매 도서 TOP 10 <small>SCM 기준</small></div>
-        <table>
-          <tr><th>#</th><th>도서</th><th class="right">판매 부수</th><th class="right">판매액</th></tr>
-          ${(()=>{const medalBg=['#EEF1FE','#F9FAFC','#F9FAFC'];const medalNum=['#2A44A8','#55606E','#2A44A8'];return mSalesRank.map((r,i)=>`<tr style="${i<3?`background:${medalBg[i]}`:''}">
-            <td style="color:${i<3?medalNum[i]:'var(--ink3)'};font-weight:800;font-size:${i<3?14:12}px">${i+1}</td>
-            <td><b>${esc(r.title)}</b></td>
-            <td class="right">${r.qty.toLocaleString()}부</td>
-            <td class="right">${won(r.amt)}</td>
-          </tr>`).join('')})()}
-        </table>
-      </div>
-    </div>
-
-    <!-- 하단: 관리 신간 실적 -->
-    <div class="sec-label gap2">관리 신간 실적 지표</div>
-    <div class="card">
-      <div class="card-title">관리 신간 현황 <small>전략도서 기준</small></div>
-      <table>
-        <tr><th>도서명</th><th>출간일</th><th class="right">누적 출고부수</th><th class="right">누적 출고매출</th><th class="right">누적 판매</th><th class="right">판매율</th><th class="right">시중재고</th></tr>
-        ${newBooks.length ? newBooks.map(b=>{
-          const sellThru = b.cumShipQty>0 ? Math.round(b.cumSalesQty/b.cumShipQty*100) : 0;
-          const market   = Math.max(0, b.cumShipQty - b.cumSalesQty);
-          return `<tr onclick="openDrawer(${b.id})" style="cursor:pointer">
-            <td><b>${esc(b.title)}</b></td>
-            <td style="font-size:11px;color:var(--ink3)">${b.pubDate}</td>
-            <td class="right">${b.cumShipQty.toLocaleString()}부</td>
-            <td class="right">${won(b.cumShipAmt)}</td>
-            <td class="right">${b.cumSalesQty.toLocaleString()}부</td>
-            <td class="right"><b style="color:${sellThru>=70?'var(--good)':sellThru>=40?'var(--warn)':'var(--ink2)'}">${sellThru}%</b></td>
-            <td class="right">${market.toLocaleString()}부</td>
-          </tr>`;
-        }).join('') : `<tr><td colspan="7" class="empty-row">해당 신간 없음</td></tr>`}
-      </table>
-    </div>`;
+    ` : ''}`;
 
   // 렌더 직후 숫자 카운트업·선 그리기.
   // renderActive 를 거치지 않는 호출(시트 지연 로드 등)에서도 동작해야 하므로 여기서 건다.
@@ -3432,8 +3433,15 @@ function renderShip(){
   // 서점별 월별 매출 bar
   const storeBarColors={"교보":"#3A5BD9","예스24":"#37424F","알라딘":"#55606E","네이버":"#B3243C","기타":"#96A1AE"};
 
+  const topStore = (()=>{ const tot=SCM_COLS.reduce((a,k)=>a+(M_SCM[m]?.[k]||0),0); if(!tot) return null;
+    const i = SCM_COLS.map((k,i)=>[M_SCM[m]?.[k]||0,i]).sort((a,b)=>b[0]-a[0])[0][1]; return {name:SCM_STORES[i], pct:Math.round((M_SCM[m]?.[SCM_COLS[i]]||0)/tot*100)}; })();
   document.getElementById('tab-ship').innerHTML=`
-    <!-- 상단 KPI -->
+    ${tabLine([
+      `${MONTHS[m]} 출고 ${LB(won(mShip))} <span>${mShipQty.toLocaleString()}부</span>`,
+      `반품 ${LB(mRetQty.toLocaleString()+'부')} <span>${won(mRet)} ·</span> ${LB((mShip>0?(mRet/mShip*100).toFixed(1):'0.0')+'%', retPct>=15?'bad':'')}`,
+      `순매출 ${LB(won(mNet))}`,
+      topStore ? `서점 1위 ${LB(esc(topStore.name))} <span>${topStore.pct}%</span>` : '',
+    ])}
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">월 출고 매출</div><div class="kpi-val">${won(mShip)}</div>${cmpTag(M_SHIP_SALES,m)}<div class="kpi-sub">공급가 기준</div></div>
       <div class="kpi"><div class="kpi-lbl">월 출고 부수</div><div class="kpi-val">${mShipQty.toLocaleString()}</div><div class="kpi-sub">${MONTHS[m]} 합계</div></div>
@@ -3466,8 +3474,8 @@ function renderShip(){
       </div>
     </div>
 
-    <!-- 하단: 재고 현황 -->
-    <div class="sec-label gap2">도서별 재고 현황</div>
+    ${DETAIL ? `
+    <div class="sec-label gap2">근거</div>
     <div class="card" id="stock-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <div class="card-title" style="margin:0">재고 소진 예상 현황 <small>2026년 출간 도서 · 최근 3개월 실판매 기준</small></div>
@@ -3539,7 +3547,7 @@ function renderShip(){
           </div>`).join('');
       })()}
       </div>
-    </div>`;
+    </div>` : ''}`;
 }
 
 /* ─────────────────────────────────────
@@ -3573,37 +3581,33 @@ function renderMkt(){
     vals:SCM_COLS.map(k=>d[k]||0)
   }));
 
+  const topSold = [...BOOKS].map(b=>({t:b.title, q:Object.values(b.stores||{}).reduce((a,v)=>a+v,0)})).sort((a,b)=>b.q-a.q)[0];
   document.getElementById('tab-mkt').innerHTML=`
-    <!-- 누적 KPI -->
-    <div class="sec-label gap">누적 실적</div>
-    <div class="g3">
-      <div class="kpi"><div class="kpi-lbl">누적 판매 부수</div><div class="kpi-val">${cumScmQty.toLocaleString()}<span style="font-size:15px;font-weight:400">부</span></div><div class="kpi-sub">SCM 기준</div></div>
-      <div class="kpi"><div class="kpi-lbl">누적 마케팅 비용</div><div class="kpi-val">${won(cumMkt)}</div><div class="kpi-sub">${m+1}개월 합산</div></div>
-      <div class="kpi"><div class="kpi-lbl">누적 ROI</div><div class="kpi-val ${cumRoi>=150?'good':cumRoi>=100?'warn':'bad'}">${cumRoi}%</div><div class="kpi-sub">순매출 ÷ 마케팅비</div></div>
+    ${tabLine([
+      `${MONTHS[m]} 실판매 ${LB(mScmQty.toLocaleString()+'부')} <span>SCM 4사</span>`,
+      `마케팅비 ${LB(won(mMkt))}`,
+      `ROI ${LB(mRoi+'%', mRoi>=150?'good':(mRoi && mRoi<100?'bad':''))}`,
+      `구매유치비 ${LB(mCpa.toLocaleString()+'원', mCpa>=12000?'bad':'')}`,
+      topSold && topSold.q ? `최다 판매 ${LB(esc(topSold.t))} <span>${topSold.q.toLocaleString()}부</span>` : '',
+    ])}
+    <div class="g4 gap">
+      <div class="kpi"><div class="kpi-lbl">판매 부수</div><div class="kpi-val">${mScmQty.toLocaleString()}<span style="font-size:15px;font-weight:400">부</span></div><div class="kpi-sub">누적 ${cumScmQty.toLocaleString()}부</div></div>
+      <div class="kpi"><div class="kpi-lbl">마케팅 비용</div><div class="kpi-val">${won(mMkt)}</div>${cmpTag(M_MKT_COST,m,true)}<div class="kpi-sub">누적 ${won(cumMkt)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">ROI</div><div class="kpi-val ${mRoi>=150?'good':mRoi>=100?'':'bad'}">${mRoi}%</div><div class="kpi-sub">순매출 ÷ 마케팅비 · 누적 ${cumRoi}%</div></div>
+      <div class="kpi"><div class="kpi-lbl">구매유치비</div><div class="kpi-val ${mCpa<8000?'good':mCpa<12000?'':'bad'}">${mCpa.toLocaleString()}<span style="font-size:15px;font-weight:400">원</span></div><div class="kpi-sub">마케팅비 ÷ 판매 부수</div></div>
     </div>
 
-    <!-- 당월 KPI -->
-    <div class="sec-label gap2">당월 실적</div>
-    <div class="g4">
-      <div class="kpi"><div class="kpi-lbl">월 판매 부수</div><div class="kpi-val">${mScmQty.toLocaleString()}<span style="font-size:15px;font-weight:400">부</span></div><div class="kpi-sub">SCM 집계</div></div>
-      <div class="kpi"><div class="kpi-lbl">월 마케팅 비용</div><div class="kpi-val">${won(mMkt)}</div>${cmpTag(M_MKT_COST,m,true)}<div class="kpi-sub">${MONTHS[m]} 집행</div></div>
-      <div class="kpi"><div class="kpi-lbl">월 ROI</div><div class="kpi-val ${mRoi>=150?'good':mRoi>=100?'warn':'bad'}">${mRoi}%</div><div class="kpi-sub">순매출 ÷ 마케팅비</div></div>
-      <div class="kpi"><div class="kpi-lbl">구매유치비 (평균)</div><div class="kpi-val ${mCpa<8000?'good':mCpa<12000?'warn':'bad'}">${mCpa.toLocaleString()}원</div><div class="kpi-sub">마케팅비 ÷ SCM</div></div>
-    </div>
-
-    <!-- 중단: 서점별 월단위 SCM -->
-    <div class="sec-label gap2">서점별 월단위 판매 부수</div>
     <div class="card">
-      <div class="card-title">채널별 판매 추이 <small>온라인·오프라인 비중</small></div>
-      ${stackedBarChart(scmRows, scmSegs)}
-    </div>
-
-    <!-- 하단: 도서별 마케팅 상세 -->
-    <div class="sec-label gap2">도서별 일별 판매 추이</div>
-    <div class="card">
-      <div class="card-title">최근 일별 판매 부수 <small>도서를 검색해 최대 5종까지 겹쳐 봅니다</small></div>
+      <div class="card-title">도서별 일별 판매 <small>최대 5종 · 7일 이동평균</small></div>
       ${renderDailyTrend()}
-    </div>`;
+    </div>
+
+    ${DETAIL ? `
+    <div class="sec-label gap2">근거</div>
+    <div class="card">
+      <div class="card-title">서점별 월 판매 부수</div>
+      ${stackedBarChart(scmRows, scmSegs)}
+    </div>` : ''}`;
   setTimeout(initWeeklyChartHover, 100);
 }
 
@@ -4114,6 +4118,12 @@ function renderCost(){
   const rateDelta = (curRate!=null && prvRate!=null) ? (curRate-prvRate) : null;
 
   document.getElementById('tab-cost').innerHTML=`
+    ${tabLine([
+      `${MONTHS[m]} 비용 ${LB(won(cs.total))}${cs.plan>0?` <span>예정 ${won(cs.plan)} 포함</span>`:''}`,
+      `비용률 ${LB(curRate!=null?curRate.toFixed(1)+'%':'—', curRate!=null && curRate>=70?'bad':'')}${rateDelta!=null?` <span>전월 ${rateDelta<=0?'▼':'▲'}${Math.abs(rateDelta).toFixed(1)}p</span>`:''}`,
+      `순손익 ${LB((profit>=0?'+':'')+won(profit), profit>=0?'good':'bad')}`,
+      cumPlan>0 ? `미지급 ${LB(won(cumPlan))}` : '',
+    ])}
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">당월 비용</div>
         <div class="kpi-val">${won(cs.total)}</div>${cmpTag(MONTHS.map((_,i)=>costSplit(i).total),m,true)}
@@ -4143,7 +4153,9 @@ function renderCost(){
       ${rateChart()}
     </div>
 
-    <div class="g2 gap">
+    ${DETAIL ? `
+    <div class="sec-label gap2">근거</div>
+    <div class="g2">
       <div class="card">
         <div class="card-title">비용 구성 추이 <small>팀별</small></div>
         ${stackedBarChart(costRowsFor(m), [
@@ -4160,9 +4172,8 @@ function renderCost(){
       <button onclick="exportCost()" style="border:1px solid var(--border2);background:var(--surface);color:var(--ink2);
         border-radius:var(--r3);padding:6px 11px;font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer">CSV</button>
     </div>
-    <div class="g2">
-      <div class="card"><div class="card-title">마케팅팀</div>${catBars('마케팅')}</div>
-      <div class="card"><div class="card-title">출판팀</div>${catBars('출판')}</div>
+    <div class="card">
+      <div class="g2e"><div><div class="card-title">마케팅팀</div>${catBars('마케팅')}</div><div><div class="card-title">출판팀</div>${catBars('출판')}</div></div>
     </div>
 
     ${(COST_NOBOOK.미상 + COST_NOBOOK.기타) > 0 ? `
@@ -4173,7 +4184,7 @@ function renderCost(){
         ${COST_NOBOOK.미상 > 0 ? `<tr><td><b style="font-size:12px">미상</b></td><td class="right"><b>${won(COST_NOBOOK.미상)}</b></td><td style="font-size:12px;color:var(--ink2)">도서별 기록이 없어 소급 배분이 불가한 비용</td></tr>` : ''}
         ${COST_NOBOOK.기타 > 0 ? `<tr><td><b style="font-size:12px">기타</b></td><td class="right"><b>${won(COST_NOBOOK.기타)}</b></td><td style="font-size:12px;color:var(--ink2)">본부 브랜딩·채널 운영 등 특정 도서에 귀속되지 않는 비용</td></tr>` : ''}
       </table>
-    </div>` : ''}`;
+    </div>` : ''}` : ''}`;
 }
 
 // 월별 비용 구성 추이용 행
@@ -4444,6 +4455,13 @@ function renderChannel(){
         <b>${MONTHS[pickM]} 채널 데이터가 아직 없습니다.</b> 아래 수치는 <b>${MONTHS[m]}</b> 기준입니다.
         채널 관리 시트의 <b>채널실적(2026)</b> 탭에 ${MONTHS[pickM]} 열을 채우면 자동으로 반영됩니다.</div></div>` : ''}
 
+    ${tabLine([
+      `${MONTHS[m]} 팔로워 ${LB(totFol.toLocaleString())} <span>${rows.length}개 채널</span>`,
+      `순증 ${LB((totDiff>=0?'+':'')+totDiff.toLocaleString(), totDiff>=0?'good':'bad')}`,
+      `도달 ${LB(fmtAmt(totReach))} <span>업로드 ${totUp.toLocaleString()}건</span>`,
+      totRev ? `채널 수익 ${LB(won(totRev))}` : '',
+      (()=>{ const t=[...rows].sort((a,b)=>b.reach-a.reach)[0]; return t && t.reach ? `도달 1위 ${LB(esc(t.acct))}` : ''; })(),
+    ])}
     <div class="g4 gap">
       <div class="kpi"><div class="kpi-lbl">총 팔로워</div>
         <div class="kpi-val" data-count="${totFol}" data-fmt="int">0</div>
@@ -4458,38 +4476,6 @@ function renderChannel(){
         <div class="kpi-val">${won(totRev)}</div>
         <div class="kpi-sub">보너스 + 광고</div></div>
     </div>
-
-    <div class="card gap">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="card-title" style="margin:0">채널 효율
-          <small>팔로워 대비 얼마나 멀리 퍼지는지 · 도달률 순</small></div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink3)">
-          ${kinds.map(k=>`<span style="display:inline-flex;align-items:center;gap:5px">
-            <span style="width:9px;height:9px;border-radius:50%;background:${kindColor(k)}"></span>${esc(k)}</span>`).join('')}
-        </div>
-      </div>
-      ${effBars()}
-    </div>
-
-    ${CH_WEEKLY.length ? `
-    <div class="card gap">
-      <div class="card-title">주차별 팔로워 <small>첫 주 대비 증감률 · 규모가 달라도 비교되도록 % 로 환산</small></div>
-      ${weeklyChart()}
-    </div>` : ''}
-
-    ${contAll.length ? `
-    <div class="g2 gap">
-      <div class="card">
-        <div class="card-title">도서 × 채널 도달 <small>어느 도서가 어느 채널에서 통하는지</small></div>
-        ${heat()}
-      </div>
-      <div class="card">
-        <div class="card-title">도달 집중도 <small>소수 콘텐츠에 얼마나 쏠려 있는지</small></div>
-        ${concentration()}
-        <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-top:10px">
-          곡선이 왼쪽에서 가파를수록 소수 콘텐츠가 도달을 독식합니다. 완만할수록 고르게 나옵니다.</div>
-      </div>
-    </div>` : ''}
 
     <div class="card gap">
       <div class="card-title">채널별 현황 <small>${MONTHS[m]} · 팔로워 순</small></div>
@@ -4531,6 +4517,40 @@ function renderChannel(){
           </tr>`).join('')}
       </table>
     </div>
+
+    ${CH_WEEKLY.length ? `
+    <div class="card gap">
+      <div class="card-title">주차별 팔로워 <small>첫 주 대비 증감률 · 규모가 달라도 비교되도록 % 로 환산</small></div>
+      ${weeklyChart()}
+    </div>` : ''}
+
+    ${DETAIL ? `
+    <div class="sec-label gap2">근거</div>
+    <div class="card gap">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="card-title" style="margin:0">채널 효율
+          <small>팔로워 대비 얼마나 멀리 퍼지는지 · 도달률 순</small></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink3)">
+          ${kinds.map(k=>`<span style="display:inline-flex;align-items:center;gap:5px">
+            <span style="width:9px;height:9px;border-radius:50%;background:${kindColor(k)}"></span>${esc(k)}</span>`).join('')}
+        </div>
+      </div>
+      ${effBars()}
+    </div>
+
+    ${contAll.length ? `
+    <div class="g2 gap">
+      <div class="card">
+        <div class="card-title">도서 × 채널 도달 <small>어느 도서가 어느 채널에서 통하는지</small></div>
+        ${heat()}
+      </div>
+      <div class="card">
+        <div class="card-title">도달 집중도 <small>소수 콘텐츠에 얼마나 쏠려 있는지</small></div>
+        ${concentration()}
+        <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-top:10px">
+          곡선이 왼쪽에서 가파를수록 소수 콘텐츠가 도달을 독식합니다. 완만할수록 고르게 나옵니다.</div>
+      </div>
+    </div>` : ''}
 
     <div class="card gap">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
@@ -4708,7 +4728,8 @@ function renderChannel(){
           }).join('')}
         </table>${(!grouped && list.length>200)?`<div style="font-size:11px;color:var(--ink3);margin-top:10px">상위 200건 표시 · 전체 ${list.length}건</div>`:''}`;
       })()}
-    </div>` : ''}`;
+    </div>` : ''}    ` : ''}
+`;
 
   const _ch = document.getElementById('tab-channel');
   setTimeout(function(){ runCountUps(_ch); drawLines(_ch); }, 0);
@@ -6861,6 +6882,15 @@ function launchEgg(src){
 // 업무 흐름에 개입하지 않는 선에서만. 데이터·판단에는 아무 영향이 없다.
 /* ── 비교 모드 (전월 / 전년동월) ── */
 let CMP = 'none';                       // none | prev | yoy
+// 간단히 / 자세히 — 기본은 간단히(1·2층). 자세히는 근거 표와 보조 지표까지
+let DETAIL = (()=>{ try { return localStorage.getItem('dash.detail') === '1'; } catch(e){ return false; } })();
+// 탭 첫 줄 — 한 줄 요약 + 자세히 토글. parts 는 이미 HTML 조각
+function tabLine(parts){
+  return `<div class="sum-line"><div class="sum-line-t">${parts.filter(Boolean).join('<i>·</i>')}</div>
+    <button class="sum-detail${DETAIL ? ' on' : ''}" onclick="toggleDetail()" title="근거 표와 보조 지표를 펼치거나 접습니다">${DETAIL ? '간단히' : '자세히'}</button></div>`;
+}
+const LB = (v, cls) => `<b class="${cls||''}">${v}</b>`;
+function toggleDetail(){ DETAIL = !DETAIL; try { localStorage.setItem('dash.detail', DETAIL ? '1' : '0'); } catch(e){} renderActive(); }
 function setCmp(v){ CMP = v; writeHash(); renderActive(); syncCmpBtn(); }
 // 같은 연도 배열만 있으므로 전년은 시트에 없으면 표시하지 않는다
 function cmpDelta(arr, i){
@@ -7852,7 +7882,7 @@ function renderPubCal(){
   const people = [...new Set(items.flatMap(it => [pcalVal(it,'plan'), pcalVal(it,'mkter'), pcalVal(it,'design')]).filter(Boolean))].sort();
   const mine = it => !PCAL.person || [pcalVal(it,'plan'), pcalVal(it,'mkter'), pcalVal(it,'design')].indexOf(PCAL.person) >= 0;
   const cnt = g => { const gr = items.filter(x => x.grade === g); return {tot: gr.length, on: gr.filter(filled).length}; };
-  const totOn = items.filter(it => it.cal && it.cal.title).length;
+  const totOn = items.filter(it => it.cal && filled(it)).length;
   const nowM = (new Date().getFullYear() === Y) ? new Date().getMonth() + 1 : 0;
   const keyDate = it => it.book ? (it.book.inDate || it.book.ship) : (pcalVal(it,'inDate') || pcalVal(it,'ship') || null);
   const inMonth = m => items.filter(it => { const d = keyDate(it); return d && d.getFullYear() === Y && d.getMonth()+1 === m; }).length;
@@ -8018,7 +8048,21 @@ function renderPubCal(){
   </div>`;
   };
 
+  const alertLine = (() => {
+    const empty = PCAL_GRADES.map(g => ({g, ...cnt(g)})).filter(x => x.tot && x.on < x.tot);
+    const noAssign = items.filter(it => filled(it) && (!pcalVal(it,'design') || !pcalVal(it,'plan'))).length;
+    const rightsNear = CFG.pubGids.rights ? PUB_RIGHTS.map(r => parseAnyDate(r['종료일'])).filter(d => d && pcalDday(d) >= 0 && pcalDday(d) <= 90).length : 0;
+    return tabLine([
+      `${Y}년 슬롯 확보 ${LB(totOn + '/' + rows.length + '종')}`,
+      empty.length ? `미정 ${LB(empty.reduce((a,x) => a + x.tot - x.on, 0) + '슬롯')} <span>${empty.map(x => x.g + ' ' + (x.tot - x.on)).join(' · ')}</span>` : '',
+      noAssign ? `담당 미배정 ${LB(noAssign + '종', 'bad')}` : '',
+      soon ? `3주 내 입고 ${LB(soon + '종')}` : '',
+      lateN ? `공정 지연 ${LB(lateN + '종', 'bad')}` : '',
+      rightsNear ? `외서 계약 만료 90일 내 ${LB(rightsNear + '건', 'bad')}` : '',
+    ]);
+  })();
   el.innerHTML = `
+  ${alertLine}
   <div class="pc-head">
     <div class="pc-yr">
       <select onchange="pcalYear(this.value)">
@@ -8062,6 +8106,8 @@ function renderPubCal(){
       <small>진행 중 ${dist.live}종</small></div>
   </div>
 
+  ${DETAIL ? `
+  <div class="sec-label gap2">근거</div>
   ${(() => {
     const empty = PCAL_GRADES.map(g => ({g, ...cnt(g)})).filter(x => x.tot && x.on < x.tot);
     const noD = items.filter(it => filled(it) && !pcalVal(it,'design'));
@@ -8110,7 +8156,7 @@ function renderPubCal(){
         <span><i style="background:rgba(58,91,217,.14)"></i>1종</span><span><i style="background:rgba(58,91,217,.34)"></i>2종</span><span><i style="background:rgba(58,91,217,.62)"></i>3종 이상 — 같은 달에 몰림</span>
         <span style="margin-left:auto;color:var(--ink5)">칸에 마우스를 올리면 도서명이 보입니다</span>
       </div>`; })() : '<div class="empty-row">담당자가 아직 배정되지 않았습니다</div>'}
-  </div>`;
+  </div>` : ''}`;
 }
 
 /* ── 출간 상세 팝업 ── */
