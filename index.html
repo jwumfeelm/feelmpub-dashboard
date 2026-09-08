@@ -242,6 +242,10 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pc-empty{border:1px dashed var(--border2);background:var(--surface2);text-align:center;
   color:var(--ink5);font-size:13px;display:flex;align-items:center;justify-content:center;min-height:56px}
 .pc-empty:hover{border-color:var(--gc);color:var(--gc);background:var(--surface)}
+.pc-empty span{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.3}
+.pc-empty small{font-size:11px;color:var(--ink3);font-weight:500}
+.pc-empty .pc-empty-who{color:var(--ink2);font-weight:600}
+.pc-empty-w{min-height:66px}
 .pc-on{background:var(--gs);border:1px solid var(--gl);border-left:3px solid var(--gc);cursor:help}
 .pc-on:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
 .pc-dim{opacity:.26}
@@ -268,8 +272,60 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pc-legend span{display:inline-flex;align-items:center;gap:5px}
 .pc-legend i{width:10px;height:10px;border-radius:2px;display:block}
 .pc-legend .pc-div{width:1px;height:11px;background:var(--border2)}
+/* 카드 안 판매 진척 (배본 뒤) */
+.pc-sale{margin-top:8px}
+.pc-sale-bar{height:5px;border-radius:2px;background:var(--gl);overflow:hidden}
+.pc-sale-bar i{display:block;height:5px;border-radius:2px;background:var(--gc)}
+.pc-sale-t{font-size:11px;color:var(--ink3);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-sale-t b{color:var(--ink);font-weight:800}
+/* 담당자 × 월 부하 */
+.pc-heat{display:grid;grid-template-columns:150px repeat(12,1fr) 52px;gap:3px;align-items:stretch}
+.pc-heat-h{font-size:11px;font-weight:700;color:var(--ink3);text-align:center;padding:4px 0 6px}
+.pc-heat-h.now{color:var(--accent-deep)}
+.pc-heat-h.right,.pc-heat-c.right{text-align:right;padding-right:4px}
+.pc-heat-p{display:flex;align-items:baseline;gap:6px;padding:6px 4px;font-size:12px;min-width:0}
+.pc-heat-p b{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-heat-p span{font-size:10px;color:var(--ink3);white-space:nowrap}
+.pc-heat-c{border-radius:4px;min-height:30px;display:flex;align-items:center;justify-content:center;font-size:12px;border:1px solid var(--border)}
+.pc-heat-c.now{border-color:var(--accent)}
+.pc-heat-c.right{border:0;justify-content:flex-end}
+.pc-heat-c b{font-weight:800}
+/* 카드 안 공정 미니 바 */
+.pc-mini{margin-top:8px}
+.pc-mini-bar{display:flex;gap:2px}
+.pc-mini-bar i{flex:1;height:5px;border-radius:2px;background:var(--surface3);display:block}
+.pc-mini-bar i.done{background:var(--gc)}
+.pc-mini-bar i.plan{background:var(--gl)}
+.pc-mini-bar i.late{background:var(--bad)}
+.pc-mini-bar i.cur{height:7px;margin-top:-1px}
+.pc-mini-t{font-size:11px;color:var(--ink3);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-mini-t b{color:var(--ink);font-weight:800}
+.pc-risk{display:inline-block;font-style:normal;margin-left:6px;padding:1px 6px;border-radius:4px;
+  background:var(--bad-dim);color:var(--bad);font-size:10px;font-weight:800}
+.pc-on{cursor:pointer}
+.pc-orphan .pc-t{color:var(--ink2)}
+.pc-mc{position:absolute;right:6px;top:6px;font-style:normal;font-size:10px;font-weight:800;color:var(--ink3);
+  background:var(--surface3);border-radius:4px;padding:1px 5px;line-height:1.4}
+.pc-lg-mini{width:22px!important;height:5px!important;border-radius:2px!important;
+  background:linear-gradient(90deg,var(--ink2) 0 50%,var(--border2) 50% 100%)}
+.pc-seg{display:flex;border:1px solid var(--border2);border-radius:var(--r3);overflow:hidden;background:var(--surface)}
+.pc-seg button{border:0;background:transparent;font-family:var(--sans);font-size:12px;font-weight:700;color:var(--ink3);
+  padding:7px 12px;cursor:pointer}
+.pc-seg button.on{background:var(--ink);color:#FFF}
+.pc-row{cursor:pointer}.pc-row:hover td{background:var(--surface2)}
+.pc-strip{display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--sh-sm);padding:14px 20px;flex-wrap:wrap;align-items:center}
+.pc-strip>div{display:flex;align-items:baseline;gap:6px;padding:4px 22px 4px 0;margin-right:22px;border-right:1px solid var(--border)}
+.pc-strip>div:last-child{border-right:0;margin-right:0;padding-right:0}
+.pc-strip span{font-size:11px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-right:4px}
+.pc-strip b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.pc-strip b.bad{color:var(--bad)}
+.pc-strip small{font-size:11.5px;color:var(--ink3)}
+.pc-strip-dist em{font-style:normal;font-size:12px;color:var(--ink2);margin-right:12px}
+.pc-strip-dist em b{font-size:14px;margin-left:2px}
 @media (max-width:900px){
   .pc-head{gap:12px}
+  .pc-strip>div{border-right:0;margin-right:0;padding-right:0;width:100%}
   .pc-yr select{font-size:21px}
   .pc-right{margin-left:0;width:100%}
 }
@@ -316,7 +372,73 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .roy-load .dots::after{content:'';animation:royDots 1.4s steps(4,end) infinite}
 @keyframes royDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 
-/* 인세 정산서 모달 */
+/* 인세 정산서 · 출간 상세 모달 */
+#pdModal{position:fixed;inset:0;z-index:1300;display:none;align-items:flex-start;justify-content:center;
+  background:rgba(15,22,32,.5);backdrop-filter:blur(3px);padding:32px 20px;overflow-y:auto}
+#pdModal.on{display:flex;animation:fadeIn var(--d-fast) var(--ease) both}
+#pdModal .box{width:min(980px,100%);background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r);box-shadow:var(--sh-lg);animation:riseIn var(--d-fast) var(--ease) both;
+  padding:24px 26px 22px;margin:auto}
+#pdModal .x{position:absolute;top:10px;right:12px;width:28px;height:28px;border:0;background:transparent;
+  color:var(--ink3);font-size:17px;cursor:pointer;border-radius:var(--r3);line-height:1}
+#pdModal .x:hover{background:var(--surface3);color:var(--ink)}
+.pd-top{display:flex;align-items:flex-start;gap:20px;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.pd-l{flex:1;min-width:0}.pd-r{text-align:right;flex-shrink:0;padding-right:28px}
+.pd-r b{display:block;font-size:30px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1.1}
+.pd-r b.bad{color:var(--bad)}.pd-r span{display:block;font-size:12px;color:var(--ink3);margin-top:4px}
+.pd-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.pd-chip{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:5px;padding:3px 9px;
+  font-size:11px;font-weight:800;letter-spacing:.03em;white-space:nowrap}
+.pd-chip-mute{background:var(--surface3);color:var(--ink3);font-weight:600}
+.pd-title{font-size:24px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1.3}
+.pd-auth{font-size:13.5px;color:var(--ink2);margin-top:4px}
+.pd-none{color:var(--ink5)}
+.pd-sec{margin-bottom:18px}
+.pd-h{font-size:11px;font-weight:800;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px}
+.pd-h small{font-weight:500;letter-spacing:0;text-transform:none;margin-left:6px;color:var(--ink5)}
+.pd-cols{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.pd-kv{display:grid;grid-template-columns:96px 1fr;row-gap:0;column-gap:12px;margin:0}
+.pd-kv dt{font-size:12px;color:var(--ink3);padding:7px 0;border-bottom:1px solid var(--border)}
+.pd-kv dd{font-size:13px;color:var(--ink);font-weight:600;margin:0;padding:7px 0;border-bottom:1px solid var(--border)}
+.pd-note{font-size:12.5px;color:var(--ink2);line-height:1.7;white-space:pre-wrap;background:var(--surface2);
+  padding:10px 12px;border-radius:var(--r3)}
+.pd-hint{font-size:11.5px;color:var(--ink3);line-height:1.7;padding:9px 12px;background:var(--surface2);border-radius:var(--r3);margin-top:4px}
+.pd-links{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.pd-links button{border:1px solid var(--border2);background:var(--surface);color:var(--ink2);font-family:var(--sans);
+  font-size:12px;font-weight:700;padding:7px 12px;border-radius:var(--r3);cursor:pointer}
+.pd-links button:hover{border-color:var(--accent);color:var(--accent-deep);background:var(--accent-dim)}
+.pd-nobook{font-size:12.5px;color:var(--ink2);line-height:1.7;padding:12px 14px;background:var(--surface2);border-radius:var(--r3)}
+.pd-nobook span{color:var(--ink3);font-size:11.5px}
+.pd-steps{display:flex;gap:18px;align-items:flex-start}
+.pd-sg{min-width:0}
+.pd-sg-l{font-size:10.5px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:8px;padding-left:2px}
+.pd-sg-r{display:flex;position:relative}
+.pd-sg-r::before{content:'';position:absolute;left:12%;right:12%;top:7px;height:2px;background:var(--border2)}
+.pd-st{flex:1;min-width:0;text-align:center;position:relative;padding-top:0}
+.pd-st i{display:block;width:16px;height:16px;border-radius:50%;margin:0 auto 7px;border:2px solid var(--border2);background:var(--surface);box-sizing:border-box}
+.pd-st.done i{background:var(--gc);border-color:var(--gc)}
+.pd-st.plan i{border-color:var(--gc);background:var(--surface)}
+.pd-st.none i{border-style:dashed}
+.pd-st.late i{border-color:var(--bad);background:var(--bad-dim)}
+.pd-st.late b{color:var(--bad)}
+.pd-st.cur i{box-shadow:0 0 0 4px var(--gl)}
+.pd-st b{display:block;font-size:11px;color:var(--ink);line-height:1.25;word-break:keep-all}
+.pd-st.none b{color:var(--ink3);font-weight:500}
+.pd-st span{display:block;font-size:11px;color:var(--ink3);margin-top:2px}
+.pd-st.done span{color:var(--ink2)}
+.pd-st em{display:inline-block;font-style:normal;font-size:10px;font-weight:800;color:var(--bad);margin-top:2px}
+.pd-sale{padding:12px 14px;background:var(--surface2);border-radius:var(--r3)}
+.pd-sale-n{display:flex;align-items:baseline;gap:6px}
+.pd-sale-n b{font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.pd-sale-n span{font-size:13px;color:var(--ink3)}
+.pd-sale-n em{margin-left:auto;font-style:normal;font-size:18px;font-weight:800}
+.pd-sale-bar{height:6px;border-radius:3px;background:var(--ink5);overflow:hidden;margin:8px 0 7px}
+.pd-sale-bar i{display:block;height:6px;border-radius:3px;background:var(--gc)}
+.pd-sale-s{font-size:12px;color:var(--ink2)}
+.pd-steps-sum{font-size:12px;color:var(--ink2);margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
+.pd-steps-sum span{float:right;color:var(--ink3)}
+@media (max-width:640px){.pd-cols{grid-template-columns:1fr}.pd-steps{flex-direction:column;gap:14px}.pd-top{flex-direction:column}.pd-r{text-align:left;padding-right:0}}
+
 #royModal{position:fixed;inset:0;z-index:1300;display:none;align-items:flex-start;justify-content:center;
   background:rgba(15,22,32,.5);backdrop-filter:blur(3px);padding:32px 20px;overflow-y:auto}
 #royModal.on{display:flex;animation:fadeIn var(--d-fast) var(--ease) both}
@@ -668,6 +790,11 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
   <div id="royModalBody"></div>
 </div></div>
 
+<div id="pdModal"><div class="box" style="position:relative">
+  <button class="x" onclick="pdClose()" title="닫기">&#10005;</button>
+  <div id="pdModalBody"></div>
+</div></div>
+
 <div id="cmdk"><div class="box">
   <input id="cmdkQ" placeholder="도서 · 채널 · 콘텐츠 · 화면 검색" autocomplete="off">
   <div class="res" id="cmdkR"></div>
@@ -707,7 +834,6 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
     <div id="tab-mkt"      class="section"></div>
     <div id="tab-cost"     class="section"></div>
     <div id="tab-channel"  class="section"></div>
-    <div id="tab-publish"  class="section"></div>
     <div id="tab-pubcal"   class="section"></div>
     <div id="tab-books"    class="section"></div>
     <div id="tab-royalty"  class="section"></div>
@@ -792,7 +918,6 @@ const TABS = [
   {id:"channel",  label:"채널"},
   {div:true},
   {id:"calendar", label:"마케팅 캠페인"},
-  {id:"publish",  label:"출간 관리"},
   {id:"pubcal",   label:"출간 캘린더"},
   {id:"books",    label:"도서 DB"},
   {id:"royalty",  label:"인세 정산"},
@@ -1034,7 +1159,7 @@ window.__rosterDiag = function(){
     '입사일 비어있는 행': ROSTER.filter(function(p){ return !p.joinD; }).map(function(p){ return p.name; }),
     '월별 인원': byMonth,
     '출판팀 평균(연초~기준월)': avgHeadcount(y, getM(), TEAM_PUB).toFixed(2),
-    '집계된 출간 종수': PUB_BOOKS.filter(function(b){ return b.ship && String(b.ship.getFullYear())===String(y) && b.ship < new Date(); }).length,
+    '집계된 출간 종수': pubBooksAll().filter(function(b){ return b.ship && String(b.ship.getFullYear())===String(y) && b.ship < new Date(); }).length,
   };
 };
 function teamCountAt(y, mIdx){
@@ -1050,6 +1175,13 @@ function teamCountAt(y, mIdx){
 // 제작 공정 순서 (열 위치 기준 — '디자인'이 담당자/단계 두 곳에 있어 이름으로 못 찾는다)
 // 회의 3단계 / 제작 7단계로 나눠서 본다
 const PUB_STAGE_GROUPS = [
+  // 기획 4단계 — 다른 공정과 똑같이 날짜 열로 관리한다
+  {label:'기획', keys:[
+    {key:'저자 서치', names:['저자서치','저자 서치','서치','섭외','검토','협의','저자'], col:-1},
+    {key:'기획 확정', names:['기획확정','기획 확정','승인','확정'],                col:-1},
+    {key:'원고 수급', names:['원고수급','원고 수급','원고','수급','집필','번역'],    col:-1},
+    {key:'계약 완료', names:['계약완료','계약 완료','계약'],                       col:-1},
+  ]},
   {label:'회의', keys:[
     {key:'킥오프',   names:['킥오프'],            col:22},
     {key:'제목회의', names:['제목회의','제목'],    col:23},
@@ -1066,6 +1198,31 @@ const PUB_STAGE_GROUPS = [
   ]},
 ];
 const PUB_STAGES = PUB_STAGE_GROUPS.reduce(function(a,g){ return a.concat(g.keys); }, []);
+// '2교' '표지' 'pc교' 처럼 적힌 값을 공정 키로 맞춘다
+const PUB_PLAN_KEYS = ['저자 서치','기획 확정','원고 수급','계약 완료'];
+// 기획 4단계 색 — 서치는 노랑, 확정은 회색, 원고는 인디고, 계약은 초록
+const PUB_PLAN_COLOR = {'저자 서치':'var(--warn)', '기획 확정':'var(--ink2)', '원고 수급':'var(--accent-deep)', '계약 완료':'var(--good)'};
+function pubPhaseOf(key){
+  const g = PUB_STAGE_GROUPS.find(g => g.keys.some(k => k.key === key));
+  return g ? g.label : '';
+}
+function pubDoneKeyOf(v){
+  const t = String(v||'').replace(/\s/g,'').toLowerCase();
+  if (!t) return '';
+  const hit = PUB_STAGES.find(st => (st.names||[st.key]).some(n => n.replace(/\s/g,'').toLowerCase() === t))
+          || PUB_STAGES.find(st => (st.names||[st.key]).some(n => t.indexOf(n.replace(/\s/g,'').toLowerCase()) >= 0));
+  return hit ? hit.key : '';
+}
+// 출간 캘린더 정본 여부 — true 면 캘린더 탭이 공정·일정까지 다 쥐고, 출판팀 시트(출간 관리 New)는 캘린더에 쓰지 않는다
+const PCAL_SELF = true;
+// 출간_캘린더 행에서 만든 제작 객체 (PUB_BOOKS 와 같은 모양) — 주간 리포트·검색이 쓴다
+const PCAL_BOOKS = [];
+// 종합·리포트·검색용 출간 도서 — 캘린더 정본 + 캘린더에 없는 출판팀 시트 도서 (2026년처럼 아직 안 옮긴 해를 위해)
+function pubBooksAll(){
+  if (!PCAL_SELF) return PUB_BOOKS;
+  const keys = new Set(PCAL_BOOKS.map(b => pcalTKey(b.title)));
+  return PCAL_BOOKS.concat((PUB_BOOKS||[]).filter(b => !keys.has(pcalTKey(b.title))));
+}
 const M_PROFIT      = Array(12).fill(0);
 const M_TARGET      = Array(12).fill(0);
 
@@ -1539,7 +1696,20 @@ async function loadPubSheets() {
       plan:   colAt(['기획','기획자'], 12),   // M
       design: colAt(['디자인','디자이너'], 14),// O
       mkter:  colAt(['마케터','마케팅'], 15), // P
+      // 사양 — 있으면 읽고 없으면 -1 (출간_캘린더 탭에 있어도 된다)
+      size:   colAt(['판형','규격'], -1),
+      pages:  colAt(['면수','쪽수','페이지'], -1),
+      color:  colAt(['본문컬러','본문색도','색도','컬러'], -1),
+      paper:  colAt(['본문종이','내지','용지','종이'], -1),
+      price:  colAt(['예상정가','정가'], -1),
+      print1: colAt(['초판제작부수','초판부수','제작부수'], -1),
+      dist:   colAt(['배본부수','배본 부수','배본부수'], -1),
+      // 완료 체크 — 마지막으로 끝난 공정 이름 (예: 2교). 있으면 지연을 잡는다
+      doneUp: colAt(['완료단계','완료공정','현재단계','진행단계','완료'], -1),
     };
+    const doneKeyOf = pubDoneKeyOf;
+    const specOf = r => { const o = {}; ['size','pages','color','paper','price','print1','dist'].forEach(k => {
+      o[k] = C[k] >= 0 ? String(r[C[k]]||'').trim() : ''; }); return o; };
 
     // 공정 단계 열도 이름으로 찾는다. '디자인'은 담당자 열에도 있으므로
     // 담당자 구간(마케터·콘텐츠) 이후에서만 탐색한다.
@@ -1580,9 +1750,12 @@ async function loadPubSheets() {
         design: String(r[C.design]||'').trim(),   // O 디자인
         mkter:  String(r[C.mkter]||'').trim(),    // P 마케터
         stages: stages,
+        spec:   specOf(r),
+        doneKey: C.doneUp >= 0 ? doneKeyOf(r[C.doneUp]) : '',
       };
     });
     PUB_BOOKS.splice(0, PUB_BOOKS.length, ...books);
+    if (activeTab === 'pubcal') renderPubCal();
   } catch(e) {
     console.warn('[출간 관리] 로드 실패:', e);
   }
@@ -1833,7 +2006,7 @@ async function loadSheets() {
 
     // 출판팀 시트 비동기 로드
     loadPubSheets().then(() => {
-      if (activeTab==='publish') renderPublish();
+      if (activeTab==='pubcal') renderPubCal();
       if (activeTab==='summary') renderSummary();   // 인당 출간·판권 수출이 뒤늦게 채워진다
     });
 
@@ -2386,8 +2559,12 @@ function initApp(){
   (function(){
     const el = document.getElementById('royModal');
     if (el) el.addEventListener('click', e => { if (e.target === el) royClose(); });
+    const pd = document.getElementById('pdModal');
+    if (pd) pd.addEventListener('click', e => { if (e.target === pd) pdClose(); });
     document.addEventListener('keydown', e => {
-      if ((e.key||'').toLowerCase() === 'escape' && el && el.classList.contains('on')) royClose();
+      if ((e.key||'').toLowerCase() !== 'escape') return;
+      if (pd && pd.classList.contains('on')) { pdClose(); return; }
+      if (el && el.classList.contains('on')) royClose();
     });
   })();
   royLoadArchive();
@@ -2433,8 +2610,8 @@ function renderTabs(){
   }).join('');
 }
 // 상단 KPI 바 / 월별 추이 차트를 숨길 탭
-const HIDE_PILLS = ['books','data','publish','royalty','pubcal'];
-const HIDE_TREND = ['channel','calendar','books','data','publish','royalty','pubcal'];
+const HIDE_PILLS = ['books','data','royalty','pubcal'];
+const HIDE_TREND = ['channel','calendar','books','data','royalty','pubcal'];
 function applyTopVisibility(){
   const pillEl  = document.querySelector('.pill-bar-wrap');
   const trendEl = document.getElementById('trend-chart');
@@ -2493,7 +2670,6 @@ function renderActive(){
   else if(activeTab==='mkt')     renderMkt();
   else if(activeTab==='cost')    renderCost();
   else if(activeTab==='channel') renderChannel();
-  else if(activeTab==='publish') renderPublish();
   else if(activeTab==='books')    renderBooks();
   else if(activeTab==='royalty')  { renderRoyalty(); loadShipRaw(); }
   else if(activeTab==='pubcal')   renderPubCal();
@@ -2955,7 +3131,7 @@ function renderSummary(){
       const cumNet  = M_NET_SALES.slice(0,m+1).reduce((a,b)=>a+b,0);
       const cumCost = MONTHS.slice(0,m+1).reduce((a,_,i)=>a+costSplit(i).total,0);
       const cumProf = cumNet - cumCost;
-      const pubCnt  = PUB_BOOKS.filter(b=>b.ship && String(b.ship.getFullYear())===yr4s && b.ship < new Date()).length;
+      const pubCnt  = pubBooksAll().filter(b=>b.ship && String(b.ship.getFullYear())===yr4s && b.ship < new Date()).length;
       // 출간은 출판팀이 만들어내는 산출물이므로 분모도 출판팀 인원으로 본다
       const avgPub  = avgHeadcount(Y, m, TEAM_PUB);
       const curPub  = headcountAt(Y, m, TEAM_PUB);
@@ -3510,7 +3686,7 @@ function dtEvents(titles, dates){
   Object.keys(upCnt).forEach(d => add(d, 'content', `콘텐츠 업로드 ${upCnt[d]}건`));
 
   // 3) 배본일
-  (PUB_BOOKS || []).forEach(b => {
+  pubBooksAll().forEach(b => {
     if (!hit(b.title)) return;
     const d = b.inDate || b.ship;
     if (d) add(ymd(d), 'ship', '배본');
@@ -6306,197 +6482,8 @@ function renderCalendarEmpty(){
 }
 
 /* ─────────────────────────────────────
-   출간 관리 (출판팀)
+   입력 가이드
 ───────────────────────────────────── */
-function renderPublish(){
-  const el = document.getElementById('tab-publish');
-  if (!PUB_BOOKS.length) {
-    el.innerHTML = `<div class="card gap"><div class="card-title">출간 관리</div>
-      <div class="empty-row">출간 기획 시트를 불러오지 못했습니다. 시트 공유 설정과 GID를 확인해 주세요.</div></div>`;
-    return;
-  }
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dday = d => d ? Math.round((d - today)/86400000) : null;
-  const ym   = document.getElementById('monthPicker').value.slice(0,7);
-
-  // 제작 관점이므로 입고일을 기준으로 본다. 입고일이 없으면 배본일로 대체.
-  const keyDate = b => b.inDate || b.ship;
-  const live = PUB_BOOKS.filter(b => keyDate(b) && keyDate(b) >= today)
-                        .sort((a,b)=>keyDate(a)-keyDate(b));
-  const thisMonth = PUB_BOOKS.filter(b => keyDate(b) && ymd(keyDate(b)).slice(0,7) === ym);
-  const yearBooks = PUB_BOOKS.filter(b => b.ship && String(b.ship.getFullYear()) === ym.slice(0,4));
-  const soon = live.filter(b => dday(keyDate(b)) <= 21);
-
-  // 현재 단계 = 오늘 이전 마지막 완료 단계
-  const stageOf = b => {
-    const done = b.stages.filter(s => s.date <= today);
-    const next = b.stages.filter(s => s.date > today);
-    return {done: done.length ? done[done.length-1] : null, next: next.length ? next[0] : null, cnt: done.length};
-  };
-
-  /* 공정 트랙 — 회의 3단계 / 제작 7단계를 나눠서 표시 */
-  function stepBar(b){
-    const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
-    const doneKeys = b.stages.filter(s => s.date <= today).map(s => s.key);
-    const cur = doneKeys.length ? doneKeys[doneKeys.length-1] : null;
-    const seg = st => {
-      const d = set[st.key];
-      const state = !d ? 'none' : (d <= today ? 'done' : 'plan');
-      const isCur = st.key === cur;
-      const bg = state==='done' ? (isCur ? 'var(--accent-deep)' : 'var(--accent)')
-               : (state==='plan' ? '#C6D2F7' : 'var(--surface3)');
-      const col = isCur ? 'var(--ink)' : (state==='none' ? 'var(--ink3)' : 'var(--ink2)');
-      return `<div title="${st.key}${d?' · '+ymd(d).slice(5):'  미정'}" style="flex:1;min-width:0">
-        <div style="height:${isCur?8:6}px;border-radius:var(--r5);background:${bg}"></div>
-        <div style="font-size:9px;line-height:1.3;margin-top:3px;text-align:center;white-space:nowrap;
-          overflow:hidden;text-overflow:ellipsis;color:${col};font-weight:${isCur?800:500}">${st.key}</div>
-      </div>`;
-    };
-    return `<div style="display:flex;gap:14px;align-items:flex-end">
-      ${PUB_STAGE_GROUPS.map((g,gi)=>`
-        <div style="flex:${g.keys.length};min-width:0">
-          <div style="display:flex;gap:3px;align-items:flex-end">${g.keys.map(seg).join('')}</div>
-        </div>
-        ${gi < PUB_STAGE_GROUPS.length-1 ? '<div style="width:1px;align-self:stretch;background:var(--border);margin-bottom:14px"></div>' : ''}
-      `).join('')}
-    </div>`;
-  }
-
-  /* 월별 입고 예정 — 특정 달에 몰리면 제작 리소스가 분산된다 */
-  function shipByMonth(){
-    const cnt = {};
-    live.forEach(b => { const k = ymd(keyDate(b)).slice(0,7); cnt[k] = (cnt[k]||0)+1; });
-    const keys = Object.keys(cnt).sort().slice(0,12);
-    if(!keys.length) return `<div class="empty-row">입고 예정이 없습니다</div>`;
-    const mx = Math.max(...keys.map(k=>cnt[k]));
-    return `<div style="display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px">
-      ${keys.map(k=>{
-        const h = Math.max(4, cnt[k]/mx*112);
-        const cur = k === ym;
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0">
-          <div style="font-size:11px;font-weight:${cur?800:700};color:${cur?'var(--ink)':'var(--ink2)'}">${cnt[k]}</div>
-          <div class="bar-grow" style="--w:100%;height:${h}px;width:100%;border-radius:var(--r4) var(--r4) 0 0;
-            background:${cur?'var(--accent)':'var(--border2)'}"></div>
-          <div style="font-size:10px;font-weight:${cur?800:400};color:${cur?'var(--ink)':'var(--ink3)'};white-space:nowrap">${k.slice(2).replace('-','.')}</div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
-
-  /* 공정 단계 분포 — 파이프라인이 어디에 몰려 있나 */
-  function stageDist(){
-    const buckets = [
-      {label:'미착수',   test: b => b.stages.filter(s=>s.date<=today).length === 0},
-      {label:'기획·회의', test: b => { const d=b.stages.filter(s=>s.date<=today).map(s=>s.key); return d.length>0 && !d.some(k=>['조판','PC교','1교','2교','3교','발주','입고'].includes(k)); }},
-      {label:'교정 중',   test: b => { const d=b.stages.filter(s=>s.date<=today).map(s=>s.key); return d.some(k=>['조판','PC교','1교','2교','3교'].includes(k)) && !d.includes('발주'); }},
-      {label:'발주·입고', test: b => b.stages.some(s=>s.date<=today && (s.key==='발주'||s.key==='입고'))},
-    ];
-    const rows = buckets.map(bk => ({label:bk.label, n: live.filter(bk.test).length}));
-    const sum = rows.reduce((a,r)=>a+r.n,0) || 1;
-    return rows.map((r,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 0${i?';border-top:1px solid var(--border)':''}">
-      <div style="width:72px;font-size:12px;font-weight:700;color:var(--ink);flex-shrink:0">${r.label}</div>
-      <div style="flex:1;height:12px;background:var(--surface3);border-radius:var(--r5);overflow:hidden">
-        <div class="bar-grow" style="--w:${r.n/sum*100}%;--d:${i*60}ms;height:12px;background:var(--accent)"></div>
-      </div>
-      <div style="width:34px;text-align:right;font-size:12px;font-weight:800;color:var(--ink)">${r.n}종</div>
-      <div style="width:34px;text-align:right;font-size:11px;color:var(--ink3)">${Math.round(r.n/sum*100)}%</div>
-    </div>`).join('');
-  }
-
-  /* 외서 계약 만료 임박 */
-  function rightsCard(){
-    if(!CFG.pubGids.rights) return `<div class="card gap2" style="border-left:3px solid var(--border2)">
-      <div class="card-title">외서 계약 <small>연동 대기</small></div>
-      <div style="font-size:12px;color:var(--ink2);line-height:1.7">
-        코드의 <b>pubGids.rights</b> 에 외서 계약 탭의 GID를 넣으면 계약 만료 임박 건이 여기에 표시됩니다.</div></div>`;
-    const rows = PUB_RIGHTS.map(r=>({
-      title: String(r['도서명']||'').trim(),
-      agency: String(r['에이전시']||'').trim(),
-      pic: String(r['담당자']||'').trim(),
-      end: parseAnyDate(r['종료일']),
-    })).filter(r=>r.end);
-    const expired = rows.filter(r=>dday(r.end) < 0).length;
-    const near = rows.filter(r=>dday(r.end) >= 0 && dday(r.end) <= 180).sort((a,b)=>a.end-b.end);
-    if(!near.length && !expired) return '';
-    return `<div class="card gap2" style="border-left:3px solid ${near.length?'var(--bad)':'var(--border2)'}">
-      <div class="card-title">외서 계약 만료 임박 <small>재계약 검토가 필요한 건</small></div>
-      ${near.length ? `<table>
-        <tr><th style="width:80px">남은 기간</th><th>도서명</th><th style="width:150px">에이전시</th><th class="right" style="width:110px">종료일</th></tr>
-        ${near.slice(0,8).map(r=>{
-          const d = dday(r.end);
-          const col = d<=30 ? 'var(--bad)' : (d<=90 ? 'var(--warn)' : 'var(--ink2)');
-          return `<tr><td><b style="color:${col};font-size:12px">D-${d}</b></td>
-            <td style="font-size:12px"><b>${esc(r.title)}</b></td>
-            <td style="font-size:12px;color:var(--ink2)">${esc(r.agency)}${r.pic?' · '+esc(r.pic):''}</td>
-            <td class="right" style="font-size:12px;color:var(--ink2)">${ymd(r.end)}</td></tr>`;
-        }).join('')}
-      </table>` : ''}
-      ${expired ? `<div style="font-size:11px;color:var(--ink3);margin-top:10px">이미 만료된 계약 ${expired}건 — 시트에서 정리 필요</div>` : ''}
-    </div>`;
-  }
-
-  el.innerHTML = `
-    <div class="g3 gap">
-      ${(()=>{ const done = yearBooks.filter(b=>b.ship < today).length;
-        const pct = yearBooks.length ? Math.round(done/yearBooks.length*100) : 0;
-        return `<div class="kpi"><div class="kpi-lbl">${ym.slice(0,4)}년 출간</div>
-        <div class="kpi-val">${done}<span style="font-size:19px;font-weight:700">종</span><span style="font-size:19px;font-weight:700;color:var(--ink3)"> / ${yearBooks.length}종</span></div>
-        <div class="kpi-sub">계획 대비 ${pct}% · 배본일 기준</div>
-        <div class="kpi-bar-wrap" style="height:4px;background:var(--ink5);border-radius:2px;margin-top:10px;overflow:hidden"><div class="bar-grow" style="--w:${pct}%;height:4px;background:var(--accent);border-radius:2px"></div></div></div>`; })()}
-      <div class="kpi"><div class="kpi-lbl">당월 입고</div>
-        <div class="kpi-val">${thisMonth.length}<span style="font-size:19px;font-weight:700">종</span></div>
-        <div class="kpi-sub">${ym} · 입고일 기준</div></div>
-      <div class="kpi"><div class="kpi-lbl">입고 임박</div>
-        <div class="kpi-val ${soon.length?'bad':''}">${soon.length}<span style="font-size:19px;font-weight:700">종</span></div>
-        <div class="kpi-sub">3주 이내 입고</div></div>
-    </div>
-
-    <div class="card gap">
-      <div class="card-title">제작 진행 현황 <small>입고일 순 · 회의 3단계 / 제작 7단계</small></div>
-      ${live.length ? `<table>
-        <tr><th style="width:92px">입고일</th><th style="width:220px">도서</th>
-            <th>진행 · 공정 단계</th><th style="width:190px">담당</th></tr>
-        ${live.slice(0,25).map(b=>{
-          const kd = keyDate(b), d = dday(kd);
-          const st = stageOf(b);
-          const col = d<=7 ? 'var(--bad)' : (d<=21 ? 'var(--warn)' : 'var(--ink2)');
-          const who = [['기획',b.plan],['마케터',b.mkter],['디자인',b.design]]
-            .filter(([,v]) => v)
-            .map(([k,v]) => `<span style="white-space:nowrap">`
-              + `<span style="color:var(--ink3);font-size:10px">${k}</span> `
-              + `<b style="color:var(--ink);font-weight:700">${esc(v)}</b></span>`)
-            .join('<span style="color:var(--border2);margin:0 5px">·</span>');
-          return `<tr>
-            <td style="vertical-align:top">
-              <b style="font-size:13px;color:var(--ink);letter-spacing:-.01em">${ymd(kd).slice(5).replace('-','/')}</b>
-              ${!b.inDate ? '<div style="font-size:9px;color:var(--ink3);line-height:1.3">배본일 기준</div>' : ''}
-              <div style="font-size:10px;font-weight:700;color:${col};margin-top:1px">D-${d}</div>
-              <div style="font-size:10px;color:var(--ink3);margin-top:3px">
-                ${b.ship ? `배본 ${ymd(b.ship).slice(5).replace('-','/')}` : '<span style="color:var(--ink3)">배본 미정</span>'}</div></td>
-            <td style="vertical-align:top">
-              <div style="font-size:12px;font-weight:800;color:var(--ink);line-height:1.4">${esc(b.title)}</div>
-              <div style="font-size:11px;color:var(--ink2);line-height:1.5">${esc(b.author)||'<span style="color:var(--ink3)">저자 미정</span>'}${b.trans?`<span style="color:var(--ink3)"> / 역 ${esc(b.trans)}</span>`:''}</div>
-              <div style="font-size:10px;color:var(--ink3);line-height:1.5">${esc(b.genre)}</div></td>
-            <td>${stepBar(b)}
-              <div style="display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--ink3);margin-top:5px">
-                <span>${st.done ? `진행 <b style="color:var(--ink2)">${esc(st.done.key)}</b>` : '미착수'}</span>
-                <span>${st.next ? `다음 ${esc(st.next.key)} ${ymd(st.next.date).slice(5)}` : ''}</span>
-                <span>${st.cnt}/${PUB_STAGES.length}</span>
-              </div></td>
-            <td style="font-size:11px;color:var(--ink2);vertical-align:top;line-height:1.9">${who||'<span style="color:var(--ink3)">미배정</span>'}</td>
-          </tr>`;
-        }).join('')}
-      </table>` : `<div class="empty-row">입고 예정 도서가 없습니다</div>`}
-    </div>
-
-    <div class="g2 gap">
-      <div class="card"><div class="card-title">월별 입고 예정 <small>한 달에 몰리면 제작 리소스가 분산됩니다</small></div>${shipByMonth()}</div>
-      <div class="card"><div class="card-title">공정 단계 분포 <small>진행 중 도서가 어느 구간에 있는지</small></div>${stageDist()}</div>
-    </div>
-
-    ${rightsCard()}`;
-}
-
 function renderData(){
   const rule = (n,t) => `<tr><td style="width:22px;color:var(--ink3);font-size:11px;font-weight:800">${n}</td><td style="font-size:12px;color:var(--ink2);line-height:1.7">${t}</td></tr>`;
   const card = (title, sub, body) => `
@@ -6544,6 +6531,18 @@ function renderData(){
         ].map(([n,d,w])=>`<tr><td><b>${n}</b></td><td style="font-size:12px;color:var(--ink2)">${d}</td><td><span class="badge ${w==='자동'?'neutral':w==='붙여넣기'?'info':'acc'}">${w}</span></td></tr>`).join('')}
       </table>
     </div>
+
+    ${card('출간_캘린더', '출간 캘린더 탭의 정본 · 한 행이 슬롯 하나 · 출판팀 시트는 쓰지 않습니다', cols([
+      ['반기 · 등급 · 슬롯월','<b>2027-상</b> / 전략·주력·일반 / 1~6 (하반기는 1~6이든 7~12든 인식)'],
+      ['도서명','비우거나 <b>미정</b>, <b>7월 주력 도서</b>, <b>3분기 전략 도서</b>처럼 적으면 미정 슬롯. 제목 뒤 <b>(자기계발)</b> 같은 괄호는 분야로 읽고 표시 제목에서는 뗍니다 — (가제)는 그대로 둠'],
+      ['저자 · 허리도서','허리도서 YES 면 카드에 허리 배지'],
+      ['상태','<b>쓰지 않습니다.</b> 지우세요 — 기획 단계도 아래 날짜 열로 관리합니다'],
+      ['기획자 · 마케터 · 디자이너','미정 슬롯에도 채울 수 있습니다 — 부하 히트맵에 잡힙니다'],
+      ['판형 · 면수 · 본문컬러 · 본문종이 · 예상정가 · 초판제작부수 · 배본부수','카드 상세 팝업의 기본 정보'],
+      ['저자 서치 · 기획 확정 · 원고 수급 · 계약 완료 · 킥오프 · 제목회의 · 표지회의 · PC교 · 조판 · 1교 · 2교 · 3교 · 마감','공정 13단계 날짜 열(+입고일 = 14). 지난 날짜는 완료, 앞 날짜는 예정으로 봅니다. <b>1/15</b> 처럼 연도 없이 적어도 반기의 연도로 읽습니다. 있는 것만 적으면 됩니다'],
+      ['입고일 · 배본일','입고일이 입고 공정입니다. 카드의 D-day 는 입고일, 없으면 배본일 기준. 배본일이 지나면 카드가 판매 목표 진척으로 바뀝니다'],
+      ['완료단계','<b>선택.</b> 날짜만으로는 "예정일이 지났는데 실제로 안 끝난" 걸 알 수 없어서, 지연을 잡고 싶을 때만 이 열에 마지막으로 끝난 단계(예: 2교)를 적습니다. 없으면 날짜가 지난 단계를 완료로 봅니다'],
+    ]))}
 
     ${card('도서 목록', '신간이 나오면 여기부터', cols([
       ['A · ISBN','13자리. <b>비우면 안 됩니다.</b> 이 값으로 모든 탭이 연결됩니다'],
@@ -7010,18 +7009,24 @@ function weekReportText(){
     L.push('');
   }
 
-  // 배본 임박
-  const soon = (PUB_BOOKS||[]).filter(b=>{
-    const d = b.inDate || b.ship;
-    return d && d >= today && (d - today)/86400000 <= 21;
-  }).sort((a,b)=>(a.inDate||a.ship)-(b.inDate||b.ship));
-  if (soon.length) {
-    L.push('■ 입고 임박 (3주)');
-    soon.slice(0,5).forEach(b=>{
-      const d = b.inDate || b.ship;
-      L.push(`· ${b.title} D-${Math.round((d-today)/86400000)} (${ymd(d).slice(5).replace('-','/')})`);
-    });
-    L.push('');
+  // 출간
+  {
+    const dd7 = d => Math.round((d-today)/86400000);
+    const live = pubBooksAll().filter(b => b.inDate || b.ship);
+    const kd = b => b.inDate || b.ship;
+    const thisW = live.filter(b => dd7(kd(b)) >= 0 && dd7(kd(b)) <= 6).sort((a,b)=>kd(a)-kd(b));
+    const nextW = live.filter(b => dd7(kd(b)) >= 7 && dd7(kd(b)) <= 13).sort((a,b)=>kd(a)-kd(b));
+    const late = live.map(b => ({b, rk:pcalRisk(b)})).filter(x => x.rk.overdue.length);
+    const gap  = live.filter(b => pcalRisk(b).gap);
+    if (thisW.length || nextW.length || late.length || gap.length) {
+      L.push('■ 출간');
+      L.push(`이번 주 입고 ${thisW.length}종 · 다음 주 ${nextW.length}종${late.length ? ` · 공정 지연 ${late.length}종` : ''}${gap.length ? ` · 일정 빈칸 ${gap.length}종` : ''}`);
+      thisW.forEach(b => L.push(`· ${b.title} ${ymd(kd(b)).slice(5).replace('-','/')} (D-${dd7(kd(b))})`));
+      nextW.slice(0,5).forEach(b => L.push(`· ${b.title} ${ymd(kd(b)).slice(5).replace('-','/')} (D-${dd7(kd(b))})`));
+      late.slice(0,5).forEach(x => L.push(`· [지연] ${x.b.title} — ${x.rk.overdue[0].key} D+${x.rk.overdue[0].days}`));
+      gap.slice(0,5).forEach(b => L.push(`· [일정 빈칸] ${b.title} — 3교·마감 날짜 미입력`));
+      L.push('');
+    }
   }
 
   // 채널
@@ -7522,8 +7527,14 @@ function applyPubCal(rows0){
   // fetchSheet 는 1행을 헤더로 삼은 객체 배열을 준다 (그리드가 아님)
   PUB_CAL.splice(0, PUB_CAL.length);
   if (!Array.isArray(rows0) || !rows0.length) { console.info('[출간 캘린더] 데이터 없음'); return; }
+  // 헤더는 공백을 뺀 이름으로 찾는다 — '본문 컬러' 와 '본문컬러' 를 같게 본다
+  const nk = k => String(k||'').replace(/\s|\(.*?\)/g,'');
   const pick = (o, ...names) => {
-    for (const n of names) if (o[n] !== undefined) return String(o[n] || '').trim();
+    const keys = Object.keys(o);
+    for (const n of names) {
+      const hit = keys.find(k => nk(k) === nk(n));
+      if (hit !== undefined) return String(o[hit] || '').trim();
+    }
     return '';
   };
   const rows = rows0.map(o => ({
@@ -7531,15 +7542,60 @@ function applyPubCal(rows0){
     grade:  pick(o, '등급'),
     month:  toNum(pick(o, '슬롯월')),
     title:  pick(o, '도서명'),
-    author: pick(o, '저자'),
-    plan:   pick(o, '기획자', '담당기획자'),
-    mkter:  pick(o, '마케터', '담당마케터'),
-    design: pick(o, '디자이너', '담당디자이너'),
+    author: pick(o, '저자', '저자명', '지은이'),
+    trans:  pick(o, '역자', '역자명'),
+    genre:  pick(o, '분야'),
+    plan:   pick(o, '기획자', '담당기획자', '기획'),
+    mkter:  pick(o, '마케터', '담당마케터', '마케팅'),
+    design: pick(o, '디자이너', '담당디자이너', '디자인'),
     status: pick(o, '상태'),
-    spine:  royFlag(pick(o, '허리도서')),
+    spine:  royFlag(pick(o, '허리도서', '허리')),
     note:   pick(o, '비고'),
+    // 사양 — 카드 상세용. 없으면 제작 시트 값으로 대체된다
+    size:   pick(o, '판형', '규격'),
+    pages:  pick(o, '면수', '쪽수', '페이지'),
+    color:  pick(o, '본문컬러', '본문색도', '색도'),
+    paper:  pick(o, '본문종이', '내지', '용지'),
+    price:  pick(o, '예상정가', '정가'),
+    print1: pick(o, '초판제작부수', '초판부수', '제작부수'),
+    dist:   pick(o, '배본부수', '배본부수'),
+    _in:    pick(o, '입고일', '입고'),
+    _ship:  pick(o, '배본일', '출간일', '출간(배본)일', '배본'),
+    doneKey: pubDoneKeyOf(pick(o, '완료단계', '완료공정', '현재단계', '진행단계', '완료')),
+    _o: o,
   })).filter(x => x.half && x.grade && x.month >= 1 && x.month <= 12);
+  // 공정 날짜 — 열 이름이 공정 이름과 같다. 연도가 없으면 반기의 연도를 쓴다.
+  // '입고' 공정은 입고일 열과 같은 것으로 본다.
+  const yrOf = h => (String(h).match(/(\d{4})/) || [])[1] || '';
+  rows.forEach(r => {
+    const yr = yrOf(r.half);
+    r.inDate = dateWithYear(r._in, yr);  delete r._in;
+    r.ship   = dateWithYear(r._ship, yr); delete r._ship;
+    const stages = [];
+    PUB_STAGES.forEach(st => {
+      if (st.key === '입고') { if (r.inDate) stages.push({key:'입고', date:r.inDate}); return; }
+      const d = dateWithYear(pick(r._o, st.key, st.key.replace(/\s/g,'')), yr);
+      if (d) stages.push({key:st.key, date:d});
+    });
+    // 미정 슬롯 — 도서명이 비었거나 '미정' 또는 'N월 ○○ 일반' 같은 자리표시
+    const t = r.title;
+    r.placeholder = !t || /^미정$/.test(t) || /^\d{1,2}월\s*.*(일반|주력|전략|도서)$/.test(t) || /^\d\s*분기\s*.*(일반|주력|전략)\s*도서$/.test(t);
+    r.slotLabel = r.placeholder && t && !/^미정$/.test(t) ? t.replace(/^\d{1,2}월\s*/, '').replace(/\s*(일반|주력|전략)$/, '').replace(/\s*도서$/, '') : '';
+    // 제목 꼬리의 (분야) — 분야 열이 비었으면 거기서 읽고, 표시 제목에서는 뗀다
+    if (!r.placeholder) {
+      const m = t.match(/^(.*?)\s*\(([^()]{1,8})\)\s*$/);
+      if (m && !/가제|가안|임시|개정|증보|리커버/.test(m[2])) { r.rawTitle = t; r.title = m[1].trim(); if (!r.genre) r.genre = m[2].trim(); }
+    }
+    // 이 행이 스스로 공정·일정을 쥐고 있으면 제작 객체를 만든다
+    r.own = (stages.length || r.inDate || r.ship || r.doneKey) ? {
+      title: r.title, author: r.author, trans: r.trans, genre: r.genre, plan: r.plan, mkter: r.mkter, design: r.design,
+      inDate: r.inDate, ship: r.ship, stages, doneKey: r.doneKey, status: r.status, year: yr,
+      spec: {size:r.size, pages:r.pages, color:r.color, paper:r.paper, price:r.price, print1:r.print1, dist:r.dist},
+    } : null;
+    delete r._o;
+  });
   PUB_CAL.push(...rows);
+  PCAL_BOOKS.splice(0, PCAL_BOOKS.length, ...rows.filter(r => r.own && !r.placeholder).map(r => r.own));
   console.info('[출간 캘린더]', rows.length + '슬롯 / 원본 ' + rows0.length + '행');
   if (!rows.length && rows0.length)
     console.warn('[출간 캘린더] 행은 읽었으나 반기·등급·슬롯월 중 비거나 잘못된 값이 있습니다. 첫 행:', rows0[0]);
@@ -7548,20 +7604,25 @@ function applyPubCal(rows0){
 
 /* ── 출간 캘린더 ──
    등급별로 슬롯을 먼저 깔고 기획이 확정되면 채운다.
-   빈 칸이 몇 개인지 보이는 것이 이 화면의 목적이다. */
-const PCAL = { year:0, person:'', grade:'' };
+   출간 관리(제작 공정)를 이 화면에 합쳤다 — 슬롯 카드 위에 공정 진행이 바로 보인다.
+   카드를 누르면 기본 정보·사양·공정 일정이 팝업으로 열린다. */
+const PCAL = { year:0, person:'', grade:'', view:'cal', items:[] };
 const PCAL_GRADES = ['전략','주력','일반'];
 // 등급별 정체성 — 색과 목표 체급을 함께 쥔다
 const PCAL_META = {
-  '전략': {c:'#B3243C', soft:'#FCEDF0', line:'#F0C4CE', guide:'분기 1종', goal:'3개월 5만 부'},
-  '주력': {c:'#3A5BD9', soft:'#EDF1FD', line:'#C3D0F5', guide:'격월 1~2종', goal:'3개월 1.5만 부'},
-  '일반': {c:'#1F8A6D', soft:'#E9F6F2', line:'#B9E2D6', guide:'월 2~3종', goal:'3개월 4천 부'},
+  '전략': {c:'#B3243C', soft:'#FCEDF0', line:'#F0C4CE', guide:'분기 1종', goal:'3개월 5만 부', goal3m:50000},
+  '주력': {c:'#3A5BD9', soft:'#EDF1FD', line:'#C3D0F5', guide:'격월 1~2종', goal:'3개월 1.5만 부', goal3m:15000},
+  '일반': {c:'#1F8A6D', soft:'#E9F6F2', line:'#B9E2D6', guide:'월 2~3종', goal:'3개월 4천 부', goal3m:4000},
 };
+const PCAL_SPINE_DAILY = 15;   // 허리도서 — 6개월 이후 데일리 목표
+// 캘린더에 없고 제작 시트에만 있는 도서가 들어가는 줄
+const PCAL_META_NONE = {c:'#69747F', soft:'#F1F3F5', line:'#D5DADF', guide:'캘린더 미등록', goal:''};
 // 상태는 시트에 적힌 대로 쓴다. 아래는 색만 정해두는 규칙 (부분 일치)
 const PCAL_STATUS = [
-  [/계약|완료/,           {c:'var(--good)',        bg:'var(--good-dim)',   n:'계약'}],
-  [/기획\s*확정|승인/,    {c:'var(--accent-deep)', bg:'var(--accent-dim)', n:'기획확정'}],
-  [/검토|협의|서치|섭외|저자/, {c:'var(--warn)',    bg:'var(--warn-dim)',   n:'검토·섭외'}],
+  [/계약|완료/,           {c:'var(--good)',        bg:'var(--good-dim)',   n:'계약 완료'}],
+  [/원고|수급|집필|번역/,  {c:'var(--accent-deep)', bg:'var(--accent-dim)', n:'원고 수급'}],
+  [/기획\s*확정|승인/,    {c:'var(--ink2)',        bg:'var(--surface3)',   n:'기획 확정'}],
+  [/검토|협의|서치|섭외|저자/, {c:'var(--warn)',    bg:'var(--warn-dim)',   n:'저자 서치'}],
 ];
 function pcalStatus(v){
   const t = String(v||'').trim();
@@ -7569,22 +7630,178 @@ function pcalStatus(v){
   const hit = PCAL_STATUS.find(([re]) => re.test(t));
   return hit ? hit[1] : {c:'var(--ink2)', bg:'var(--surface3)'};
 }
-function pcalSetHalf(v){ PCAL.half = v; renderPubCal(); }
-function pcalPerson(v){ PCAL.person = String(v||''); renderPubCal(); }
-
 // 반기 정렬 — '2027-상' 이 '2027-하' 보다 앞
 function pcalKey(h){
   const m = String(h).match(/(\d{4})\s*[-–]?\s*(상|하)/);
   return m ? (+m[1]) * 10 + (m[2] === '상' ? 1 : 2) : 0;
 }
-
 function pcalYear(v){ PCAL.year = +v; renderPubCal(); }
 function pcalPerson(v){ PCAL.person = String(v||''); renderPubCal(); }
 function pcalGrade(g){ PCAL.grade = (PCAL.grade === g) ? '' : g; renderPubCal(); }
+function pcalView(v){ PCAL.view = v; renderPubCal(); }
+
+// 캘린더 행 ↔ 제작 시트 매칭 키. '(가제)' 같은 꼬리표는 무시한다.
+function pcalTKey(s){
+  return normTitle(String(s||'').replace(/가제|가안|임시/g,''));
+}
+// 캘린더 행에 맞는 제작 시트 도서. 정확히 같으면 그것, 아니면 한쪽이 다른 쪽을 품는 유일한 후보.
+function pcalBookOf(r){
+  if (!r || !r.title) return null;
+  const k = pcalTKey(r.title);
+  if (!k) return null;
+  const exact = PUB_BOOKS.find(b => pcalTKey(b.title) === k);
+  if (exact) return exact;
+  const loose = PUB_BOOKS.filter(b => { const bk = pcalTKey(b.title); return bk.length >= 3 && (bk.indexOf(k) >= 0 || k.indexOf(bk) >= 0); });
+  return loose.length === 1 ? loose[0] : null;
+}
+// 공정 상태.
+// 시트에 '완료단계'(마지막으로 끝난 공정)가 있으면 그것을 기준으로 — 예정일이 지났는데 아직 안 끝난 단계가 '지연'.
+// 없으면 예전처럼 날짜가 지난 단계를 완료로 본다 (지연은 잡을 수 없다).
+function pcalStageState(b){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const st = (b && b.stages) || [];
+  const set = {}; st.forEach(s => { set[s.key] = s.date; });
+  const order = PUB_STAGES.map(k => k.key);
+  const doneIdx = b && b.doneKey ? order.indexOf(b.doneKey) : -1;
+  if (doneIdx >= 0 && b.doneSoft) {
+    // '상태' 열에서 온 기획 단계 — 기획 단계는 체크대로, 나머지는 날짜 기준. 지연은 안 잡는다
+    const plan = order.slice(0, doneIdx + 1);
+    const dated = st.filter(s => s.date <= today).map(s => s.key);
+    const keys = order.filter(k => plan.indexOf(k) >= 0 || dated.indexOf(k) >= 0);
+    const next = st.filter(s => s.date > today)[0] || null;
+    const curKey = dated.length ? dated[dated.length-1] : b.doneKey;
+    return { done: {key:curKey, date:set[curKey] || null}, next, cnt: keys.length, keys, overdue: [], checked:false };
+  }
+  if (doneIdx >= 0) {
+    // 미래 날짜가 잡힌 단계는 체크 이전이라도 끝났다고 보지 않는다
+    const isDone = k => order.indexOf(k) <= doneIdx && !(set[k] && set[k] > today);
+    const keys = order.filter(isDone);
+    const overdue = order.filter(k => !isDone(k) && set[k] && set[k] < today)
+      .map(k => ({key:k, date:set[k], days:Math.round((today - set[k]) / 86400000)}));
+    const nextKey = order.slice(doneIdx + 1).find(k => set[k] && !isDone(k));
+    const curKey = keys.indexOf(b.doneKey) >= 0 ? b.doneKey : keys[keys.length-1];
+    return { done: keys.length ? {key:curKey, date:set[curKey] || null} : null,
+             next: nextKey ? {key:nextKey, date:set[nextKey]} : null,
+             cnt: keys.length, keys, overdue, checked:true };
+  }
+  const done = st.filter(s => s.date <= today);
+  const next = st.filter(s => s.date > today);
+  return { done: done.length ? done[done.length-1] : null, next: next.length ? next[0] : null,
+           cnt: done.length, keys: done.map(s => s.key), overdue: [], checked:false };
+}
+// 일정 위험 신호 — 입고 3주 안인데 3교·마감 날짜가 비어 있음 / 입고일 지났는데 입고 미체크
+function pcalRisk(b){
+  if (!b) return {gap:false, late:false, overdue:[]};
+  const st = pcalStageState(b);
+  const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
+  const kd = b.inDate || b.ship, dd = pcalDday(kd);
+  const gap  = !!(kd && dd !== null && dd >= 0 && dd <= 21 && (!set['3교'] || !set['마감']));
+  const late = !!(kd && dd !== null && dd < 0 && b.stages.length && st.keys.indexOf('입고') < 0 && !st.overdue.length);
+  return {gap, late, overdue: st.overdue, st};
+}
+// 실판매 매칭 키 — 판매량_일별_서점 은 도서명이 키
+function pcalSalesKeys(title){
+  const k = pcalTKey(title);
+  const all = Object.keys(DAY_SALES_STORE || {});
+  const db = (BOOKS||[]).find(b => pcalTKey(b.title) === k || (b.altTitles||[]).some(a => pcalTKey(a) === k));
+  const names = [k].concat(db ? [db.title].concat(db.altTitles||[]).map(pcalTKey) : []);
+  const keys = all.filter(t => names.indexOf(pcalTKey(t)) >= 0);
+  return {keys, db};
+}
+// 판매 목표 진척 — 배본 후 3개월(90일) 창. 허리도서는 6개월 이후 최근 7일 일평균.
+function pcalSales(it){
+  const ship = pcalVal(it,'ship'); if (!(ship instanceof Date)) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (ship > today) return null;
+  const meta = it.meta, goal = meta.goal3m || 0;
+  const {keys, db} = pcalSalesKeys(pcalVal(it,'title'));
+  const days = Math.min(90, Math.round((today - ship) / 86400000) + 1);
+  const sumRange = (from, to) => { let n = 0, hit = false;
+    keys.forEach(t => { const m = DAY_SALES_STORE[t] || {}; Object.keys(m).forEach(d => {
+      if (d >= from && d <= to) { hit = true; n += Object.values(m[d]).reduce((a,b) => a + (+b||0), 0); } }); });
+    return {n, hit}; };
+  const end = new Date(ship); end.setDate(end.getDate() + 89);
+  const w = sumRange(ymd(ship), ymd(end < today ? end : today));
+  const src = w.hit ? 'scm' : (db && db.cumSalesQty ? 'cum' : '');
+  const sold = w.hit ? w.n : (db ? (db.cumSalesQty || 0) : 0);
+  const sinceShip = Math.round((today - ship) / 86400000);
+  let spine = null;
+  if (it.cal && it.cal.spine && sinceShip >= 180) {
+    const f = new Date(today); f.setDate(f.getDate() - 6);
+    const r = sumRange(ymd(f), ymd(today));
+    spine = { avg: r.hit ? r.n / 7 : null };
+  }
+  return { goal, sold, days, src, pct: goal ? sold / goal * 100 : 0, sinceShip, spine, ended: sinceShip >= 90 };
+}
+function pcalDday(d){
+  if (!d) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  return Math.round((d - t) / 86400000);
+}
+// 항목 하나 = 캘린더 행(있으면) + 제작 시트 도서(있으면)
+function pcalVal(it, k){
+  const c = it.cal || {}, b = it.book || {}, sp = (b.spec || {});
+  const pick = (...vs) => { for (const v of vs) { if (v !== undefined && v !== null && String(v).trim() !== '') return v; } return ''; };
+  switch (k) {
+    case 'title':  return pick(c.title, b.title);
+    case 'author': return pick(c.author, b.author);
+    case 'trans':  return pick(c.trans, b.trans);
+    case 'genre':  return pick(c.genre, b.genre);
+    case 'plan':   return pick(c.plan, b.plan);
+    case 'mkter':  return pick(c.mkter, b.mkter);
+    case 'design': return pick(c.design, b.design);
+    case 'inDate': return pick(c.inDate, b.inDate);
+    case 'ship':   return pick(c.ship, b.ship);
+    case 'status': return pick(c.status, b.status);
+    default:       return pick(c[k], sp[k]);
+  }
+}
+// 카드 안 미니 공정 바 — 10칸. 완료는 등급색, 예정은 연한 선색, 미정은 회색
+function pcalMiniBar(b, meta){
+  if (!b) return '';
+  const st = pcalStageState(b);
+  const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cells = PUB_STAGES.map(k => {
+    const d = set[k.key];
+    let s = !d ? 'none' : (d <= today ? 'done' : 'plan');
+    if (st.checked) s = st.keys.indexOf(k.key) >= 0 ? 'done' : (st.overdue.some(x => x.key === k.key) ? 'late' : (d ? 'plan' : 'none'));
+    const cur = st.done && st.done.key === k.key;
+    return `<i class="${s}${cur?' cur':''}" title="${k.key}${d ? ' · ' + ymd(d).slice(5) : ' · 미정'}"></i>`;
+  }).join('');
+  const kd = b.inDate || b.ship;
+  const dd = pcalDday(kd);
+  const rk = pcalRisk(b);
+  let txt;
+  if (st.done) txt = `<b style="color:${PUB_PLAN_COLOR[st.done.key] || 'var(--ink)'}">${esc(st.done.key)}</b>`;
+  else txt = b.stages.length ? '착수 전' : '단계 미입력';
+  if (kd) txt += ` <span>· ${b.inDate ? '입고' : '배본'} ${ymd(kd).slice(5).replace('-','/')}${dd >= 0 ? ' D-' + dd : ''}</span>`;
+  const od = rk.overdue[0];
+  return `<div class="pc-mini" style="--gc:${meta.c};--gl:${meta.line}">
+    <div class="pc-mini-bar">${cells}</div>
+    <div class="pc-mini-t">${txt}${od ? `<em class="pc-risk" title="${esc(od.key)} 예정일 ${ymd(od.date).slice(5)} 이 지났는데 완료 체크가 없습니다">지연 D+${od.days} ${esc(od.key)}</em>` : ''}${rk.gap ? '<em class="pc-risk" title="입고 3주 이내인데 3교·마감 날짜가 비어 있습니다">일정 빈칸</em>' : ''}${rk.late ? '<em class="pc-risk" title="입고 예정일이 지났는데 입고 공정이 비어 있습니다">입고 확인</em>' : ''}</div>
+  </div>`;
+}
+// 카드 안 판매 진척 — 배본 뒤에는 공정 대신 이것이 보인다
+function pcalSaleBar(it){
+  const sa = pcalSales(it); if (!sa) return '';
+  const meta = it.meta;
+  if (sa.spine) {
+    const ok = sa.spine.avg !== null && sa.spine.avg >= PCAL_SPINE_DAILY;
+    return `<div class="pc-sale" style="--gc:${meta.c};--gl:${meta.line}">
+      <div class="pc-sale-t"><b style="color:${sa.spine.avg === null ? 'var(--ink3)' : (ok ? 'var(--good)' : 'var(--bad)')}">${sa.spine.avg === null ? '판매 데이터 없음' : '일 ' + sa.spine.avg.toFixed(1) + '부'}</b><span> · 허리 목표 ${PCAL_SPINE_DAILY}부 · 최근 7일</span></div></div>`;
+  }
+  if (!sa.goal) return '';
+  const pct = Math.min(100, sa.pct);
+  return `<div class="pc-sale" style="--gc:${meta.c};--gl:${meta.line}">
+    <div class="pc-sale-bar"><i style="width:${pct.toFixed(0)}%"></i></div>
+    <div class="pc-sale-t"><b>${sa.sold.toLocaleString()}</b><span> / ${fmtAmt(sa.goal)}부 · ${Math.round(sa.pct)}%${sa.ended ? ' · 3개월 마감' : ' · ' + sa.days + '일차'}${sa.src === 'cum' ? ' · 누적' : ''}</span></div>
+  </div>`;
+}
 
 function renderPubCal(){
   const el = document.getElementById('tab-pubcal');
-  if (!PUB_CAL.length) {
+  if (!PUB_CAL.length && !(PCAL_SELF ? [] : PUB_BOOKS).length) {
     el.innerHTML = `<div class="card">
       <div class="card-title">출간 캘린더</div>
       <div style="font-size:12.5px;color:var(--ink2);line-height:1.8">
@@ -7593,56 +7810,212 @@ function renderPubCal(){
              font-size:11.5px;color:var(--ink);overflow-x:auto;white-space:nowrap">
           반기 · 등급 · 슬롯월 · 도서명 · 저자 · 기획자 · 마케터 · 디자이너 · 상태 · 허리도서 · 비고
         </div>
-        <span style="color:var(--ink3)">한 행이 슬롯 하나입니다. 도서명을 비우면 미정 슬롯으로 표시됩니다.</span>
+        <span style="color:var(--ink3)">한 행이 슬롯 하나입니다. 도서명을 비우면 미정 슬롯으로 표시됩니다.
+        판형 · 면수 · 본문컬러 · 본문종이 · 예상정가 · 초판제작부수 · 배본부수 열을 더하면 카드 상세에 함께 뜹니다.</span>
       </div></div>`;
     return;
   }
+  const today = new Date(); today.setHours(0,0,0,0);
 
-  // 연도 단위로 본다 — 반기 두 개를 12개월로 이어 붙인다
+  // 연도 단위로 본다 — 반기 두 개를 12개월로 이어 붙인다. 제작 시트에만 있는 해도 목록에 넣는다.
   const yrOf = h => { const m = String(h).match(/(\d{4})/); return m ? +m[1] : 0; };
   const isH2 = h => /하/.test(String(h));
-  const years = [...new Set(PUB_CAL.map(x => yrOf(x.half)))].filter(Boolean).sort();
+  const bookYear = b => { const d = b.inDate || b.ship; return d ? d.getFullYear() : 0; };
+  const extBooks = PCAL_SELF ? [] : PUB_BOOKS;   // 출판팀 시트 — 캘린더가 정본이면 쓰지 않는다
+  const years = [...new Set([...PUB_CAL.map(x => yrOf(x.half)), ...extBooks.map(bookYear)])].filter(Boolean).sort();
   if (!PCAL.year || years.indexOf(PCAL.year) < 0) {
     const now = new Date().getFullYear();
     PCAL.year = years.find(y => y === now) || years.find(y => y > now) || years[years.length-1];
   }
   const Y = PCAL.year;
-  // 실제 월 = 하반기면 슬롯월 그대로(7~12), 상반기면 1~6. 시트가 1~6 으로만 적혀도 하반기면 +6
-  const realMonth = r => {
-    const m = r.month;
-    if (isH2(r.half)) return m <= 6 ? m + 6 : m;
-    return m;
-  };
+  const realMonth = r => { const m = r.month; return isH2(r.half) ? (m <= 6 ? m + 6 : m) : m; };
   const rows = PUB_CAL.filter(x => yrOf(x.half) === Y)
     .map(r => ({...r, m: realMonth(r)}))
     .filter(r => r.m >= 1 && r.m <= 12);
 
+  // 항목 만들기 — 캘린더 행마다 제작 시트를 붙이고, 못 붙은 제작 도서는 '미등록' 줄로
+  const used = new Set();
+  const items = rows.map(r => {
+    const b = r.own || (PCAL_SELF ? null : pcalBookOf(r));
+    if (b && !r.own) used.add(b);
+    return { cal:r, book:b, grade:r.grade, m:r.m, meta:PCAL_META[r.grade] || PCAL_META_NONE };
+  });
+  extBooks.filter(b => bookYear(b) === Y && !used.has(b)).forEach(b => {
+    const d = b.inDate || b.ship;
+    items.push({ cal:null, book:b, grade:'', m:d.getMonth()+1, meta:PCAL_META_NONE });
+  });
+  PCAL.items = items;
+  const orphans = items.filter(it => !it.cal);
+
   const MONS = [1,2,3,4,5,6,7,8,9,10,11,12];
-  const filled = r => !!r.title;
-  const people = [...new Set(rows.flatMap(r => [r.plan, r.mkter, r.design]).filter(Boolean))].sort();
-  const mine = r => !PCAL.person || [r.plan, r.mkter, r.design].indexOf(PCAL.person) >= 0;
-  const cnt = g => { const gr = rows.filter(x => x.grade === g);
-    return {tot: gr.length, on: gr.filter(filled).length}; };
-  const totOn = rows.filter(filled).length;
+  const filled = it => !!(it.cal ? (it.cal.title && !it.cal.placeholder) : it.book);
+  const people = [...new Set(items.flatMap(it => [pcalVal(it,'plan'), pcalVal(it,'mkter'), pcalVal(it,'design')]).filter(Boolean))].sort();
+  const mine = it => !PCAL.person || [pcalVal(it,'plan'), pcalVal(it,'mkter'), pcalVal(it,'design')].indexOf(PCAL.person) >= 0;
+  const cnt = g => { const gr = items.filter(x => x.grade === g); return {tot: gr.length, on: gr.filter(filled).length}; };
+  const totOn = items.filter(it => it.cal && it.cal.title).length;
   const nowM = (new Date().getFullYear() === Y) ? new Date().getMonth() + 1 : 0;
+  const keyDate = it => it.book ? (it.book.inDate || it.book.ship) : (pcalVal(it,'inDate') || pcalVal(it,'ship') || null);
+  const inMonth = m => items.filter(it => { const d = keyDate(it); return d && d.getFullYear() === Y && d.getMonth()+1 === m; }).length;
 
   /* 슬롯 카드 */
-  const card = (r, meta) => {
-    if (!filled(r)) return `<div class="pc-slot pc-empty" style="--gc:${meta.c}">
-      <span>미정</span></div>`;
-    const st = pcalStatus(r.status);
-    const dim = PCAL.person && !mine(r);
-    const who = [r.plan, r.mkter, r.design].filter(Boolean);
-    const tip = [r.title, r.author && '저자 ' + r.author, r.status,
-      r.plan && '기획 ' + r.plan, r.mkter && '마케팅 ' + r.mkter, r.design && '디자인 ' + r.design,
-      r.spine && '허리도서', r.note].filter(Boolean).join('\n');
-    return `<div class="pc-slot pc-on${dim ? ' pc-dim' : ''}${r.spine ? ' pc-sp' : ''}"
-      style="--gc:${meta.c};--gs:${meta.soft};--gl:${meta.line}" title="${esc(tip)}">
-      <div class="pc-t">${esc(r.title)}</div>
-      ${r.spine ? '<div class="pc-badge" title="6개월 이후 데일리 15부를 노리는 허리도서">허리</div>' : ''}
+  const card = (it, idx) => {
+    const meta = it.meta;
+    if (!filled(it)) {
+      const c = it.cal || {};
+      const who = [c.plan, c.mkter, c.design].filter(Boolean);
+      return `<div class="pc-slot pc-empty${who.length ? ' pc-empty-w' : ''}" style="--gc:${meta.c}">
+        <span>미정${c.slotLabel ? `<small>${esc(c.slotLabel)}</small>` : ''}${who.length ? `<small class="pc-empty-who">${esc(who.join(' · '))}</small>` : ''}</span></div>`;
+    }
+    const st = pcalStatus(pcalVal(it,'status'));
+    const dim = PCAL.person && !mine(it);
+    const who = [pcalVal(it,'plan'), pcalVal(it,'mkter'), pcalVal(it,'design')].filter(Boolean);
+    const sp = it.cal && it.cal.spine;
+    const noBook = !PCAL_SELF && it.cal && !it.book && /계약|완료|확정/.test(String(it.cal.status||''));
+    return `<div class="pc-slot pc-on${dim ? ' pc-dim' : ''}${sp ? ' pc-sp' : ''}${it.cal ? '' : ' pc-orphan'}"
+      style="--gc:${meta.c};--gs:${meta.soft};--gl:${meta.line}" onclick="pdOpen(${idx})" title="클릭하면 상세가 열립니다">
+      <div class="pc-t">${esc(pcalVal(it,'title'))}</div>
+      ${sp ? '<div class="pc-badge" title="6개월 이후 데일리 15부를 노리는 허리도서">허리</div>' : ''}
+      ${pcalSales(it) ? pcalSaleBar(it) : pcalMiniBar(it.book, meta)}
+      ${noBook ? '<div class="pc-w pc-none">제작 시트 미등록</div>' : ''}
       ${who.length ? `<div class="pc-w">${esc(who.join(' · '))}</div>` : '<div class="pc-w pc-none">담당 미정</div>'}
-      <div class="pc-s" style="--sc:${st.c}"><i></i>${esc(r.status || '상태 미입력')}</div>
+      ${it.cal && !it.book ? '<div class="pc-w pc-none">단계 미입력</div>' : ''}
     </div>`;
+  };
+
+  /* 제작 관점 요약 — 한 줄 스트립 */
+  const withBook = items.filter(it => it.book);
+  const yearBooks = withBook.map(it => it.book).filter(b => b.ship && b.ship.getFullYear() === Y);
+  const pubDone = yearBooks.filter(b => b.ship < today).length;
+  const monthIn = nowM ? inMonth(nowM) : 0;
+  const soon = withBook.filter(it => { const d = keyDate(it); const dd = pcalDday(d); return dd !== null && dd >= 0 && dd <= 21; }).length;
+  const lateN = withBook.filter(it => pcalRisk(it.book).overdue.length).length;
+  const checkedAny = withBook.some(it => it.book.doneKey);
+  const dist = (() => {
+    const live = withBook.map(it => it.book).filter(b => { const d = b.inDate || b.ship; return !d || d >= today; });
+    const keys = b => pcalStageState(b).keys;
+    const cur = b => { const s = pcalStageState(b); return s.done ? s.done.key : ''; };
+    const n0 = live.filter(b => !cur(b)).length;
+    const np = live.filter(b => pubPhaseOf(cur(b)) === '기획').length;
+    const n1 = live.filter(b => pubPhaseOf(cur(b)) === '회의').length;
+    const n3 = live.filter(b => ['마감','입고'].indexOf(cur(b)) >= 0).length;
+    const n2 = live.length - n0 - np - n1 - n3;
+    return {n0, np, n1, n2, n3, live: live.length};
+  })();
+
+  /* 외서 계약 만료 임박 */
+  const rightsCard = () => {
+    if (!CFG.pubGids.rights) return '';
+    const dd = pcalDday;
+    const rr = PUB_RIGHTS.map(r => ({ title:String(r['도서명']||'').trim(), agency:String(r['에이전시']||'').trim(),
+      pic:String(r['담당자']||'').trim(), end:parseAnyDate(r['종료일']) })).filter(r => r.end);
+    const expired = rr.filter(r => dd(r.end) < 0).length;
+    const near = rr.filter(r => dd(r.end) >= 0 && dd(r.end) <= 180).sort((a,b) => a.end - b.end);
+    if (!near.length && !expired) return '';
+    return `<div class="card gap2" style="border-left:3px solid ${near.length ? 'var(--bad)' : 'var(--border2)'}">
+      <div class="card-title">외서 계약 만료 임박 <small>재계약 검토가 필요한 건</small></div>
+      ${near.length ? `<table>
+        <tr><th style="width:80px">남은 기간</th><th>도서명</th><th style="width:150px">에이전시</th><th class="right" style="width:110px">종료일</th></tr>
+        ${near.slice(0,8).map(r => { const d = dd(r.end);
+          const col = d <= 30 ? 'var(--bad)' : (d <= 90 ? 'var(--warn)' : 'var(--ink2)');
+          return `<tr><td><b style="color:${col};font-size:12px">D-${d}</b></td>
+            <td style="font-size:12px"><b>${esc(r.title)}</b></td>
+            <td style="font-size:12px;color:var(--ink2)">${esc(r.agency)}${r.pic ? ' · ' + esc(r.pic) : ''}</td>
+            <td class="right" style="font-size:12px;color:var(--ink2)">${ymd(r.end)}</td></tr>`; }).join('')}
+      </table>` : ''}
+      ${expired ? `<div style="font-size:11px;color:var(--ink3);margin-top:10px">이미 만료된 계약 ${expired}건 — 시트에서 정리 필요</div>` : ''}
+    </div>`;
+  };
+
+  /* 리스트 뷰 — 제작 진행 현황 (옛 출간 관리 표) */
+  const listView = () => {
+    const list = items.filter(filled).filter(it => !PCAL.grade || it.grade === PCAL.grade)
+      .map((it, i) => ({it, idx: items.indexOf(it)}))
+      .sort((a, b) => { const da = keyDate(a.it), db = keyDate(b.it); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return da - db; });
+    const stepBar = (b, meta) => {
+      const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
+      const st = pcalStageState(b);
+      const seg = k => {
+        const d = set[k.key];
+        let state = !d ? 'none' : (d <= today ? 'done' : 'plan');
+        if (st.checked) state = st.keys.indexOf(k.key) >= 0 ? 'done' : (st.overdue.some(x => x.key === k.key) ? 'late' : (d ? 'plan' : 'none'));
+        const cur = st.done && st.done.key === k.key;
+        const bg = state === 'done' ? meta.c : (state === 'late' ? 'var(--bad)' : (state === 'plan' ? meta.line : 'var(--surface3)'));
+        return `<div title="${k.key}${d ? ' · ' + ymd(d).slice(5) : ' · 미정'}" style="flex:1;min-width:0">
+          <div style="height:${cur ? 8 : 6}px;border-radius:var(--r5);background:${bg}"></div>
+          <div style="font-size:9px;line-height:1.3;margin-top:3px;text-align:center;white-space:nowrap;overflow:hidden;
+            text-overflow:ellipsis;color:${cur ? 'var(--ink)' : (state === 'none' ? 'var(--ink3)' : 'var(--ink2)')};font-weight:${cur ? 800 : 500}">${k.key}</div></div>`;
+      };
+      return `<div style="display:flex;gap:14px;align-items:flex-end">
+        ${PUB_STAGE_GROUPS.map((g, gi) => `<div style="flex:${g.keys.length};min-width:0"><div style="display:flex;gap:3px;align-items:flex-end">${g.keys.map(seg).join('')}</div></div>
+          ${gi < PUB_STAGE_GROUPS.length-1 ? '<div style="width:1px;align-self:stretch;background:var(--border);margin-bottom:14px"></div>' : ''}`).join('')}
+      </div>`;
+    };
+    if (!list.length) return `<div class="card pc-wrap"><div class="empty-row">표시할 도서가 없습니다</div></div>`;
+    return `<div class="card pc-wrap"><table>
+      <tr><th style="width:92px">입고일</th><th style="width:230px">도서</th><th>진행 · 공정 단계</th><th style="width:190px">담당</th></tr>
+      ${list.map(({it, idx}) => {
+        const b = it.book, kd = keyDate(it), d = pcalDday(kd), meta = it.meta;
+        const col = d === null ? 'var(--ink3)' : (d <= 7 ? 'var(--bad)' : (d <= 21 ? 'var(--warn)' : 'var(--ink2)'));
+        const who = [['기획', pcalVal(it,'plan')], ['마케터', pcalVal(it,'mkter')], ['디자인', pcalVal(it,'design')]].filter(([,v]) => v)
+          .map(([k,v]) => `<span style="white-space:nowrap"><span style="color:var(--ink3);font-size:10px">${k}</span> <b style="color:var(--ink);font-weight:700">${esc(v)}</b></span>`)
+          .join('<span style="color:var(--border2);margin:0 5px">·</span>');
+        const st = b ? pcalStageState(b) : null;
+        const ship = pcalVal(it,'ship');
+        return `<tr class="pc-row${PCAL.person && !mine(it) ? ' pc-dim' : ''}" onclick="pdOpen(${idx})">
+          <td style="vertical-align:top">
+            ${kd ? `<b style="font-size:13px;color:var(--ink)">${ymd(kd).slice(5).replace('-','/')}</b>` : '<span style="color:var(--ink3);font-size:12px">미정</span>'}
+            ${b && !b.inDate && kd ? '<div style="font-size:9px;color:var(--ink3);line-height:1.3">배본일 기준</div>' : ''}
+            ${d !== null && d >= 0 ? `<div style="font-size:10px;font-weight:700;color:${col};margin-top:1px">D-${d}</div>` : ''}
+            <div style="font-size:10px;color:var(--ink3);margin-top:3px">${ship ? `배본 ${ymd(ship).slice(5).replace('-','/')}` : '배본 미정'}</div></td>
+          <td style="vertical-align:top">
+            <div style="display:flex;align-items:center;gap:6px"><i style="width:7px;height:7px;border-radius:2px;background:${meta.c};flex-shrink:0"></i>
+              <div style="font-size:12px;font-weight:800;color:var(--ink);line-height:1.4">${esc(pcalVal(it,'title'))}</div>
+              ${it.cal && it.cal.spine ? '<span class="pc-badge" style="margin:0;padding:1px 6px;font-size:10px">허리</span>' : ''}</div>
+            <div style="font-size:11px;color:var(--ink2);line-height:1.5">${esc(pcalVal(it,'author')) || '<span style="color:var(--ink3)">저자 미정</span>'}</div>
+            <div style="font-size:10px;color:var(--ink3);line-height:1.5">${esc(pcalVal(it,'genre'))}</div></td>
+          <td>${b ? stepBar(b, meta) + `<div style="display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--ink3);margin-top:5px">
+              <span>${st.done ? `진행 <b style="color:var(--ink2)">${esc(st.done.key)}</b>` : '미착수'}</span>
+              <span>${st.next ? `다음 ${esc(st.next.key)} ${ymd(st.next.date).slice(5)}${pcalDday(st.next.date) < 0 ? ` <b style="color:var(--bad)">D+${-pcalDday(st.next.date)}</b>` : ''}` : ''}</span>
+              <span>${st.cnt}/${PUB_STAGES.length}</span></div>`
+            : '<span style="font-size:11px;color:var(--ink3)">제작 시트 미등록</span>'}</td>
+          <td style="font-size:11px;color:var(--ink2);vertical-align:top;line-height:1.9">${who || '<span style="color:var(--ink3)">미배정</span>'}</td>
+        </tr>`; }).join('')}
+    </table></div>`;
+  };
+
+  /* 캘린더 뷰 */
+  const calView = () => {
+    const lanes = PCAL_GRADES.filter(g => !PCAL.grade || PCAL.grade === g).map(g => ({g, meta:PCAL_META[g], its:items.filter(x => x.grade === g)}))
+      .filter(l => l.its.length);
+    if (!PCAL.grade && orphans.length) lanes.push({g:'', meta:PCAL_META_NONE, its:orphans});
+    return `<div class="card pc-wrap">
+    ${!rows.length ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:10px">${Y}년 슬롯이 <b>출간_캘린더</b> 탭에 없습니다. 제작 시트에 등록된 도서만 표시합니다.</div>` : ''}
+    <div class="pc-grid">
+      <div class="pc-corner"></div>
+      ${MONS.map(m => { const n = inMonth(m);
+        return `<div class="pc-mh${m===nowM?' now':''}${m===7?' half':''}">${m}<small>월</small>${n ? `<i class="pc-mc" title="이 달 입고·배본 ${n}종">${n}</i>` : ''}${m===nowM?'<em>이번 달</em>':''}</div>`; }).join('')}
+      ${lanes.map(l => {
+        const M = l.meta, c = l.g ? cnt(l.g) : {on:l.its.length, tot:l.its.length};
+        return `<div class="pc-gh" style="--gc:${M.c};--gs:${M.soft}">
+            <b>${l.g || '미등록'}</b><span>${M.guide}</span>
+            ${l.g ? `<em style="color:${c.on>=c.tot&&c.tot?M.c:'var(--ink3)'}">${c.on}/${c.tot}종</em>` : `<em style="color:var(--ink3)">${l.its.length}종</em>`}
+          </div>
+          ${MONS.map(m => `<div class="pc-cell${m===nowM?' now':''}${m===7?' half':''}">
+              ${l.its.filter(x => x.m === m).map(it => card(it, items.indexOf(it))).join('')}</div>`).join('')}`;
+      }).join('')}
+    </div>
+    <div class="pc-legend">
+      ${PCAL_GRADES.map(g => `<span><i style="background:${PCAL_META[g].c}"></i>${g}</span>`).join('')}
+      ${orphans.length ? `<span><i style="background:${PCAL_META_NONE.c}"></i>미등록 · 제작 시트에만 있음</span>` : ''}
+      <span class="pc-div"></span>
+      ${PUB_PLAN_KEYS.map(k => `<span><i style="background:${PUB_PLAN_COLOR[k]};border-radius:50%"></i>${k}</span>`).join('')}
+      <span><i style="border:1px dashed var(--border2);background:transparent"></i>미정</span>
+      <span><i class="pc-lg-sp">허리</i>6개월 이후 데일리 15부 목표</span>
+      <span class="pc-div"></span>
+      <span><i class="pc-lg-mini"></i>공정 ${PUB_STAGES.length}단계 · 기획 4 → 회의 3 → 제작 7</span>
+      <span style="margin-left:auto;color:var(--ink5)">카드를 누르면 상세가 열립니다</span>
+    </div>
+  </div>`;
   };
 
   el.innerHTML = `
@@ -7651,116 +8024,245 @@ function renderPubCal(){
       <select onchange="pcalYear(this.value)">
         ${years.map(y => `<option value="${y}" ${y===Y?'selected':''}>${y}년</option>`).join('')}
       </select>
-      <div class="pc-sub">출간 캘린더 · 슬롯을 먼저 깐다</div>
+      <div class="pc-sub">출간 캘린더 · 슬롯을 먼저 깔고, 공정을 그 위에 얹는다</div>
     </div>
     <div class="pc-gauges">
       ${PCAL_GRADES.map(g => {
         const c = cnt(g), M = PCAL_META[g], pct = c.tot ? c.on/c.tot*100 : 0;
-        const act = PCAL.grade === g;
-        return `<button class="pc-gauge${act?' on':''}" onclick="pcalGrade('${g}')" style="--gc:${M.c};--gs:${M.soft}">
+        return `<button class="pc-gauge${PCAL.grade === g ? ' on' : ''}" onclick="pcalGrade('${g}')" style="--gc:${M.c};--gs:${M.soft}">
           <div class="pc-gl"><i></i>${g}<span>${M.goal}</span></div>
           <div class="pc-gn"><b>${c.on}</b><span>/ ${c.tot}종</span></div>
           <div class="pc-bar"><i style="width:${pct.toFixed(0)}%"></i></div>
-        </button>`;
-      }).join('')}
+        </button>`; }).join('')}
     </div>
     <div class="pc-right">
+      <div class="pc-seg">
+        <button class="${PCAL.view==='cal'?'on':''}" onclick="pcalView('cal')">캘린더</button>
+        <button class="${PCAL.view==='list'?'on':''}" onclick="pcalView('list')">리스트</button>
+      </div>
       <select onchange="pcalPerson(this.value)" class="pc-sel">
         <option value="">담당자 전체</option>
         ${people.map(p => `<option value="${esc(p)}" ${p===PCAL.person?'selected':''}>${esc(p)}</option>`).join('')}
       </select>
       <div class="pc-tot"><b>${totOn}</b><span>/ ${rows.length}종 확보</span></div>
       ${(() => { const n = rows.filter(r => r.title && r.spine).length;
-        return n ? `<div class="pc-tot pc-tot-sp" title="6개월 이후 데일리 15부를 노리는 허리도서">
-          <b>${n}</b><span>종 허리</span></div>` : ''; })()}
+        return n ? `<div class="pc-tot pc-tot-sp" title="6개월 이후 데일리 15부를 노리는 허리도서"><b>${n}</b><span>종 허리</span></div>` : ''; })()}
     </div>
   </div>
 
-  <div class="card pc-wrap">
-    <div class="pc-grid">
-      <div class="pc-corner"></div>
-      ${MONS.map(m => `<div class="pc-mh${m===nowM?' now':''}${m===7?' half':''}">
-        ${m}<small>월</small>${m===nowM?'<em>이번 달</em>':''}</div>`).join('')}
-      ${PCAL_GRADES.filter(g => !PCAL.grade || PCAL.grade === g).map(g => {
-        const gr = rows.filter(x => x.grade === g);
-        const M = PCAL_META[g], c = cnt(g);
-        return `<div class="pc-gh" style="--gc:${M.c};--gs:${M.soft}">
-            <b>${g}</b><span>${M.guide}</span>
-            <em style="color:${c.on>=c.tot&&c.tot?M.c:'var(--ink3)'}">${c.on}/${c.tot}종</em>
-          </div>
-          ${MONS.map(m => {
-            const cell = gr.filter(x => x.m === m);
-            return `<div class="pc-cell${m===nowM?' now':''}${m===7?' half':''}">
-              ${cell.map(r => card(r, M)).join('')}</div>`;
-          }).join('')}`;
-      }).join('')}
-    </div>
-    <div class="pc-legend">
-      ${PCAL_GRADES.map(g => `<span><i style="background:${PCAL_META[g].c}"></i>${g}</span>`).join('')}
-      <span class="pc-div"></span>
-      ${PCAL_STATUS.map(([,v]) => `<span><i style="background:${v.c};border-radius:50%"></i>${v.n}</span>`).join('')}
-      <span><i style="border:1px dashed var(--border2);background:transparent"></i>미정</span>
-      <span><i class="pc-lg-sp">허리</i>6개월 이후 데일리 15부 목표</span>
-      <span style="margin-left:auto;color:var(--ink5)">카드에 마우스를 올리면 상세가 보입니다</span>
-    </div>
+  ${PCAL.view === 'list' ? listView() : calView()}
+
+  <div class="pc-strip gap">
+    <div><span>${Y}년 출간</span><b>${pubDone}</b><small>/ ${yearBooks.length}종 · 배본일 지난 종수</small></div>
+    <div><span>이달 입고·배본</span><b>${monthIn}</b><small>종</small></div>
+    <div><span>3주 내 입고</span><b class="${soon ? 'bad' : ''}">${soon}</b><small>종</small></div>
+    <div title="${checkedAny ? '예정일이 지났는데 완료 체크가 없는 도서' : "'완료단계' 열에 끝난 공정을 적으면 지연을 잡습니다"}"><span>공정 지연</span><b class="${lateN ? 'bad' : ''}">${checkedAny ? lateN : '—'}</b><small>${checkedAny ? '종' : '완료단계 열 없음'}</small></div>
+    <div class="pc-strip-dist"><span>공정 분포</span>
+      <em>착수 전 <b>${dist.n0}</b></em><em>기획 <b>${dist.np}</b></em><em>회의 <b>${dist.n1}</b></em><em>교정 <b>${dist.n2}</b></em><em>마감·입고 <b>${dist.n3}</b></em>
+      <small>진행 중 ${dist.live}종</small></div>
   </div>
 
   ${(() => {
     const empty = PCAL_GRADES.map(g => ({g, ...cnt(g)})).filter(x => x.tot && x.on < x.tot);
-    const noD = rows.filter(r => r.title && !r.design);
-    const noP = rows.filter(r => r.title && !r.plan);
+    const noD = items.filter(it => filled(it) && !pcalVal(it,'design'));
+    const noP = items.filter(it => filled(it) && !pcalVal(it,'plan'));
     if (!empty.length && !noD.length && !noP.length) return '';
     return `<div class="g2 gap">
       ${empty.length ? `<div class="card" style="border-left:3px solid var(--warn)">
         <div class="card-title">채워야 할 슬롯 <small>${Y}년</small></div>
-        ${empty.map(x => {
-          const M = PCAL_META[x.g];
-          const ms = rows.filter(r => r.grade===x.g && !r.title).map(r => r.m+'월');
-          return `<div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;
-            border-bottom:1px solid var(--border)">
+        ${empty.map(x => { const M = PCAL_META[x.g];
+          const ms = items.filter(it => it.grade===x.g && !filled(it)).map(it => it.m+'월');
+          return `<div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
             <b style="font-size:12.5px;color:${M.c};width:44px">${x.g}</b>
             <b style="font-size:15px;color:var(--bad)">${x.tot-x.on}종</b>
-            <span style="font-size:11.5px;color:var(--ink3)">${ms.join(', ')}</span>
-          </div>`;
-        }).join('')}
+            <span style="font-size:11.5px;color:var(--ink3)">${ms.join(', ')}</span></div>`; }).join('')}
       </div>` : ''}
       ${(noD.length || noP.length) ? `<div class="card">
         <div class="card-title">담당 미배정 <small>확보분 기준</small></div>
         ${noP.length ? `<div style="font-size:12px;color:var(--ink2);padding:7px 0;border-bottom:1px solid var(--border)">
           <b style="color:var(--warn)">기획자 ${noP.length}종</b>
-          <span style="color:var(--ink3);margin-left:8px">${esc(noP.slice(0,4).map(r=>r.title).join(' · '))}${noP.length>4?` 외 ${noP.length-4}`:''}</span>
-        </div>` : ''}
+          <span style="color:var(--ink3);margin-left:8px">${esc(noP.slice(0,4).map(it=>pcalVal(it,'title')).join(' · '))}${noP.length>4?` 외 ${noP.length-4}`:''}</span></div>` : ''}
         ${noD.length ? `<div style="font-size:12px;color:var(--ink2);padding:7px 0">
           <b style="color:var(--warn)">디자이너 ${noD.length}종</b>
-          <span style="color:var(--ink3);margin-left:8px">${esc(noD.slice(0,4).map(r=>r.title).join(' · '))}${noD.length>4?` 외 ${noD.length-4}`:''}</span>
-        </div>` : ''}
+          <span style="color:var(--ink3);margin-left:8px">${esc(noD.slice(0,4).map(it=>pcalVal(it,'title')).join(' · '))}${noD.length>4?` 외 ${noD.length-4}`:''}</span></div>` : ''}
       </div>` : ''}
     </div>`;
   })()}
 
+  ${rightsCard()}
+
   <div class="card gap">
-    <div class="card-title">담당자별 배정 <small>${Y}년 확보분 기준</small></div>
-    ${people.length ? `<table>
-      <tr><th>담당자</th><th class="right" style="width:80px">기획</th>
-        <th class="right" style="width:80px">마케팅</th><th class="right" style="width:80px">디자인</th>
-        <th class="right" style="width:80px">합계</th><th style="width:180px">분포</th></tr>
-      ${people.map(p => {
-        const a2 = rows.filter(r => r.plan === p).length;
-        const b2 = rows.filter(r => r.mkter === p).length;
-        const c2 = rows.filter(r => r.design === p).length;
-        const t2 = a2+b2+c2;
-        const mx = Math.max(...people.map(q =>
-          rows.filter(r=>r.plan===q).length + rows.filter(r=>r.mkter===q).length + rows.filter(r=>r.design===q).length), 1);
-        const n = v => v ? v : '<span style="color:var(--ink5)">—</span>';
-        return `<tr><td><b style="font-size:12px">${esc(p)}</b></td>
-          <td class="right">${n(a2)}</td><td class="right">${n(b2)}</td><td class="right">${n(c2)}</td>
-          <td class="right"><b>${t2}</b></td>
-          <td><div style="height:7px;border-radius:4px;background:var(--surface3);overflow:hidden">
-            <i style="display:block;height:7px;width:${(t2/mx*100).toFixed(0)}%;border-radius:4px;
-              background:var(--accent)"></i></div></td></tr>`;
-      }).join('')}
-    </table>` : '<div class="empty-row">담당자가 아직 배정되지 않았습니다</div>'}
+    <div class="card-title">담당자 × 월 부하 <small>${Y}년 · 슬롯월 기준 · 미정 슬롯 배정분 포함</small></div>
+    ${people.length ? (() => {
+      const roleOf = p => [['기획','plan'],['마케팅','mkter'],['디자인','design']].filter(([,k]) => items.some(it => pcalVal(it,k) === p)).map(([n]) => n);
+      const rows2 = people.map(p => { const has = it => [pcalVal(it,'plan'), pcalVal(it,'mkter'), pcalVal(it,'design')].indexOf(p) >= 0;
+        const ms = MONS.map(m => items.filter(it => it.m === m && has(it)));
+        return {p, roles:roleOf(p), ms, tot: ms.reduce((a,x) => a + x.length, 0)}; })
+        .sort((a,b) => { const ri = r => ['기획','마케팅','디자인'].indexOf(r[0]); return ri(a.roles) - ri(b.roles) || b.tot - a.tot; });
+      const shade = n => n === 0 ? 'transparent' : (n === 1 ? 'rgba(58,91,217,.14)' : (n === 2 ? 'rgba(58,91,217,.34)' : 'rgba(58,91,217,.62)'));
+      return `<div class="pc-heat">
+        <div class="pc-heat-h"></div>${MONS.map(m => `<div class="pc-heat-h${m===nowM?' now':''}">${m}월</div>`).join('')}<div class="pc-heat-h right">합계</div>
+        ${rows2.map(r => `<div class="pc-heat-p"><b>${esc(r.p)}</b><span>${r.roles.join('·')}</span></div>
+          ${r.ms.map((cell, i) => `<div class="pc-heat-c${i+1===nowM?' now':''}" style="background:${shade(cell.length)}" title="${esc(cell.map(it => pcalVal(it,'title')).join('\n'))}">${cell.length ? `<b style="color:${cell.length >= 3 ? '#FFF' : 'var(--ink)'}">${cell.length}</b>` : ''}</div>`).join('')}
+          <div class="pc-heat-c right"><b>${r.tot}</b></div>`).join('')}
+      </div>
+      <div class="pc-legend" style="margin-top:12px;padding-top:10px">
+        <span><i style="background:rgba(58,91,217,.14)"></i>1종</span><span><i style="background:rgba(58,91,217,.34)"></i>2종</span><span><i style="background:rgba(58,91,217,.62)"></i>3종 이상 — 같은 달에 몰림</span>
+        <span style="margin-left:auto;color:var(--ink5)">칸에 마우스를 올리면 도서명이 보입니다</span>
+      </div>`; })() : '<div class="empty-row">담당자가 아직 배정되지 않았습니다</div>'}
   </div>`;
+}
+
+/* ── 출간 상세 팝업 ── */
+function pdOpen(idx){
+  const it = PCAL.items[idx];
+  if (!it) return;
+  const el = document.getElementById('pdModal'), body = document.getElementById('pdModalBody');
+  if (!el || !body) return;
+  body.innerHTML = pdDetail(it);
+  el.classList.add('on');
+  el.scrollTop = 0;
+}
+function pdClose(){ const el = document.getElementById('pdModal'); if (el) el.classList.remove('on'); }
+// 검색 등 바깥에서 도서명으로 열 때 — 캘린더 탭을 먼저 그려 items 를 채운다
+function pdOpenTitle(title){
+  setTab('pubcal');
+  const k = pcalTKey(title);
+  let i = PCAL.items.findIndex(it => pcalTKey(pcalVal(it,'title')) === k);
+  if (i < 0) {
+    // 다른 해에 있을 수 있다 — 연도를 옮겨가며 찾는다
+    const b = (PCAL_SELF ? PCAL_BOOKS : PUB_BOOKS).find(x => pcalTKey(x.title) === k);
+    const d = b && (b.inDate || b.ship);
+    const c = PUB_CAL.find(x => pcalTKey(x.title) === k);
+    const y = d ? d.getFullYear() : (c ? +((String(c.half).match(/(\d{4})/)||[])[1] || 0) : 0);
+    if (y) { PCAL.year = y; PCAL.grade = ''; PCAL.person = ''; renderPubCal(); i = PCAL.items.findIndex(it => pcalTKey(pcalVal(it,'title')) === k); }
+  }
+  if (i >= 0) pdOpen(i);
+}
+function pdDetail(it){
+  const v = k => pcalVal(it, k);
+  const b = it.book, meta = it.meta, cal = it.cal;
+  const st = pcalStatus(v('status'));
+  const fmtN = (x, unit) => { const n = toNum(x); return n ? n.toLocaleString() + unit : (String(x||'').trim() || ''); };
+  const dash = x => { const s = String(x == null ? '' : x).trim(); return s ? esc(s) : '<span class="pd-none">—</span>'; };
+  const dateTxt = d => d instanceof Date ? ymd(d).replace(/-/g,'.') : (d ? esc(String(d)) : '<span class="pd-none">—</span>');
+  const inD = v('inDate'), shipD = v('ship');
+  const kd = (inD instanceof Date ? inD : null) || (shipD instanceof Date ? shipD : null);
+  const dd = pcalDday(kd);
+  const stg = b ? pcalStageState(b) : null;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // 공정 스텝 — 회의 3 / 제작 7
+  const stepper = () => {
+    if (!b) return `<div class="pd-nobook">공정 일정이 아직 없습니다.<br>
+      <span>출간_캘린더 탭의 완료단계 열에 현재 단계를, 킥오프 ~ 마감 · 입고일 열에 날짜를 적으면 여기 붙습니다.</span></div>`;
+    const set = {}; b.stages.forEach(s => { set[s.key] = s.date; });
+    return `<div class="pd-steps">
+      ${PUB_STAGE_GROUPS.map(g => `<div class="pd-sg" style="flex:${g.keys.length}">
+        <div class="pd-sg-l">${g.label}</div>
+        <div class="pd-sg-r">
+          ${g.keys.map(k => { const d = set[k.key];
+            const s = !d ? 'none' : (d <= today ? 'done' : 'plan');
+            const cur = stg.done && stg.done.key === k.key;
+            const ddk = pcalDday(d);
+            const od = stg.overdue.find(x => x.key === k.key);
+            const sc = stg.checked ? (stg.keys.indexOf(k.key) >= 0 ? 'done' : (od ? 'late' : (d ? 'plan' : 'none'))) : s;
+            return `<div class="pd-st ${sc}${cur?' cur':''}" style="--gc:${meta.c};--gl:${meta.line}">
+              <i></i><b>${k.key}</b>
+              <span>${d ? ymd(d).slice(5).replace('-','/') : '미정'}</span>
+              ${od ? `<em>D+${od.days} 지연</em>` : (sc === 'plan' && ddk !== null && ddk <= 14 ? `<em>D-${ddk}</em>` : '')}
+            </div>`; }).join('')}
+        </div></div>`).join('')}
+    </div>
+    <div class="pd-steps-sum">
+      ${stg.done ? `현재 <b>${esc(stg.done.key)}</b> 완료` : (b.stages.length ? '착수 전' : '공정 일정 미입력')}
+      ${stg.next ? ` · 다음 <b>${esc(stg.next.key)}</b> ${ymd(stg.next.date).slice(5).replace('-','/')}${(() => { const n = pcalDday(stg.next.date); return n === null ? '' : (n >= 0 ? ' (D-' + n + ')' : ' <b style="color:var(--bad)">(D+' + (-n) + ' 지연)</b>'); })()}` : ''}
+      <span>${stg.cnt}/${PUB_STAGES.length} 단계${stg.checked ? '' : ' · 날짜 기준'}</span>
+    </div>
+    ${stg.checked ? '' : `<div class="pd-hint" style="margin-top:8px">완료 체크가 없어 예정일이 지난 단계를 완료로 봅니다. <b>완료단계</b> 열에 마지막으로 끝난 공정(예: 2교)을 적으면 지연을 잡습니다.</div>`}`;
+  };
+  // 판매 목표 — 배본 뒤에만
+  const salesSec = () => {
+    const sa = pcalSales(it); if (!sa) return '';
+    const pct = Math.min(100, sa.pct);
+    const left = Math.max(0, 90 - sa.days);
+    const daily = sa.days ? sa.sold / sa.days : 0;
+    const need = left && sa.goal > sa.sold ? (sa.goal - sa.sold) / left : 0;
+    return `<div class="pd-sec"><div class="pd-h">판매 목표 <small>${it.grade || '등급 미지정'} · 배본 후 3개월${sa.src === 'scm' ? ' · SCM 4사 실판매' : (sa.src === 'cum' ? ' · 도서 DB 누적 (일별 데이터 없음)' : '')}</small></div>
+      ${sa.goal ? `<div class="pd-sale">
+        <div class="pd-sale-n"><b>${sa.sold.toLocaleString()}</b><span>/ ${sa.goal.toLocaleString()}부</span><em style="color:${sa.pct >= 100 ? 'var(--good)' : meta.c}">${Math.round(sa.pct)}%</em></div>
+        <div class="pd-sale-bar" style="--gc:${meta.c}"><i style="width:${pct.toFixed(0)}%"></i></div>
+        <div class="pd-sale-s">${sa.ended ? '3개월 창 종료' : `${sa.days}일차 · ${left}일 남음`} · 일평균 ${daily.toFixed(1)}부${!sa.ended && need ? ` · 목표까지 하루 ${need.toFixed(0)}부 필요` : ''}${sa.src === '' ? ' · 판매 데이터 없음' : ''}</div>
+      </div>` : '<div class="pd-hint">등급이 없어 목표를 정할 수 없습니다. 출간_캘린더 탭에 등급을 채워주세요.</div>'}
+      ${sa.spine ? `<div class="pd-sale-s" style="margin-top:8px">허리도서 · 배본 ${sa.sinceShip}일차 · 최근 7일 일평균 <b style="color:${sa.spine.avg !== null && sa.spine.avg >= PCAL_SPINE_DAILY ? 'var(--good)' : 'var(--bad)'}">${sa.spine.avg === null ? '데이터 없음' : sa.spine.avg.toFixed(1) + '부'}</b> / 목표 ${PCAL_SPINE_DAILY}부</div>`
+        : (it.cal && it.cal.spine ? `<div class="pd-sale-s" style="margin-top:8px">허리도서 · 배본 6개월 뒤(${(() => { const d = new Date(pcalVal(it,'ship')); d.setDate(d.getDate() + 180); return ymd(d).replace(/-/g,'.'); })()})부터 데일리 ${PCAL_SPINE_DAILY}부 추적</div>` : '')}
+    </div>`;
+  };
+
+  const kv = (rows) => `<dl class="pd-kv">${rows.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl>`;
+  const specMissing = !['size','pages','color','paper','price','print1','dist'].some(k => String(v(k)||'').trim());
+
+  // 다른 탭과 연결
+  const mk = (MKT_BOOKS||[]).find(x => pcalTKey(x.name || x.code) === pcalTKey(v('title')));
+  const db = (BOOKS||[]).find(x => pcalTKey(x.title) === pcalTKey(v('title')));
+
+  return `
+  <div class="pd-top">
+    <div class="pd-l">
+      <div class="pd-chips">
+        <span class="pd-chip" style="background:${meta.soft};color:${meta.c};border-color:${meta.line}">${it.grade || '미등록'}</span>
+        ${(() => { const k = stg && stg.done ? stg.done.key : '';
+          if (!k) return ''; const pc = PUB_PLAN_COLOR[k];
+          return `<span class="pd-chip" style="background:${pc ? 'var(--surface3)' : meta.soft};color:${pc || meta.c};border-color:${pc ? 'var(--border2)' : meta.line}">${esc(k)}${stg && stg.done && pubPhaseOf(k) !== '기획' ? ' 완료' : ''}</span>`; })()}
+        ${cal && cal.spine ? '<span class="pc-badge" style="margin:0">허리</span>' : ''}
+        ${cal ? `<span class="pd-chip pd-chip-mute">${esc(cal.half)} · ${it.m}월 슬롯</span>` : '<span class="pd-chip pd-chip-mute">출간_캘린더 미등록</span>'}
+      </div>
+      <div class="pd-title">${esc(v('title'))}</div>
+      <div class="pd-auth">${esc(v('author')) || '<span class="pd-none">저자 미정</span>'}${v('trans') ? ` <span class="pd-none">/ 역 ${esc(v('trans'))}</span>` : ''}${v('genre') ? ` <span class="pd-none">· ${esc(v('genre'))}</span>` : ''}</div>
+    </div>
+    <div class="pd-r">
+      ${kd ? `<b class="${dd !== null && dd >= 0 && dd <= 7 ? 'bad' : ''}">${dd === null ? '' : (dd >= 0 ? 'D-' + dd : 'D+' + (-dd))}</b>
+        <span>${inD instanceof Date ? '입고 ' + ymd(inD).slice(5).replace('-','/') : ''}${inD instanceof Date && shipD instanceof Date ? ' · ' : ''}${shipD instanceof Date ? '배본 ' + ymd(shipD).slice(5).replace('-','/') : ''}</span>`
+        : '<b class="pd-none">일정 미정</b><span>입고·배본일 미입력</span>'}
+    </div>
+  </div>
+
+  <div class="pd-sec"><div class="pd-h">공정 단계 <small>기획 4 · 회의 3 · 제작 7</small></div>${stepper()}</div>
+  ${salesSec()}
+
+  <div class="pd-cols">
+    <div class="pd-sec"><div class="pd-h">기본 정보</div>
+      ${kv([
+        ['지은이', dash(v('author'))],
+        ['분야', dash(v('genre'))],
+        ['판형', dash(v('size'))],
+        ['면수', dash(fmtN(v('pages'), '쪽'))],
+        ['본문 컬러', dash(v('color'))],
+        ['본문 종이', dash(v('paper'))],
+        ['예상 정가', dash(fmtN(v('price'), '원'))],
+      ])}
+    </div>
+    <div class="pd-sec"><div class="pd-h">제작 · 배본</div>
+      ${kv([
+        ['입고일', dateTxt(inD)],
+        ['출간(배본)일', dateTxt(shipD)],
+        ['초판 제작부수', dash(fmtN(v('print1'), '부'))],
+        ['배본부수', dash(fmtN(v('dist'), '부'))],
+      ])}
+      <div class="pd-h" style="margin-top:14px">담당</div>
+      ${kv([
+        ['기획', dash(v('plan'))],
+        ['마케팅', dash(v('mkter'))],
+        ['디자인', dash(v('design'))],
+      ])}
+    </div>
+  </div>
+  ${cal && cal.note ? `<div class="pd-sec"><div class="pd-h">비고</div><div class="pd-note">${esc(cal.note)}</div></div>` : ''}
+  ${specMissing ? `<div class="pd-hint">판형·면수·본문 컬러·종이·예상 정가·초판 제작부수·배본부수는 <b>출간_캘린더</b> 탭의 해당 열을 채우면 표시됩니다.</div>` : ''}
+  ${(mk || db) ? `<div class="pd-links">
+    ${mk ? `<button onclick="pdClose();calBook='${royEsc(mk.code)}';setTab('calendar')">마케팅 캠페인 보기 →</button>` : ''}
+    ${db ? `<button onclick="pdClose();setTab('books');tblState('books');bookQuery='${royEsc(db.title)}';renderBooks()">도서 DB 보기 →</button>` : ''}
+  </div>` : ''}`;
 }
 
 /* 인세 정산 화면 */
@@ -8428,8 +8930,8 @@ function cmdkSources(){
     go:()=>{ setTab('books'); tblState('books'); bookQuery=b.title; renderBooks(); }}));
   (MKT_BOOKS||[]).forEach(b => out.push({kind:'캠페인', title:b.name||b.code, sub:'마케팅 캠페인',
     go:()=>{ calBook=b.code; setTab('calendar'); }}));
-  (PUB_BOOKS||[]).forEach(b => out.push({kind:'출간', title:b.title, sub:b.ship?ymd(b.ship):'',
-    go:()=>{ setTab('publish'); tblSearch('pubList', b.title); }}));
+  pubBooksAll().forEach(b => out.push({kind:'출간', title:b.title, sub:b.ship?ymd(b.ship):'',
+    go:()=>{ pdOpenTitle(b.title); }}));
   (CH_PERF||[]).forEach(c => out.push({kind:'채널', title:c.acct, sub:c.kind,
     go:()=>{ setTab('channel'); }}));
   (CH_CONTENT||[]).forEach(c => out.push({kind:'콘텐츠', title:c.title,
@@ -8672,7 +9174,7 @@ function computeFreshness(){
   FRESH['비용']     = lastMonthOf(M_TOTAL_COST.map((v,i)=>v || M_TOTAL_PLAN[i]));
   FRESH['캠페인']   = last([].concat(...Object.keys(MKT_ACTIONS||{}).map(k =>
                         (MKT_ACTIONS[k]||[]).map(a => parseAnyDate(a.date)))));
-  FRESH['출간']     = last((PUB_BOOKS||[]).map(b => b.inDate || b.ship));
+  FRESH['출간']     = last(pubBooksAll().map(b => b.inDate || b.ship));
   FRESH['콘텐츠']   = last((CH_CONTENT||[]).map(c => c.up));
   FRESH['채널실적'] = lastMonthOf((CH_PERF[0] && CH_PERF[0].items && CH_PERF[0].items['팔로워']) || []);
   FRESH['채널팔로워'] = last([].concat(...(CH_WEEKLY||[]).map(w => w.points.map(p => p.date))));
