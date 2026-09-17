@@ -272,6 +272,36 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pc-legend span{display:inline-flex;align-items:center;gap:5px}
 .pc-legend i{width:10px;height:10px;border-radius:2px;display:block}
 .pc-legend .pc-div{width:1px;height:11px;background:var(--border2)}
+/* 저자 컨택 파이프라인 */
+.ap-g0{--ac:var(--ink3);--ab:var(--surface3)}
+.ap-g1{--ac:var(--accent-deep);--ab:var(--accent-dim)}
+.ap-g2{--ac:var(--good);--ab:var(--good-dim)}
+.ap-funnel{display:flex;gap:18px;flex-wrap:wrap}
+.ap-fg{flex:1;min-width:280px}
+.ap-fg-l{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--ac);margin-bottom:6px}
+.ap-fg-r{display:flex;gap:6px}
+.ap-fs{flex:1;min-width:0;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:var(--r3);padding:9px 10px 8px;cursor:pointer;font-family:var(--sans);position:relative;overflow:hidden}
+.ap-fs:hover{border-color:var(--border2)}.ap-fs.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--ab)}
+.ap-fs b{display:block;font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1}
+.ap-fs span{display:block;font-size:10.5px;color:var(--ink3);margin-top:5px;line-height:1.3;word-break:keep-all}
+.ap-fs i{position:absolute;left:0;bottom:0;height:3px;background:var(--ac);display:block}
+.ap-wrap{overflow-x:auto}
+.ap-mat{min-width:1100px;table-layout:fixed}
+.ap-mat th{font-size:10.5px;vertical-align:bottom;line-height:1.3;word-break:keep-all;color:var(--ac,var(--ink3))}
+.ap-mat th small{display:block;font-size:9.5px;letter-spacing:.08em;margin-bottom:2px}
+.ap-mat th.ap-p,.ap-mat td.ap-p{width:110px;color:var(--ink)}
+.ap-mat td{vertical-align:top;padding:8px 6px}
+.ap-mat td.ap-p b{font-size:12.5px;display:block}
+.ap-mat td.ap-p small{font-size:10px;color:var(--ink3)}
+.ap-mat .ap-gs{border-left:2px solid var(--border2)}
+.ap-mat tr:hover td{background:transparent}
+.ap-chip{display:inline-flex;align-items:center;gap:4px;margin:0 4px 4px 0;padding:3px 8px;border-radius:5px;font-size:11.5px;font-weight:700;color:var(--ink);background:var(--ab,var(--surface3));border:1px solid transparent;position:relative;max-width:100%;line-height:1.3;cursor:default}
+.ap-chip.ap-g2{color:var(--good)}
+.ap-chip.hold{opacity:.55;border-style:dashed;border-color:var(--border2);background:transparent}
+.ap-chip small{font-size:9.5px;font-weight:700;color:var(--ink3)}
+.ap-chip .ap-nocal{color:var(--bad)}
+.ap-chip.stale::before,.ap-chip.over::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn);flex-shrink:0}
+.ap-chip.over::before{background:var(--bad)}
 /* 카드 안 판매 진척 (배본 뒤) */
 .pc-sale{margin-top:8px}
 .pc-sale-bar{height:5px;border-radius:2px;background:var(--gl);overflow:hidden}
@@ -863,6 +893,7 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
     <div id="tab-cost"     class="section"></div>
     <div id="tab-channel"  class="section"></div>
     <div id="tab-pubcal"   class="section"></div>
+    <div id="tab-authors"  class="section"></div>
     <div id="tab-books"    class="section"></div>
     <div id="tab-royalty"  class="section"></div>
     <div id="tab-data"     class="section"></div>
@@ -905,6 +936,9 @@ const CFG = {
     authors:       "1944752545",
     // 출간_캘린더 (반기|등급|슬롯월|도서명|저자|기획자|마케터|디자이너|상태|허리도서)
     pubCal:        "1947941997",
+    // 저자_컨택 (담당자|팀|저자명|채널/소속|기획 방향|단계|보류|최초 컨택일|최근 업데이트|다음 액션|다음 액션일|결과 사유|비고)
+    // 탭을 만든 뒤 GID를 여기 넣는다
+    authorPipe:    "613437765",
   },
   // 마케팅 캠페인 별도 구글 시트
   mktSheetId: "1SgFVN8aOV7TIz_9PsP3xncnU1HwvquY-i7gCq6XNOno",
@@ -947,6 +981,7 @@ const TABS = [
   {div:true},
   {id:"calendar", label:"마케팅 캠페인"},
   {id:"pubcal",   label:"출간 캘린더"},
+  {id:"authors",  label:"저자 컨택"},
   {id:"books",    label:"도서 DB"},
   {id:"royalty",  label:"인세 정산"},
   {div:true},
@@ -1987,7 +2022,7 @@ async function loadSheets() {
 
   try {
     // 병렬 fetch (현재 탭 구조 기준)
-    const [setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members, pubCal] = await Promise.all([
+    const [setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members, pubCal, authorPipe] = await Promise.all([
       fetchSheet(CFG.gids.setting),   // 00_설정
       fetchSheet(CFG.gids.monthly),   // 01_월별실적
       fetchSheet(CFG.gids.cost),      // 02_비용원장
@@ -2005,10 +2040,14 @@ async function loadSheets() {
       CFG.gids.pubCal                                   // 출간_캘린더
         ? fetchSheet(CFG.gids.pubCal).catch(e => { console.warn('[출간 캘린더] 로드 실패:', e); return []; })
         : Promise.resolve([]),
+      CFG.gids.authorPipe                               // 저자_컨택
+        ? fetchSheet(CFG.gids.authorPipe).catch(e => { console.warn('[저자 컨택] 로드 실패:', e); return []; })
+        : Promise.resolve([]),
     ]);
 
     applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members });
     applyPubCal(pubCal);
+    applyAuthorPipe(authorPipe);
     celebrate();
 
     SD.loaded = true;
@@ -2638,8 +2677,8 @@ function renderTabs(){
   }).join('');
 }
 // 상단 KPI 바 / 월별 추이 차트를 숨길 탭
-const HIDE_PILLS = ['books','data','royalty','pubcal'];
-const HIDE_TREND = ['channel','calendar','books','data','royalty','pubcal'];
+const HIDE_PILLS = ['books','data','royalty','pubcal','authors'];
+const HIDE_TREND = ['channel','calendar','books','data','royalty','pubcal','authors'];
 function applyTopVisibility(){
   const pillEl  = document.querySelector('.pill-bar-wrap');
   const trendEl = document.getElementById('trend-chart');
@@ -2701,6 +2740,7 @@ function renderActive(){
   else if(activeTab==='books')    renderBooks();
   else if(activeTab==='royalty')  { renderRoyalty(); loadShipRaw(); }
   else if(activeTab==='pubcal')   renderPubCal();
+  else if(activeTab==='authors')  renderAuthors();
   else if(activeTab==='calendar') renderCalendar();
   else if(activeTab==='data')    renderData();
 }
@@ -6565,6 +6605,14 @@ function renderData(){
       ['완료단계','<b>선택.</b> 날짜만으로는 "예정일이 지났는데 실제로 안 끝난" 걸 알 수 없어서, 지연을 잡고 싶을 때만 이 열에 마지막으로 끝난 단계(예: 2교)를 적습니다. 없으면 날짜가 지난 단계를 완료로 봅니다'],
     ]))}
 
+    ${card('저자_컨택', '저자 컨택 탭 · 한 행이 저자(기획 건) 하나 · 단계가 바뀌면 같은 행을 고침', cols([
+      ['담당자 · 팀 · 저자명','저자명을 출간 캘린더의 저자 열과 같게 적으면 계약 후 캘린더 등록 여부를 자동으로 봅니다'],
+      ['단계','초기 <b>출간 제안 컨택 → 컨택 포인트 서칭 → 긍정 회신</b> / 실행 <b>미팅 예정 → 미팅 후 기획 점검 → 기획 확정 및 계약 승인 대기</b> / 결과 <b>계약 승인 · 저자 거절 · 내부 반려</b>'],
+      ['보류','Y 면 단계는 그대로 두고 흐리게. 다시 움직이면 지웁니다'],
+      ['최근 업데이트 · 다음 액션일','업데이트가 ' + AP_STALE_DAYS + '일 멈추면 정체, 액션일이 지나면 빨갛게'],
+      ['기획 방향(가제) · 채널/소속 · 결과 사유 · 비고','칩에 마우스를 올리면 보입니다'],
+    ]))}
+
     ${card('도서 목록', '신간이 나오면 여기부터', cols([
       ['A · ISBN','13자리. <b>비우면 안 됩니다.</b> 이 값으로 모든 탭이 연결됩니다'],
       ['B · 도서명','대시보드에 표시되는 이름'],
@@ -8159,6 +8207,148 @@ function renderPubCal(){
   </div>` : ''}`;
 }
 
+/* ── 저자 컨택 파이프라인 ──
+   시트 '저자_컨택' 한 행 = 저자(기획 건) 하나. 단계 9개를 초기·실행·결과 세 묶음으로 본다.
+   대표 요청 그대로 — 담당자별로 누가 어느 단계에 있는지 이름으로 한눈에. */
+const AP_GROUPS = [
+  {label:'초기', cls:'ap-g0', keys:['출간 제안 컨택','컨택 포인트 서칭','긍정 회신']},
+  {label:'실행', cls:'ap-g1', keys:['미팅 예정','미팅 후 기획 점검','기획 확정 및 계약 승인 대기']},
+  {label:'결과', cls:'ap-g2', keys:['계약 승인','저자 거절','내부 반려']},
+];
+const AP_STAGES = AP_GROUPS.reduce((a,g) => a.concat(g.keys), []);
+const AP_STALE_DAYS = 14;
+const AUTHOR_PIPE = [];
+const AP = { person:'', stage:'' };
+function apGroupOf(stage){ return AP_GROUPS.find(g => g.keys.indexOf(stage) >= 0) || null; }
+// 시트의 단계 표기가 조금 달라도 맞춘다 (공백 무시 · 부분 일치)
+function apStageOf(v){
+  const t = String(v||'').replace(/\s/g,'');
+  if (!t) return '';
+  return AP_STAGES.find(k => k.replace(/\s/g,'') === t)
+      || AP_STAGES.find(k => t.indexOf(k.replace(/\s/g,'').slice(0,4)) >= 0)
+      || (/거절/.test(t) ? '저자 거절' : /반려/.test(t) ? '내부 반려' : /계약/.test(t) ? '계약 승인' : /미팅/.test(t) ? '미팅 예정' : '');
+}
+function applyAuthorPipe(rows0){
+  const nk = k => String(k||'').replace(/\s|\(.*?\)/g,'');
+  const pick = (o, ...names) => { const keys = Object.keys(o); for (const n of names) { const h = keys.find(k => nk(k) === nk(n)); if (h !== undefined) return String(o[h]||'').trim(); } return ''; };
+  const rows = rows0.map((o, i) => ({
+    id: i, pic: pick(o,'담당자'), team: pick(o,'팀'), name: pick(o,'저자명','저자'), ch: pick(o,'채널/소속','채널','소속'),
+    plan: pick(o,'기획방향(가제)','기획방향','가제','기획'), stage: apStageOf(pick(o,'단계','상태')), hold: royFlag(pick(o,'보류')),
+    first: parseAnyDate(pick(o,'최초컨택일','최초컨택')), upd: parseAnyDate(pick(o,'최근업데이트','업데이트')),
+    next: pick(o,'다음액션'), nextD: parseAnyDate(pick(o,'다음액션일')), why: pick(o,'결과사유','사유'), note: pick(o,'비고'),
+  })).filter(r => r.name);
+  AUTHOR_PIPE.splice(0, AUTHOR_PIPE.length, ...rows);
+}
+function apPerson(v){ AP.person = String(v||''); renderAuthors(); }
+function apStage(k){ AP.stage = AP.stage === k ? '' : k; renderAuthors(); }
+// 계약 승인된 저자가 출간 캘린더에 올라갔는지 — 저자 열로 맞춘다
+function apInCalendar(name){
+  const k = pcalTKey(name); if (!k) return false;
+  return (PUB_CAL||[]).some(r => r.author && !r.placeholder && (pcalTKey(r.author) === k || pcalTKey(r.author).indexOf(k) >= 0 || k.indexOf(pcalTKey(r.author)) >= 0 && pcalTKey(r.author).length >= 2));
+}
+function renderAuthors(){
+  const el = document.getElementById('tab-authors');
+  if (!CFG.gids.authorPipe) {
+    el.innerHTML = `<div class="card"><div class="card-title">저자 컨택</div>
+      <div style="font-size:12.5px;color:var(--ink2);line-height:1.8">메인 시트에 <b>저자_컨택</b> 탭을 만들고 GID를 <code>CFG.gids.authorPipe</code>에 넣으면 여기 표시됩니다.
+        <div style="margin-top:9px;padding:10px 12px;background:var(--surface3);border-radius:var(--r3);font-size:11.5px;color:var(--ink);overflow-x:auto;white-space:nowrap">
+          담당자 · 팀 · 저자명 · 채널/소속 · 기획 방향(가제) · 단계 · 보류 · 최초 컨택일 · 최근 업데이트 · 다음 액션 · 다음 액션일 · 결과 사유 · 비고</div></div></div>`;
+    return;
+  }
+  if (!AUTHOR_PIPE.length) { el.innerHTML = `<div class="card"><div class="card-title">저자 컨택</div><div class="empty-row">저자_컨택 탭에 아직 행이 없습니다</div></div>`; return; }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dd = d => d ? Math.round((d - today) / 86400000) : null;
+  const all = AUTHOR_PIPE;
+  const rows = all.filter(r => !AP.person || r.pic === AP.person);
+  const people = [...new Set(all.map(r => r.pic).filter(Boolean))];
+  const teamOf = p => (all.find(r => r.pic === p && r.team) || {}).team || '';
+  people.sort((a, b) => teamOf(a).localeCompare(teamOf(b)) || a.localeCompare(b));
+  const grp = r => apGroupOf(r.stage);
+  const isResult = r => grp(r) && grp(r).label === '결과';
+  const stale = r => !isResult(r) && !r.hold && r.upd && dd(r.upd) <= -AP_STALE_DAYS;
+  const overdue = r => !isResult(r) && r.nextD && dd(r.nextD) < 0;
+  const cnt = k => rows.filter(r => r.stage === k).length;
+  const gcnt = l => rows.filter(r => grp(r) && grp(r).label === l && !r.hold).length;
+  const active = rows.filter(r => !isResult(r));
+  const signed = rows.filter(r => r.stage === '계약 승인');
+  const signedM = signed.filter(r => r.upd && ymd(r.upd).slice(0,7) === ymd(today).slice(0,7)).length;
+  const rejected = rows.filter(r => r.stage === '저자 거절' || r.stage === '내부 반려').length;
+  const held = rows.filter(r => r.hold && !isResult(r)).length;
+  const staleN = rows.filter(stale).length, overN = rows.filter(overdue).length;
+  const noCal = signed.filter(r => !apInCalendar(r.name)).length;
+  const unstaged = rows.filter(r => !r.stage).length;
+
+  const chip = r => {
+    const g = grp(r), cls = g ? g.cls : '';
+    const tip = [r.plan ? '기획: ' + r.plan : '', r.ch ? r.ch : '', r.next ? '다음: ' + r.next + (r.nextD ? ' (' + ymd(r.nextD).slice(5) + ')' : '') : '',
+      r.upd ? '업데이트 ' + ymd(r.upd) : '', r.why ? '사유: ' + r.why : '', r.note].filter(Boolean).join('\n');
+    return `<span class="ap-chip ${cls}${r.hold ? ' hold' : ''}${stale(r) ? ' stale' : ''}${overdue(r) ? ' over' : ''}" title="${esc(tip)}">
+      ${esc(r.name)}${r.hold ? '<small>보류</small>' : ''}${r.stage === '계약 승인' && !apInCalendar(r.name) ? '<small class="ap-nocal" title="출간 캘린더에 아직 없음">캘린더 미등록</small>' : ''}</span>`;
+  };
+
+  el.innerHTML = `
+    ${tabLine([
+      `컨택 진행 ${LB(active.filter(r => !r.hold).length + '건')} <span>담당 ${people.length}명</span>`,
+      `초기 ${LB(gcnt('초기'))} <span>→</span> 실행 ${LB(gcnt('실행'))}`,
+      `계약 ${LB(signed.length + '건', signed.length ? 'good' : '')}${signedM ? ` <span>이달 ${signedM}</span>` : ''}`,
+      `거절·반려 ${LB(rejected + '건')}`,
+      held ? `보류 ${LB(held + '건')}` : '',
+      staleN ? `${AP_STALE_DAYS}일 이상 정체 ${LB(staleN + '건', 'bad')}` : '',
+      overN ? `액션일 지남 ${LB(overN + '건', 'bad')}` : '',
+      noCal ? `계약 후 캘린더 미등록 ${LB(noCal + '건', 'bad')}` : '',
+    ])}
+
+    <div class="card gap">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="card-title" style="margin:0">단계별 현황 <small>칸을 누르면 아래 표가 그 단계로 좁혀집니다</small></div>
+        <select class="pc-sel" style="margin-left:auto" onchange="apPerson(this.value)">
+          <option value="">담당자 전체</option>
+          ${people.map(p => `<option value="${esc(p)}" ${p===AP.person?'selected':''}>${esc(p)}${teamOf(p) ? ' · ' + esc(teamOf(p)) : ''}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ap-funnel">
+        ${AP_GROUPS.map(g => `<div class="ap-fg ${g.cls}"><div class="ap-fg-l">${g.label}</div><div class="ap-fg-r">
+          ${g.keys.map(k => { const n = cnt(k), mx = Math.max(1, ...AP_STAGES.map(cnt));
+            return `<button class="ap-fs${AP.stage===k?' on':''}" onclick="apStage('${k}')"><b>${n}</b><span>${k}</span><i style="width:${Math.round(n/mx*100)}%"></i></button>`; }).join('')}
+        </div></div>`).join('')}
+      </div>
+      ${unstaged ? `<div class="pd-hint" style="margin-top:10px">단계가 비어 있거나 알 수 없는 행 ${unstaged}건 — 시트의 단계 열을 드롭다운 값으로 맞춰주세요.</div>` : ''}
+    </div>
+
+    <div class="card gap">
+      <div class="card-title">담당자 × 단계 <small>이름으로 보기 · 흐린 칩 = 보류 · 주황 점 = ${AP_STALE_DAYS}일 이상 업데이트 없음 · 빨간 점 = 다음 액션일 지남</small></div>
+      <div class="ap-wrap"><table class="ap-mat">
+        <tr><th class="ap-p">담당자</th>${AP_GROUPS.map(g => g.keys.map((k, i) => `<th class="${g.cls}${i===0?' ap-gs':''}"><small>${i===0 ? g.label : ''}</small>${k}</th>`).join('')).join('')}</tr>
+        ${people.filter(p => !AP.person || p === AP.person).map(p => `<tr>
+          <td class="ap-p"><b>${esc(p)}</b><small>${esc(teamOf(p))} · ${all.filter(r => r.pic === p && !isResult(r) && !r.hold).length}건 진행</small></td>
+          ${AP_GROUPS.map(g => g.keys.map((k, i) => { const cs = all.filter(r => r.pic === p && r.stage === k);
+            return `<td class="${i===0?'ap-gs':''}">${cs.map(chip).join('')}</td>`; }).join('')).join('')}
+        </tr>`).join('')}
+      </table></div>
+    </div>
+
+    ${DETAIL ? `
+    <div class="sec-label gap2">근거</div>
+    <div class="card">
+      <div class="card-title">전체 목록 <small>${AP.stage ? esc(AP.stage) + ' · ' : ''}${AP.person ? esc(AP.person) + ' · ' : ''}${rows.filter(r => !AP.stage || r.stage === AP.stage).length}건 · 최근 업데이트 순</small></div>
+      <table>
+        <tr><th style="width:70px">담당</th><th>저자</th><th>기획 방향</th><th style="width:150px">단계</th><th style="width:88px">최근 업데이트</th><th>다음 액션</th><th style="width:150px">사유 · 비고</th></tr>
+        ${rows.filter(r => !AP.stage || r.stage === AP.stage)
+          .sort((a, b) => ((b.upd||0) - (a.upd||0)) || AP_STAGES.indexOf(a.stage) - AP_STAGES.indexOf(b.stage))
+          .map(r => { const g = grp(r);
+            return `<tr class="${r.hold ? 'pc-dim' : ''}">
+              <td style="font-size:12px">${esc(r.pic)}</td>
+              <td><b style="font-size:12px">${esc(r.name)}</b>${r.ch ? `<div style="font-size:10.5px;color:var(--ink3)">${esc(r.ch)}</div>` : ''}</td>
+              <td style="font-size:11.5px;color:var(--ink2)">${esc(r.plan)}</td>
+              <td><span class="ap-chip ${g ? g.cls : ''}" style="margin:0">${esc(r.stage || '미입력')}</span>${r.hold ? ' <small style="color:var(--ink3)">보류</small>' : ''}</td>
+              <td style="font-size:11.5px;color:${stale(r) ? 'var(--warn)' : 'var(--ink2)'}">${r.upd ? ymd(r.upd).slice(2) : '—'}${stale(r) ? `<div style="font-size:10px;font-weight:700">${-dd(r.upd)}일 정체</div>` : ''}</td>
+              <td style="font-size:11.5px;color:var(--ink2)">${esc(r.next)}${r.nextD ? ` <span style="color:${overdue(r) ? 'var(--bad)' : 'var(--ink3)'};font-weight:${overdue(r) ? 800 : 500}">${ymd(r.nextD).slice(5).replace('-','/')}${overdue(r) ? ' 지남' : ''}</span>` : ''}</td>
+              <td style="font-size:11px;color:var(--ink3)">${esc([r.why, r.note].filter(Boolean).join(' · '))}</td>
+            </tr>`; }).join('')}
+      </table>
+    </div>` : ''}`;
+}
+
 /* ── 출간 상세 팝업 ── */
 function pdOpen(idx){
   const it = PCAL.items[idx];
@@ -8976,6 +9166,8 @@ function cmdkSources(){
     go:()=>{ setTab('books'); tblState('books'); bookQuery=b.title; renderBooks(); }}));
   (MKT_BOOKS||[]).forEach(b => out.push({kind:'캠페인', title:b.name||b.code, sub:'마케팅 캠페인',
     go:()=>{ calBook=b.code; setTab('calendar'); }}));
+  (AUTHOR_PIPE||[]).forEach(r => out.push({kind:'저자', title:r.name, sub:[r.pic, r.stage].filter(Boolean).join(' · '),
+    go:()=>{ AP.person=''; AP.stage=''; setTab('authors'); }}));
   pubBooksAll().forEach(b => out.push({kind:'출간', title:b.title, sub:b.ship?ymd(b.ship):'',
     go:()=>{ pdOpenTitle(b.title); }}));
   (CH_PERF||[]).forEach(c => out.push({kind:'채널', title:c.acct, sub:c.kind,
