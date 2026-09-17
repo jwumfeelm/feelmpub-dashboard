@@ -302,6 +302,14 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .ap-chip .ap-nocal{color:var(--bad)}
 .ap-chip.stale::before,.ap-chip.over::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn);flex-shrink:0}
 .ap-chip.over::before{background:var(--bad)}
+.ap-list{display:none}
+.ap-list>div{padding:10px 0;border-bottom:1px solid var(--border)}
+.ap-list>div:last-child{border-bottom:0}
+.ap-list .ap-lp{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.ap-list .ap-lp small{font-weight:500;color:var(--ink3);margin-left:6px}
+.ap-list .ap-ls{display:flex;gap:8px;align-items:flex-start;padding:3px 0}
+.ap-list .ap-ls>span{width:92px;flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--ac,var(--ink3));line-height:1.4;padding-top:4px;word-break:keep-all}
+.ap-list .ap-ls>div{flex:1;min-width:0}
 /* 카드 안 판매 진척 (배본 뒤) */
 .pc-sale{margin-top:8px}
 .pc-sale-bar{height:5px;border-radius:2px;background:var(--gl);overflow:hidden}
@@ -719,7 +727,19 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
   .mpick span{display:none}
   .mpick input{font-size:11px;padding:4px 7px}
   .sync-st{display:none}
+  .hdr-x{display:none!important}
+  .brand span{white-space:nowrap}
+  .brand img{height:32px!important}
+  .hdr-r{gap:6px}
   .tabs-bar{padding:0 8px}
+  .sum-line{padding:12px 14px;gap:10px;flex-wrap:wrap}
+  .sum-line-t{font-size:13px}
+  .sum-line-t i{margin:0 6px}
+  .sum-detail{margin-left:auto}
+  .ap-mat{display:none}
+  .ap-list{display:block}
+  .ap-fg{min-width:100%}
+  .pc-heat{grid-template-columns:110px repeat(12,minmax(26px,1fr)) 40px;min-width:640px}
   .tab-btn{font-size:11px;padding:0 10px}
   .pill-bar{grid-template-columns:repeat(2,1fr);height:auto;padding:10px 12px;gap:8px}
   .pill{border-right:none;border:1px solid var(--band-border);border-radius:var(--r);padding:10px 12px}
@@ -871,15 +891,14 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot loading" id="syncDot"></div><span id="syncTxt">시트 불러오는 중…</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
-        <button onclick="setCmp(CMP==='prev'?'none':'prev')" id="cmpBtn" title="전월 대비 증감 표시"
+        <button onclick="setCmp(CMP==='prev'?'none':'prev')" id="cmpBtn" class="hdr-x" title="전월 대비 증감 표시"
           style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
           padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">전월 대비</button>
-        <button onclick="copyWeekReport(this)" title="슬랙에 붙일 주간 리포트 복사"
+        <button onclick="copyWeekReport(this)" class="hdr-x" title="슬랙에 붙일 주간 리포트 복사"
           style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
           padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">주간 리포트 복사</button>
-        <button onclick="openWidget()" title="작은 위젯 창으로 열기" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">위젯</button>
         <button onclick="doInstall()" id="installBtn" style="display:none;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600" title="바탕화면에 설치">설치</button>
-        <button onclick="toggleFullscreen()" id="fsBtn" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:600;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
+        <button onclick="toggleFullscreen()" id="fsBtn" class="hdr-x" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:600;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
     </div>
   </header>
@@ -8325,6 +8344,13 @@ function renderAuthors(){
             return `<td class="${i===0?'ap-gs':''}">${cs.map(chip).join('')}</td>`; }).join('')).join('')}
         </tr>`).join('')}
       </table></div>
+      <div class="ap-list">
+        ${people.filter(p => !AP.person || p === AP.person).map(p => `<div>
+          <div class="ap-lp">${esc(p)}<small>${esc(teamOf(p))} · ${all.filter(r => r.pic === p && !isResult(r) && !r.hold).length}건 진행</small></div>
+          ${AP_GROUPS.map(g => g.keys.map(k => { const cs = all.filter(r => r.pic === p && r.stage === k); if (!cs.length) return '';
+            return `<div class="ap-ls ${g.cls}"><span>${k}</span><div>${cs.map(chip).join('')}</div></div>`; }).join('')).join('')}
+        </div>`).join('')}
+      </div>
     </div>
 
     ${DETAIL ? `
@@ -9242,13 +9268,6 @@ function initCmdk(){
 
 /* ── 바탕화면 설치(PWA) ── */
 let DEFERRED_INSTALL = null;
-// 위젯 — 고른 지표만 보는 작은 창
-function openWidget(){
-  const w = 380, h = 460;
-  const x = Math.max(0, screen.availWidth - w - 40), y = 80;
-  window.open('widget.html', 'feelmWidget',
-    `popup=yes,width=${w},height=${h},left=${x},top=${y},resizable=yes,scrollbars=no`);
-}
 
 function initInstall(){
   // 서비스 워커 — 오프라인에서도 마지막 화면이 뜨게 한다
