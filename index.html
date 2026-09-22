@@ -4277,9 +4277,9 @@ function costRowsFor(m){
 ───────────────────────────────────── */
 /* ── 채널 (온드미디어 그로스) ──
    질문 하나: 채널이 건전해지고 있나.
-   9/17~11/17 실무자 자율 운영 스프린트. 매주 목요일 대표 보고용.
+   9/17~11/17 채널 회복 스프린트. 기준기 = 8/17~9/13.
    건전성 = 콘텐츠당 중앙 도달(알고리즘) · 팔로워 순증(체력) · 반응률(저장+공유)/도달 · 히트(1만+) */
-const CH_SPRINT = { start:'2026-09-17', end:'2026-11-17', ceoStart:'2026-08-17', hit:10000, goal:100000, baseFrom:'2026-08-17', baseTo:'2026-09-13' };
+const CH_SPRINT = { start:'2026-09-17', end:'2026-11-17', prevStart:'2026-08-17', hit:10000, goal:100000, baseFrom:'2026-08-17', baseTo:'2026-09-13' };
 const CH_KIND = {IN:'인스타', YT:'유튜브', TT:'틱톡', TH:'스레드', BL:'블로그'};
 function chKey(s){ return String(s||'').replace(/\s/g,'').toLowerCase(); }
 function chKeySorted(s){ return chKey(s).split('').sort().join(''); }
@@ -4314,7 +4314,7 @@ function renderChannel(){
   }
   const today = new Date(); today.setHours(0,0,0,0);
   const D = s => { const d = new Date(s + 'T00:00:00'); return d; };
-  const sprintS = D(CH_SPRINT.start), sprintE = D(CH_SPRINT.end), ceoS = D(CH_SPRINT.ceoStart);
+  const sprintS = D(CH_SPRINT.start), sprintE = D(CH_SPRINT.end), ceoS = D(CH_SPRINT.prevStart);
   const dLeft = Math.round((sprintE - today) / 86400000);
   const dGone = Math.round((today - sprintS) / 86400000);
 
@@ -4339,7 +4339,7 @@ function renderChannel(){
   const baseList = posts.filter(c => inRange(c, chWeekStart(D(CH_SPRINT.baseFrom)), chWeekStart(D(CH_SPRINT.baseTo))));
   const cur = agg(curList), base = agg(baseList);
   const curLabel = cur2.length ? `${ymd(cur2[0].w).slice(5).replace('-','/')}~${(()=>{ const e = new Date(cur2[cur2.length-1].w); e.setDate(e.getDate()+6); return ymd(e).slice(5).replace('-','/'); })()}` : '—';
-  const baseLabel = '8/17~9/13 대표 운영기';
+  const baseLabel = '기준기(8/17~9/13)';
   const v = chVerdict(cur.med, base.med);
   const pctTxt = (a, b) => (b ? ((a/b-1)*100).toFixed(0).replace(/^(\d)/,'+$1') + '%' : '—');
 
@@ -4395,7 +4395,7 @@ function renderChannel(){
         (isCur ? `<text x="${xc(i)}" y="${yM(m)-10}" fill="#0F1620" font-size="10.5" font-weight="800" text-anchor="middle" font-family="inherit">${chFmt(m)}</text>` : ''); }).join('');
     const labels = byWeek.map((x,i) => (i % 2 === 0 || i === n-1) ? `<text x="${xc(i)}" y="${P.t+cH+18}" fill="${x.w.getTime()===thisWs.getTime()?'#0F1620':'#96A1AE'}" font-size="10" font-family="inherit" text-anchor="middle">${ymd(x.w).slice(5).replace('-','/')}</text>` : '').join('');
     const baseLine = base.med ? `<line x1="${P.l}" x2="${P.l+cW}" y1="${yM(base.med)}" y2="${yM(base.med)}" stroke="#B3243C" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/><text x="${P.l+cW+6}" y="${yM(base.med)+4}" fill="#B3243C" font-size="10" font-family="inherit">기준 ${chFmt(base.med)}</text>` : '';
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:250px;display:block">${band}${grid}${bars}${baseLine}${mark(iC,'대표 운영','#96A1AE')}${mark(iS,'자율 운영 스프린트','#3A5BD9')}${line}${dots}${labels}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:250px;display:block">${band}${grid}${bars}${baseLine}${mark(iC,'기준기','#96A1AE')}${mark(iS,'스프린트','#3A5BD9')}${line}${dots}${labels}</svg>`;
   })();
 
   const KPI = (lbl, val, sub, cls) => `<div class="kpi"><div class="kpi-lbl">${lbl}</div><div class="kpi-val ${cls||''}">${val}</div><div class="kpi-sub">${sub}</div></div>`;
@@ -4406,7 +4406,7 @@ function renderChannel(){
   el.innerHTML = `
     ${tabLine([
       `스프린트 ${LB(dLeft >= 0 ? 'D-' + dLeft : '종료')} <span>${dGone >= 0 ? dGone + '일차 · ' : ''}~11/17</span>`,
-      `판정 ${LB(v.w + ' ' + v.arrow, v.cls)} <span>최근 2주 vs 대표 운영기</span>`,
+      `판정 ${LB(v.w + ' ' + v.arrow, v.cls)} <span>최근 2주 vs 기준기</span>`,
       `콘텐츠당 중앙 도달 ${LB(chFmt(cur.med))} <span>기준 ${chFmt(base.med)} · ${pctTxt(cur.med, base.med)}</span>`,
       `팔로워 ${LB((folDiff>=0?'+':'') + folDiff.toLocaleString() + folUnit, folDiff >= 0 ? 'good' : 'bad')}`,
       `히트 1만+ ${LB(cur.hits + '건', cur.hits ? 'good' : '')} <span>2주</span>`,
@@ -4428,7 +4428,7 @@ function renderChannel(){
     </div>
 
     <div class="card gap">
-      <div class="card-title">주차별 콘텐츠당 중앙 도달 <small>선 = 중앙 도달 · 막대 = 업로드 건수 · 점선 = 대표 운영기 기준 · 음영 = 스프린트</small></div>
+      <div class="card-title">주차별 콘텐츠당 중앙 도달 <small>선 = 중앙 도달 · 막대 = 업로드 건수 · 점선 = 기준기 중앙값 · 음영 = 스프린트</small></div>
       ${chart || '<div class="empty-row">주차 데이터가 부족합니다</div>'}
       <div style="font-size:11px;color:var(--ink3);margin-top:8px">최근 주는 리포트가 덜 들어와 도달이 낮게 잡힐 수 있습니다. 판정은 완료된 2주로 합니다.</div>
     </div>
@@ -8330,7 +8330,7 @@ function renderPubCal(){
 
 /* ── 저자 컨택 파이프라인 ──
    시트 '저자_컨택' 한 행 = 저자(기획 건) 하나. 단계 9개를 초기·실행·결과 세 묶음으로 본다.
-   대표 요청 그대로 — 담당자별로 누가 어느 단계에 있는지 이름으로 한눈에. */
+   담당자별로 누가 어느 단계에 있는지 이름으로 한눈에. */
 const AP_GROUPS = [
   {label:'초기', cls:'ap-g0', keys:['출간 제안 컨택','컨택 포인트 서칭','긍정 회신']},
   {label:'실행', cls:'ap-g1', keys:['미팅 예정','미팅 후 기획 점검','기획 확정 및 계약 승인 대기']},
