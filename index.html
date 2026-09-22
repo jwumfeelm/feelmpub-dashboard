@@ -272,27 +272,29 @@ header{position:sticky;top:0;z-index:100;height:var(--hdr-h);background:rgba(245
 .pc-legend span{display:inline-flex;align-items:center;gap:5px}
 .pc-legend i{width:10px;height:10px;border-radius:2px;display:block}
 .pc-legend .pc-div{width:1px;height:11px;background:var(--border2)}
-/* 채널 — 판정 */
-.ch-verdict{display:flex;align-items:center;gap:22px;padding:18px 24px;margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-sm);border-left:4px solid var(--ink3)}
-.ch-verdict.good{border-left-color:var(--good)}.ch-verdict.bad{border-left-color:var(--bad)}
-.ch-vw{font-size:34px;font-weight:800;letter-spacing:-.04em;color:var(--ink2);white-space:nowrap;line-height:1}
-.ch-verdict.good .ch-vw{color:var(--good)}.ch-verdict.bad .ch-vw{color:var(--bad)}
-.ch-vw small{font-size:20px;margin-left:6px;font-weight:700}
-.ch-vt{font-size:13.5px;color:var(--ink2);line-height:1.65}
-.ch-vt b{color:var(--ink);font-weight:800}
-.ch-vt .bad{display:block;color:var(--bad);font-size:12px;margin-top:4px}
-.ch-tbl td small{display:block;font-size:10px;color:var(--ink3);font-weight:500}
-.ch-tbl td.good,.ch-tbl b.good{color:var(--good)}.ch-tbl td.bad,.ch-tbl b.bad{color:var(--bad)}
-.ch-spark{display:flex;align-items:flex-end;gap:2px;height:24px}
-.ch-spark i{flex:1;background:var(--border2);border-radius:1px;display:block}
-.ch-spark i:last-child{background:var(--accent)}
-.ch-top{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--border)}
-.ch-top:last-child{border-bottom:0}
-.ch-top .n{width:22px;height:22px;border-radius:var(--r3);background:var(--surface3);font-size:11px;font-weight:800;color:var(--ink2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ch-top .t{flex:1;min-width:0}.ch-top .t b{display:block;font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ch-top .t small,.ch-top .r small{display:block;font-size:10.5px;color:var(--ink3)}
-.ch-top .r{text-align:right;flex-shrink:0}.ch-top .r b{font-size:15px;font-weight:800;color:var(--ink)}
-@media (max-width:768px){.ch-verdict{flex-direction:column;align-items:flex-start;gap:8px}.ch-vw{font-size:28px}}
+/* 채널 — 주간 스코어보드 */
+.ch-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ch-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-sm);padding:18px 20px 14px}
+.ch-tl{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--ink3);text-transform:uppercase}
+.ch-tv{font-size:38px;font-weight:800;letter-spacing:-.04em;color:var(--ink);line-height:1.05;margin-top:8px;display:flex;align-items:baseline;gap:10px}
+.ch-tv small{font-size:15px;font-weight:800;letter-spacing:0}
+.ch-tv.good,.ch-tv.good small{color:var(--good)}.ch-tv.bad,.ch-tv.bad small{color:var(--bad)}
+.ch-tv.good{color:var(--ink)}.ch-tv.bad{color:var(--ink)}
+.ch-ts{font-size:11.5px;color:var(--ink3);margin-top:6px}
+.ch-sp{display:flex;align-items:flex-end;gap:3px;height:28px;margin-top:12px}
+.ch-sp i{flex:1;border-radius:2px;display:block;min-width:4px}
+.ch-sp.big{height:32px;margin-top:0}
+.ch-ledger td,.ch-tbl td{vertical-align:middle}
+.ch-ledger td small,.ch-tbl td small{display:block;font-size:10.5px;color:var(--ink3);font-weight:700;line-height:1.3}
+.ch-ledger td b{font-size:14px}
+.ch-ledger td.good b,.ch-ledger td.good small,.ch-tbl td.good,.ch-tbl td.good small,.ch-tbl b.good{color:var(--good)}
+.ch-ledger td.bad b,.ch-ledger td.bad small,.ch-tbl td.bad,.ch-tbl td.bad small,.ch-tbl b.bad{color:var(--bad)}
+.ch-ledger td.good{background:var(--good-dim)}.ch-ledger td.bad{background:var(--bad-dim)}
+.ch-ledger tr.base td{color:var(--ink3)}.ch-ledger tr.base td b{color:var(--ink2)}
+.ch-ledger tr.cur td{background:var(--surface2)}
+.ch-ledger .ch-score b{font-size:16px}
+@media (max-width:1100px){.ch-tiles{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.ch-tiles{grid-template-columns:1fr}.ch-tv{font-size:30px}}
 /* 저자 컨택 파이프라인 */
 .ap-g0{--ac:var(--ink3);--ab:var(--surface3)}
 .ap-g1{--ac:var(--accent-deep);--ab:var(--accent-dim)}
@@ -4313,153 +4315,151 @@ function renderChannel(){
     return;
   }
   const today = new Date(); today.setHours(0,0,0,0);
-  const D = s => { const d = new Date(s + 'T00:00:00'); return d; };
-  const sprintS = D(CH_SPRINT.start), sprintE = D(CH_SPRINT.end), ceoS = D(CH_SPRINT.prevStart);
+  const D = s => new Date(s + 'T00:00:00');
+  const sprintS = D(CH_SPRINT.start), sprintE = D(CH_SPRINT.end), prevS = D(CH_SPRINT.prevStart);
   const dLeft = Math.round((sprintE - today) / 86400000);
-  const dGone = Math.round((today - sprintS) / 86400000);
-
-  /* 주차 집계 — 콘텐츠 단위 실적에서 */
-  const posts = (CH_CONTENT||[]).filter(c => c.up && !isNaN(c.up) && c.reach > 0).map(c => ({...c, ws: chWeekStart(c.up), p: chParse(c.ch)}));
-  const weekOf = w => ymd(w);
-  const agg = list => {
-    const r = list.map(c => c.reach), reach = r.reduce((a,b)=>a+b,0);
-    const eng = list.reduce((a,c)=>a+c.share+c.save,0);
-    return { n:list.length, med:chMedian(r), reach, hits:list.filter(c=>c.reach>=CH_SPRINT.hit).length, eng: reach ? eng/reach*100 : 0,
-             follow:list.reduce((a,c)=>a+c.follow,0), max: r.length ? Math.max(...r) : 0 };
-  };
-  const inRange = (c, a, b) => c.ws >= a && c.ws <= b;
-  // 주 목록: 데이터 시작 ~ 스프린트 끝
-  const first = posts.length ? chWeekStart(new Date(Math.min(...posts.map(c=>c.up)))) : chWeekStart(ceoS);
-  const weeks = []; for (let w = new Date(first); w <= sprintE; w.setDate(w.getDate()+7)) weeks.push(new Date(w));
-  const byWeek = weeks.map(w => ({w, ...agg(posts.filter(c => c.ws.getTime() === w.getTime()))}));
   const thisWs = chWeekStart(today);
-  const doneWeeks = byWeek.filter(x => x.w < thisWs && x.n);
-  const cur2 = doneWeeks.slice(-2);                       // 최근 완료 2주
-  const curList = posts.filter(c => cur2.some(x => x.w.getTime() === c.ws.getTime()));
-  const baseList = posts.filter(c => inRange(c, chWeekStart(D(CH_SPRINT.baseFrom)), chWeekStart(D(CH_SPRINT.baseTo))));
-  const cur = agg(curList), base = agg(baseList);
-  const curLabel = cur2.length ? `${ymd(cur2[0].w).slice(5).replace('-','/')}~${(()=>{ const e = new Date(cur2[cur2.length-1].w); e.setDate(e.getDate()+6); return ymd(e).slice(5).replace('-','/'); })()}` : '—';
-  const baseLabel = '기준기(8/17~9/13)';
-  const v = chVerdict(cur.med, base.med);
-  const pctTxt = (a, b) => (b ? ((a/b-1)*100).toFixed(0).replace(/^(\d)/,'+$1') + '%' : '—');
 
-  /* 팔로워 — 주차 시트가 정본, 멈춰 있으면 월 실적으로 대체 */
-  const wk = (CH_WEEKLY||[]).map(a => { const p = a.points; const last = p[p.length-1], prev = p[p.length-2];
-    return {kind:a.kind, acct:a.acct, fol: last ? last.v : 0, diff: last && prev ? last.v - prev.v : null, date: last ? last.date : null, pts:p}; }).filter(a => a.fol);
-  const wkLast = wk.length ? new Date(Math.max(...wk.map(a=>a.date))) : null;
+  /* 주차 집계 */
+  const posts = (CH_CONTENT||[]).filter(c => c.up && !isNaN(c.up) && c.reach > 0).map(c => ({...c, ws: chWeekStart(c.up), p: chParse(c.ch)}));
+  const agg = list => { const r = list.map(c => c.reach), reach = r.reduce((a,b)=>a+b,0);
+    return { n:list.length, med:chMedian(r), reach, hits:list.filter(c=>c.reach>=CH_SPRINT.hit).length,
+             eng: reach ? list.reduce((a,c)=>a+c.share+c.save,0)/reach*100 : 0, max: r.length ? Math.max(...r) : 0 }; };
+  // 팔로워 주차 순증 — 주차 시트 합계 (그 주 월요일 값 − 전주 값)
+  const folByWeek = {};
+  (CH_WEEKLY||[]).forEach(a => { const p = [...a.points].sort((x,y)=>x.date-y.date);
+    p.forEach((pt, i) => { if (!i) return; const k = ymd(chWeekStart(pt.date)); folByWeek[k] = (folByWeek[k]||0) + (pt.v - p[i-1].v); }); });
+  const wkLast = (CH_WEEKLY||[]).reduce((m,a) => a.points.reduce((mm,p) => p.date > mm ? p.date : mm, m), null);
   const wkStale = !wkLast || (today - wkLast) / 86400000 > 10;
-  const mIdx = (()=>{ const has = i => CH_PERF.some(c => ((c.items['팔로워']||[])[i]||0) > 0); let i = today.getMonth(); while (i > 0 && !has(i)) i--; return i; })();
-  const mo = (CH_PERF||[]).map(c => ({kind:c.kind, acct:c.acct, fol:(c.items['팔로워']||[])[mIdx]||0, diff:(c.items['증감']||[])[mIdx]||0})).filter(a => a.fol);
-  const folSrc = wkStale ? mo : wk;
-  const folTot = folSrc.reduce((a,x)=>a+x.fol,0);
-  const folDiff = folSrc.reduce((a,x)=>a+(x.diff||0),0);
-  const folUnit = wkStale ? '/월' : '/주';
 
-  /* 채널별 — 최근 8주에 올린 채널 */
+  const first = chWeekStart(prevS);
+  const weeks = []; for (let w = new Date(first); w <= sprintE; w.setDate(w.getDate()+7)) weeks.push(new Date(w));
+  const rowsW = weeks.map(w => { const a = agg(posts.filter(c => c.ws.getTime() === w.getTime()));
+    return { w, ...a, fol: folByWeek[ymd(w)] === undefined ? null : folByWeek[ymd(w)],
+             base: w < chWeekStart(sprintS), cur: w.getTime() === thisWs.getTime(), future: w > thisWs }; });
+  const done = rowsW.filter(r => !r.future && !r.cur && r.n);
+  const last = done[done.length-1] || null, prev = done[done.length-2] || null;
+  const baseRows = rowsW.filter(r => r.base && r.n);
+  const baseAgg = agg(posts.filter(c => c.ws >= first && c.ws < chWeekStart(sprintS)));
+  const pct = (a, b) => (b && a !== null) ? Math.round((a/b-1)*100) : null;
+  const arrow = d => d === null ? '' : (d > 0 ? '▲' : (d < 0 ? '▼' : '→'));
+  const cls = (d, lowerBetter) => d === null || d === 0 ? '' : ((d > 0) !== !!lowerBetter ? 'good' : 'bad');
+  // 연속 상승/하락 주 수
+  const streak = key => { let n = 0, dir = 0; for (let i = done.length-1; i > 0; i--) { const d = Math.sign(done[i][key] - done[i-1][key]); if (!d) break; if (!dir) dir = d; if (d !== dir) break; n++; } return {n, dir}; };
+  const sMed = streak('med');
+
+  /* 채널별 */
   const eightAgo = new Date(thisWs); eightAgo.setDate(eightAgo.getDate() - 56);
+  const wk8 = weeks.filter(w => w >= eightAgo && w < thisWs);
+  const folSrc = wkStale
+    ? (()=>{ const has = i => CH_PERF.some(c => ((c.items['팔로워']||[])[i]||0) > 0); let i = today.getMonth(); while (i > 0 && !has(i)) i--;
+        return (CH_PERF||[]).map(c => ({kind:c.kind, acct:c.acct, fol:(c.items['팔로워']||[])[i]||0, diff:(c.items['증감']||[])[i]||0})).filter(a => a.fol); })()
+    : (CH_WEEKLY||[]).map(a => { const p = [...a.points].sort((x,y)=>x.date-y.date), l = p[p.length-1], q = p[p.length-2];
+        return {kind:a.kind, acct:a.acct, fol:l ? l.v : 0, diff:l && q ? l.v - q.v : null}; }).filter(a => a.fol);
+  const folUnit = wkStale ? '월' : '주';
   const chMap = {};
   posts.filter(c => c.ws >= eightAgo).forEach(c => { const k = c.p.kind + '|' + chKey(c.p.name); (chMap[k] = chMap[k] || {p:c.p, list:[]}).list.push(c); });
   const chRows = Object.values(chMap).map(x => {
     const a = chMatchAcct(folSrc, x.p);
-    const cl = x.list.filter(c => cur2.some(w => w.w.getTime() === c.ws.getTime()));
-    const bl = x.list.filter(c => inRange(c, chWeekStart(D(CH_SPRINT.baseFrom)), chWeekStart(D(CH_SPRINT.baseTo))));
-    const c8 = weeks.filter(w => w >= eightAgo && w < thisWs).map(w => chMedian(x.list.filter(c => c.ws.getTime() === w.getTime()).map(c=>c.reach)));
-    const ca = agg(cl), ba = agg(bl);
-    // 표본이 3건 미만이면 판정하지 않는다
-    return { p:x.p, fol: a ? a.fol : 0, diff: a ? a.diff : null, cur:ca, base:ba, spark:c8, hits:agg(x.list).hits, n8:x.list.length,
-             v: (ca.n >= 3 && ba.n >= 3) ? chVerdict(ca.med, ba.med) : {w:'—', cls:'', arrow:''} };
+    const wkMed = wk8.map(w => chMedian(x.list.filter(c => c.ws.getTime() === w.getTime()).map(c=>c.reach)));
+    const have = wkMed.map((m,i)=>[m,i]).filter(([m])=>m>0);
+    const l = have.length ? have[have.length-1][0] : 0, q = have.length > 1 ? have[have.length-2][0] : 0;
+    return { p:x.p, fol:a ? a.fol : 0, diff:a ? a.diff : null, wkMed, last:l, delta:pct(l, q), hits:agg(x.list).hits, n8:x.list.length };
   }).sort((a,b) => b.fol - a.fol || b.n8 - a.n8);
 
-  /* 주차 차트 — 업로드 막대 + 중앙 도달 선. 8/17·9/17 표식, 스프린트 구간 음영 */
+  /* 큰 차트 — 화면 폭을 다 쓴다 */
   const chart = (()=>{
-    if (byWeek.length < 3) return '';
-    const W=1000, H=250, P={t:22,r:60,b:40,l:56};
-    const cW=W-P.l-P.r, cH=H-P.t-P.b, n=byWeek.length;
-    const xc = i => P.l + (i+0.5) * cW / n;
-    const bw = Math.min(30, cW/n*0.6);
-    const mxN = Math.max(1, ...byWeek.map(x=>x.n));
-    const mxM = Math.max(1, ...byWeek.map(x=>x.med)) * 1.15;
-    const yN = vv => P.t + cH - vv/mxN*cH*0.55;
-    const yM = vv => P.t + cH - vv/mxM*cH;
-    const iOf = d => weeks.findIndex(w => w.getTime() === chWeekStart(d).getTime());
-    const iS = iOf(sprintS), iC = iOf(ceoS), iE = n-1;
-    const band = iS >= 0 ? `<rect x="${xc(iS)-cW/n/2}" y="${P.t}" width="${(iE-iS+1)*cW/n}" height="${cH}" fill="#3A5BD9" opacity=".05"/>` : '';
-    const mark = (i, label, col) => i < 0 ? '' : `<line x1="${xc(i)-cW/n/2}" x2="${xc(i)-cW/n/2}" y1="${P.t-4}" y2="${P.t+cH}" stroke="${col}" stroke-width="1.2" stroke-dasharray="4 3"/>
-      <text x="${xc(i)-cW/n/2+5}" y="${P.t+8}" fill="${col}" font-size="10" font-weight="800" font-family="inherit">${label}</text>`;
-    const grid = [0,.5,1].map(f => { const yy = P.t+cH-f*cH; return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/><text x="${P.l-8}" y="${yy+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${chFmt(mxM*f)}</text>`; }).join('');
-    const bars = byWeek.map((x,i) => x.n ? `<rect x="${xc(i)-bw/2}" y="${yN(x.n)}" width="${bw}" height="${P.t+cH-yN(x.n)}" rx="2" fill="#CDD4DE"/>` : '').join('');
-    const pts = byWeek.map((x,i) => x.n ? [i, x.med] : null).filter(Boolean);
-    const line = pts.length > 1 ? `<path d="M${pts.map(([i,m]) => xc(i)+','+yM(m)).join('L')}" data-draw fill="none" stroke="#0F1620" stroke-width="2.2" stroke-linejoin="round"/>` : '';
-    const dots = pts.map(([i,m]) => { const isCur = cur2.some(w => w.w.getTime() === weeks[i].getTime());
-      return `<circle cx="${xc(i)}" cy="${yM(m)}" r="${isCur?4.5:3}" fill="${isCur?'#3A5BD9':'#FFF'}" stroke="${isCur?'#3A5BD9':'#0F1620'}" stroke-width="1.8"/>` +
-        (isCur ? `<text x="${xc(i)}" y="${yM(m)-10}" fill="#0F1620" font-size="10.5" font-weight="800" text-anchor="middle" font-family="inherit">${chFmt(m)}</text>` : ''); }).join('');
-    const labels = byWeek.map((x,i) => (i % 2 === 0 || i === n-1) ? `<text x="${xc(i)}" y="${P.t+cH+18}" fill="${x.w.getTime()===thisWs.getTime()?'#0F1620':'#96A1AE'}" font-size="10" font-family="inherit" text-anchor="middle">${ymd(x.w).slice(5).replace('-','/')}</text>` : '').join('');
-    const baseLine = base.med ? `<line x1="${P.l}" x2="${P.l+cW}" y1="${yM(base.med)}" y2="${yM(base.med)}" stroke="#B3243C" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/><text x="${P.l+cW+6}" y="${yM(base.med)+4}" fill="#B3243C" font-size="10" font-family="inherit">기준 ${chFmt(base.med)}</text>` : '';
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:250px;display:block">${band}${grid}${bars}${baseLine}${mark(iC,'기준기','#96A1AE')}${mark(iS,'스프린트','#3A5BD9')}${line}${dots}${labels}</svg>`;
+    const W=1400, H=300, P={t:34,r:70,b:36,l:64};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b, n=rowsW.length;
+    const xc = i => P.l + (i+0.5) * cW / n, bw = Math.min(28, cW/n*0.5);
+    const mxM = Math.max(1, ...rowsW.map(x=>x.med), baseAgg.med) * 1.2;
+    const mxN = Math.max(1, ...rowsW.map(x=>x.n));
+    const yM = v => P.t + cH - v/mxM*cH, yN = v => P.t + cH - v/mxN*cH*0.4;
+    const iS = rowsW.findIndex(r => !r.base);
+    const band = iS >= 0 ? `<rect x="${xc(iS)-cW/n/2}" y="${P.t-6}" width="${(n-iS)*cW/n}" height="${cH+6}" fill="#3A5BD9" opacity=".05"/>` : '';
+    const grid = [0,.5,1].map(f => { const yy = P.t+cH-f*cH; return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/><text x="${P.l-8}" y="${yy+4}" fill="#96A1AE" font-size="11" text-anchor="end" font-family="inherit">${chFmt(mxM*f)}</text>`; }).join('');
+    const bars = rowsW.map((x,i) => x.n ? `<rect x="${xc(i)-bw/2}" y="${yN(x.n)}" width="${bw}" height="${P.t+cH-yN(x.n)}" rx="2" fill="#E3E8EE"/>` : '').join('');
+    const pts = rowsW.map((x,i) => x.n && !x.cur ? [i,x.med] : null).filter(Boolean);
+    const line = pts.length > 1 ? `<path d="M${pts.map(([i,m]) => xc(i)+','+yM(m)).join('L')}" data-draw fill="none" stroke="#0F1620" stroke-width="2.4" stroke-linejoin="round"/>` : '';
+    const dots = pts.map(([i,m], k) => { const up = k > 0 ? Math.sign(m - pts[k-1][1]) : 0; const col = rowsW[i].base ? '#96A1AE' : (up > 0 ? '#1F8A6D' : (up < 0 ? '#B3243C' : '#0F1620'));
+      return `<circle cx="${xc(i)}" cy="${yM(m)}" r="5" fill="${col}" stroke="#FFF" stroke-width="2"/><text x="${xc(i)}" y="${yM(m)-12}" fill="${col}" font-size="11.5" font-weight="800" text-anchor="middle" font-family="inherit">${chFmt(m)}</text>`; }).join('');
+    const curDot = rowsW.map((x,i) => x.cur && x.n ? `<circle cx="${xc(i)}" cy="${yM(x.med)}" r="5" fill="#FFF" stroke="#96A1AE" stroke-width="2" stroke-dasharray="2 2"/><text x="${xc(i)}" y="${yM(x.med)-12}" fill="#96A1AE" font-size="11" text-anchor="middle" font-family="inherit">진행 중</text>` : '').join('');
+    const labels = rowsW.map((x,i) => `<text x="${xc(i)}" y="${P.t+cH+22}" fill="${x.cur?'#0F1620':(x.future?'#C6CDD5':'#7C8794')}" font-size="11" font-weight="${x.cur?800:500}" font-family="inherit" text-anchor="middle">${ymd(x.w).slice(5).replace('-','/')}</text>`).join('');
+    const baseLine = baseAgg.med ? `<line x1="${P.l}" x2="${P.l+cW}" y1="${yM(baseAgg.med)}" y2="${yM(baseAgg.med)}" stroke="#96A1AE" stroke-width="1.2" stroke-dasharray="3 4"/><text x="${P.l+cW+8}" y="${yM(baseAgg.med)+4}" fill="#7C8794" font-size="11" font-family="inherit">기준 ${chFmt(baseAgg.med)}</text>` : '';
+    const mark = iS >= 0 ? `<text x="${xc(iS)-cW/n/2+6}" y="${P.t+6}" fill="#3A5BD9" font-size="11" font-weight="800" font-family="inherit">스프린트 9/17 →</text><text x="${P.l+6}" y="${P.t+6}" fill="#96A1AE" font-size="11" font-weight="800" font-family="inherit">기준기</text>` : '';
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${band}${grid}${bars}${baseLine}${mark}${line}${dots}${curDot}${labels}</svg>`;
   })();
 
-  const KPI = (lbl, val, sub, cls) => `<div class="kpi"><div class="kpi-lbl">${lbl}</div><div class="kpi-val ${cls||''}">${val}</div><div class="kpi-sub">${sub}</div></div>`;
-  const vf = chVerdict(folDiff, 1); // 팔로워는 부호로만
-  const engV = chVerdict(cur.eng, base.eng);
-  const topCur = [...curList].sort((a,b)=>b.reach-a.reach).slice(0,5);
+  const spark = (vals, lowerBetter) => { const mx = Math.max(1, ...vals.map(v => Math.abs(v||0)));
+    return `<div class="ch-sp">${vals.map((v,i) => { const h = Math.max(2, Math.round(Math.abs(v||0)/mx*26)); const lastI = i === vals.length-1;
+      const col = v === null || v === undefined ? 'var(--surface3)' : (lastI ? ((v >= 0) !== !!lowerBetter ? 'var(--good)' : 'var(--bad)') : 'var(--border2)');
+      return `<i style="height:${h}px;background:${col}"></i>`; }).join('')}</div>`; };
+  const tile = (lbl, val, d, sub, vals, lowerBetter) => `<div class="ch-tile">
+      <div class="ch-tl">${lbl}</div>
+      <div class="ch-tv ${cls(d, lowerBetter)}">${val}<small>${arrow(d)}${d === null ? '' : Math.abs(d) + '%'}</small></div>
+      <div class="ch-ts">${sub}</div>${spark(vals, lowerBetter)}</div>`;
+  const last8 = rowsW.filter(r => !r.future && !r.cur).slice(-8);
+  const wkLabel = r => r ? ymd(r.w).slice(5).replace('-','/') : '—';
+
+  /* 주간 성적표 */
+  const ledger = rowsW.filter(r => !r.future && (r.n || r.cur)).slice().reverse();
+  const cell = (v, pv, fmt, lowerBetter) => { const d = pct(v, pv);
+    return `<td class="right ${cls(d, lowerBetter)}"><b>${fmt(v)}</b>${d !== null ? `<small>${arrow(d)}${Math.abs(d)}%</small>` : '<small>&nbsp;</small>'}</td>`; };
+  const score = (r, p) => { if (!p) return ''; let s = 0; s += Math.sign(r.med - p.med); s += Math.sign(r.hits - p.hits); s += Math.sign(r.eng - p.eng); if (r.fol !== null && p.fol !== null) s += Math.sign(r.fol - p.fol);
+    return s >= 2 ? '<b class="good">▲▲</b>' : s === 1 ? '<b class="good">▲</b>' : s <= -2 ? '<b class="bad">▼▼</b>' : s === -1 ? '<b class="bad">▼</b>' : '<b>→</b>'; };
 
   el.innerHTML = `
     ${tabLine([
-      `스프린트 ${LB(dLeft >= 0 ? 'D-' + dLeft : '종료')} <span>${dGone >= 0 ? dGone + '일차 · ' : ''}~11/17</span>`,
-      `판정 ${LB(v.w + ' ' + v.arrow, v.cls)} <span>최근 2주 vs 기준기</span>`,
-      `콘텐츠당 중앙 도달 ${LB(chFmt(cur.med))} <span>기준 ${chFmt(base.med)} · ${pctTxt(cur.med, base.med)}</span>`,
-      `팔로워 ${LB((folDiff>=0?'+':'') + folDiff.toLocaleString() + folUnit, folDiff >= 0 ? 'good' : 'bad')}`,
-      `히트 1만+ ${LB(cur.hits + '건', cur.hits ? 'good' : '')} <span>2주</span>`,
-      cur.max >= CH_SPRINT.goal ? `${LB('10만 돌파 ' + chFmt(cur.max), 'good')}` : '',
+      `스프린트 ${LB(dLeft >= 0 ? 'D-' + dLeft : '종료')} <span>~11/17</span>`,
+      last ? `지난주(${wkLabel(last)}) 콘텐츠당 중앙 도달 ${LB(chFmt(last.med), cls(pct(last.med, prev && prev.med)))} <span>${prev ? '전주 ' + arrow(pct(last.med, prev.med)) + Math.abs(pct(last.med, prev.med)) + '%' : ''}</span>` : '',
+      sMed.n >= 2 ? `${LB(sMed.n + '주 연속 ' + (sMed.dir > 0 ? '상승' : '하락'), sMed.dir > 0 ? 'good' : 'bad')}` : '',
+      last && last.hits ? `히트 1만+ ${LB(last.hits + '건', 'good')}` : '',
+      wkStale ? `<span class="bad">주차 팔로워 미입력 (${wkLast ? ymd(wkLast).slice(5).replace('-','/') : '—'} 이후)</span>` : '',
     ])}
 
-    <div class="ch-verdict ${v.cls}">
-      <div class="ch-vw">${v.w}<small>${v.arrow}</small></div>
-      <div class="ch-vt">최근 2주(${curLabel}) 콘텐츠당 중앙 도달 <b>${chFmt(cur.med)}</b> — ${baseLabel} <b>${chFmt(base.med)}</b> 대비 <b>${pctTxt(cur.med, base.med)}</b>.
-        ${cur.max ? `가장 멀리 간 콘텐츠 <b>${chFmt(cur.max)}</b> · 목표 10만까지 <b>${(cur.max/CH_SPRINT.goal*100).toFixed(0)}%</b>.` : ''}
-        ${wkStale ? `<span class="bad">주차 팔로워 시트가 ${wkLast ? ymd(wkLast).slice(5).replace('-','/') : '—'} 이후 비어 있어 팔로워는 월 실적으로 봅니다.</span>` : ''}</div>
-    </div>
-
-    <div class="g4 gap">
-      ${KPI('콘텐츠당 중앙 도달', chFmt(cur.med), `기준 ${chFmt(base.med)} · <b class="${v.cls}">${pctTxt(cur.med, base.med)}</b> · ${cur.n}건`, v.cls)}
-      ${KPI('팔로워 순증', (folDiff>=0?'+':'') + folDiff.toLocaleString(), `${folUnit === '/주' ? '주간' : MONTHS[mIdx]} · 총 ${folTot.toLocaleString()}`, folDiff >= 0 ? 'good' : 'bad')}
-      ${KPI('반응률', cur.eng.toFixed(1) + '%', `(저장+공유)÷도달 · 기준 ${base.eng.toFixed(1)}% <b class="${engV.cls}">${engV.arrow}</b>`, engV.cls)}
-      ${KPI('히트 1만+', cur.hits + '건', `2주 · 기준기 ${base.hits}건/4주 · 최고 ${chFmt(cur.max)}`, cur.hits > base.hits/2 ? 'good' : '')}
+    <div class="ch-tiles gap">
+      ${tile('콘텐츠당 중앙 도달', last ? chFmt(last.med) : '—', last && prev ? pct(last.med, prev.med) : null, `지난주 · 기준기 ${chFmt(baseAgg.med)}`, last8.map(r=>r.med))}
+      ${tile('히트 1만+', last ? last.hits + '건' : '—', last && prev ? pct(last.hits, prev.hits) : null, `지난주 · 최고 ${last ? chFmt(last.max) : '—'} · 목표 10만`, last8.map(r=>r.hits))}
+      ${tile('반응률', last ? last.eng.toFixed(1) + '%' : '—', last && prev ? pct(last.eng, prev.eng) : null, `(저장+공유)÷도달 · 기준기 ${baseAgg.eng.toFixed(1)}%`, last8.map(r=>r.eng))}
+      ${tile('팔로워 순증', last && last.fol !== null ? (last.fol>=0?'+':'') + last.fol.toLocaleString() : '—', last && prev && last.fol !== null && prev.fol !== null ? pct(last.fol, prev.fol) : null, wkStale ? '주차 시트 미입력' : '지난주 · 전 채널 합계', last8.map(r=>r.fol))}
     </div>
 
     <div class="card gap">
-      <div class="card-title">주차별 콘텐츠당 중앙 도달 <small>선 = 중앙 도달 · 막대 = 업로드 건수 · 점선 = 기준기 중앙값 · 음영 = 스프린트</small></div>
-      ${chart || '<div class="empty-row">주차 데이터가 부족합니다</div>'}
-      <div style="font-size:11px;color:var(--ink3);margin-top:8px">최근 주는 리포트가 덜 들어와 도달이 낮게 잡힐 수 있습니다. 판정은 완료된 2주로 합니다.</div>
+      <div class="card-title">주차별 콘텐츠당 중앙 도달 <small>점 색 = 전주 대비 상승·하락 · 막대 = 업로드 건수</small></div>
+      ${chart}
     </div>
 
     <div class="card gap">
-      <div class="card-title">채널별 판정 <small>최근 8주 업로드 채널 · 팔로워 순</small></div>
-      <table class="ch-tbl">
-        <tr><th>채널</th><th class="right">팔로워</th><th class="right">순증${folUnit}</th><th style="width:120px">8주 중앙 도달</th><th class="right">최근 2주</th><th class="right">기준 대비</th><th class="right">히트 1만+</th><th class="right">판정</th></tr>
-        ${chRows.map(r => { const mx = Math.max(1, ...r.spark);
-          const sp = `<div class="ch-spark">${r.spark.map(x => `<i style="height:${Math.max(2, Math.round(x/mx*22))}px"></i>`).join('')}</div>`;
-          return `<tr>
-            <td><b>${esc(r.p.name)}</b><small>${esc(r.p.kind)}</small></td>
-            <td class="right">${r.fol ? r.fol.toLocaleString() : '<span style="color:var(--ink5)">—</span>'}</td>
-            <td class="right ${r.diff === null ? '' : (r.diff >= 0 ? 'good' : 'bad')}">${r.diff === null ? '<span style="color:var(--ink5)">—</span>' : (r.diff>=0?'+':'') + r.diff.toLocaleString()}</td>
-            <td>${sp}</td>
-            <td class="right"><b>${r.cur.n ? chFmt(r.cur.med) : '—'}</b><small>${r.cur.n}건</small></td>
-            <td class="right ${r.v.cls}">${r.v.w !== '—' ? pctTxt(r.cur.med, r.base.med) : '<span style="color:var(--ink5)">표본 부족</span>'}</td>
-            <td class="right">${r.hits || '<span style="color:var(--ink5)">0</span>'}</td>
-            <td class="right"><b class="${r.v.cls}">${r.v.w !== '—' ? r.v.w + ' ' + r.v.arrow : '—'}</b></td>
+      <div class="card-title">주간 성적표 <small>최신 주가 위 · 화살표 = 전주 대비 · 종합 = 네 지표 중 오른 것 − 내린 것</small></div>
+      <table class="ch-ledger">
+        <tr><th>주</th><th class="right">업로드</th><th class="right">중앙 도달</th><th class="right">히트 1만+</th><th class="right">반응률</th><th class="right">팔로워 순증</th><th class="right">종합</th></tr>
+        ${ledger.map((r, i) => { const p = ledger[i+1] && !ledger[i+1].future ? ledger[i+1] : null;
+          return `<tr class="${r.base ? 'base' : ''}${r.cur ? ' cur' : ''}">
+            <td><b>${wkLabel(r)}</b><small>${r.cur ? '진행 중' : (r.base ? '기준기' : '스프린트')}</small></td>
+            <td class="right"><b>${r.n}</b><small>&nbsp;</small></td>
+            ${r.cur ? `<td class="right"><b style="color:var(--ink3)">${r.n ? chFmt(r.med) : '—'}</b><small>집계 중</small></td><td class="right"><b style="color:var(--ink3)">${r.hits}건</b><small>&nbsp;</small></td><td class="right"><b style="color:var(--ink3)">—</b><small>&nbsp;</small></td><td class="right"><b style="color:var(--ink5)">—</b><small>&nbsp;</small></td>`
+            : cell(r.med, p && p.med, chFmt) + cell(r.hits, p && p.hits, v => v + '건') + cell(r.eng, p && p.eng, v => v.toFixed(1) + '%')
+              + (r.fol === null ? '<td class="right"><b style="color:var(--ink5)">—</b><small>&nbsp;</small></td>' : cell(r.fol, p ? p.fol : null, v => (v>=0?'+':'') + v.toLocaleString()))}
+            <td class="right ch-score">${r.cur ? '' : score(r, p)}</td>
           </tr>`; }).join('')}
       </table>
     </div>
 
-    ${topCur.length ? `<div class="card gap">
-      <div class="card-title">최근 2주 상위 콘텐츠 <small>${curLabel}</small></div>
-      ${topCur.map((c,i) => `<div class="ch-top">
-        <span class="n">${i+1}</span>
-        <div class="t"><b>${esc(c.title)}</b><small>${esc(c.ch)} · ${esc(c.book)} · ${ymd(c.up).slice(5).replace('-','/')}</small></div>
-        <div class="r"><b>${chFmt(c.reach)}</b><small>저장 ${c.save.toLocaleString()} · 공유 ${c.share.toLocaleString()}${c.follow ? ' · 유입 ' + c.follow : ''}</small></div>
-      </div>`).join('')}
-    </div>` : ''}
+    <div class="card gap">
+      <div class="card-title">채널별 <small>최근 8주 주차 중앙 도달 · 팔로워 순</small></div>
+      <table class="ch-tbl">
+        <tr><th>채널</th><th class="right">팔로워</th><th class="right">순증/${folUnit}</th><th style="width:34%">8주</th><th class="right">지난주 중앙</th><th class="right">히트 1만+</th></tr>
+        ${chRows.map(r => { const mx = Math.max(1, ...r.wkMed);
+          return `<tr>
+            <td><b>${esc(r.p.name)}</b><small>${esc(r.p.kind)}</small></td>
+            <td class="right">${r.fol ? r.fol.toLocaleString() : '<span style="color:var(--ink5)">—</span>'}</td>
+            <td class="right ${r.diff === null ? '' : (r.diff >= 0 ? 'good' : 'bad')}">${r.diff === null ? '<span style="color:var(--ink5)">—</span>' : (r.diff>=0?'+':'') + r.diff.toLocaleString()}</td>
+            <td><div class="ch-sp big">${r.wkMed.map((m,i) => `<i style="height:${Math.max(2, Math.round(m/mx*30))}px;background:${i===r.wkMed.length-1 ? (r.delta === null ? 'var(--ink2)' : (r.delta >= 0 ? 'var(--good)' : 'var(--bad)')) : (m ? 'var(--border2)' : 'var(--surface3)')}" title="${ymd(wk8[i]).slice(5)} · ${chFmt(m)}"></i>`).join('')}</div></td>
+            <td class="right ${cls(r.delta)}"><b>${r.last ? chFmt(r.last) : '—'}</b><small>${r.delta !== null ? arrow(r.delta) + Math.abs(r.delta) + '%' : '&nbsp;'}</small></td>
+            <td class="right">${r.hits || '<span style="color:var(--ink5)">0</span>'}</td>
+          </tr>`; }).join('')}
+      </table>
+    </div>
 
     <div id="ch-detail"></div>`;
   if (DETAIL) renderChannelDetail();
