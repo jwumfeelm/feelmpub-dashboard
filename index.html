@@ -22,7 +22,7 @@
   --border:#E4E8EE; --border2:#CDD4DE;
   --ink:#0F1620; --ink1:#232C38; --ink2:#55606E; --ink3:#7C8794; --ink5:#E9EDF2;
   /* 액센트 — 인디고 톤 쌍. 밝은 배경과 어두운 밴드를 동시에 만족하는 단색은 없어서 두 톤을 쓴다 */
-  --accent:#3A5BD9; --accent-deep:#2A44A8; --accent-dim:#EEF1FE;
+  --accent:#343a43; --accent-deep:#272c33; --accent-dim:#f1f3f5;
   --accent-on-dark:#6B8AF0; --accent-text:#FFFFFF;
   /* 의미색 — 증감 표시에만. 카테고리 구분에는 쓰지 않는다 */
   --good:#0E6E52; --good-dim:#E8F3EF;
@@ -641,11 +641,11 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .notice .n-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#96A1AE}
 .notice .n-val{font-size:34px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--ink)}
 .notice .n-sub{font-size:13px;color:#96A1AE;margin-top:4px}
-.notice.warn .n-val{color:#2A44A8}
+.notice.warn .n-val{color:#272c33}
 .notice.bad .n-val{color:#B3243C}
 .notice.good .n-val{color:#0F1620}
 .notice.info .n-val{color:#55606E}
-.notice.warn{border-left-color:#2A44A8}
+.notice.warn{border-left-color:#272c33}
 .notice.bad{border-left-color:#B3243C}
 .notice.good{border-left-color:#0F1620}
 .notice.info{border-left-color:#55606E}
@@ -861,6 +861,11 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 
 .tl-chip-wrap { position:absolute; }
 </style>
+<style>
+/* Unified executive workspace */
+:root{--bg:#f5f6f8;--surface2:#f8f9fa;--accent:#202329;--accent-deep:#202329;--accent-dim:#f0f1f3;--accent-on-dark:#f5d547;--good:#404651;--good-dim:#f1f3f5;--warn:#555c67;--warn-dim:#f1f3f5;--r:20px;--r2:12px;--r3:8px;--sh-sm:none;--sh-md:0 8px 32px #18203008;--tab-h:56px}
+body{font-size:15px;letter-spacing:-.025em}main{max-width:1480px;margin:auto;padding:36px 40px 88px}header{background:#ffffffed;border-bottom:0}.tabs-bar{background:#ffffffed;height:56px;padding:0 28px;gap:4px}.tab-btn{font-size:14px;font-weight:600;height:56px}.tab-btn.active{font-weight:750;border-bottom:3px solid #f5d547}.card{border:0;padding:28px;box-shadow:none}.card-title{font-size:19px;font-weight:700;letter-spacing:-.035em}.card-title small{font-size:13px;font-weight:400}.kpi{border:0;border-radius:20px;padding:24px;background:white}.kpi-val{font-size:32px}.kpi-lbl{font-size:14px}.kpi-sub{font-size:13px}th{font-size:13px!important;font-weight:500!important;color:#69717e!important;background:#f8f9fb!important}td{font-size:14px!important;padding-top:14px!important;padding-bottom:14px!important}button,input,select{font-family:var(--sans)}button{min-height:34px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #d2ae13;outline-offset:3px}.pill-bar-wrap,#trend-chart{display:none!important}.sum-line,.tab-line{border:0;box-shadow:none;background:transparent}.bi-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:28px;gap:16px}.bi-head h1{font-size:30px;letter-spacing:-.05em}.bi-muted{font-size:13px;color:#737b87;font-weight:400}.bi-hero{display:grid;grid-template-columns:1.4fr 1fr 1fr;background:white;border-radius:24px;margin-bottom:18px;padding:30px;gap:30px}.bi-label{font-size:14px;color:#626a76;margin-bottom:10px}.bi-number{font-size:34px;font-weight:720;letter-spacing:-.05em;line-height:1.25}.bi-hero>div:first-child .bi-number{font-size:44px}.bi-sub{color:#757d89;font-size:13px;margin-top:10px;line-height:1.7}.bi-progress{height:5px;background:#f0f1f3;border-radius:5px;overflow:hidden;margin-top:16px}.bi-progress i{display:block;height:100%;background:#f5d547}.bi-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:34px}.bi-metric{padding:26px 30px;background:white;border-radius:20px}.bi-block{background:white;border-radius:24px;padding:28px 30px;margin-top:20px;min-width:0}.bi-block h2{font-size:20px;font-weight:700;margin-bottom:6px}.bi-scroll{overflow:auto;margin-top:22px}.bi-table{width:100%;border-collapse:collapse}.bi-table th,.bi-table td{text-align:right;white-space:nowrap;border-bottom:1px solid #f0f2f5;padding:13px 12px}.bi-table th:first-child,.bi-table td:first-child{text-align:left}.bi-table tr:last-child td{border-bottom:0}.bi-table td:first-child{white-space:normal;min-width:160px}.bi-table .bi-title{min-width:220px;max-width:340px;text-align:left}.bi-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:20px}.bi-empty{padding:36px 0;color:#747d89}.bi-bad{color:var(--bad)}.bi-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px}.bi-chip{border:0;background:#f2f3f5;color:#343a43;padding:8px 13px;border-radius:10px;font-size:13px;cursor:pointer}.bi-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}.bi-note{margin-top:22px;color:#747d89;font-size:13px;line-height:1.8}.bi-guide{max-width:920px}.bi-guide h2{margin:28px 0 12px;font-size:20px}.bi-guide p{line-height:1.9;margin:10px 0;color:#555e6b}.bi-guide strong{color:#202329}.bi-guide summary{cursor:pointer;font-weight:650;padding:20px 0}.bi-tag{font-size:12px;background:#f2f3f5;border-radius:6px;padding:4px 7px;white-space:nowrap}@media(max-width:900px){main{padding:24px 18px 60px}.bi-hero{grid-template-columns:1fr 1fr}.bi-hero>div:first-child{grid-column:1/-1}.bi-grid{grid-template-columns:1fr}.bi-metrics{gap:10px}.bi-metric{padding:20px}.bi-number{font-size:28px}}@media(max-width:560px){.bi-head h1{font-size:26px}.bi-hero{padding:24px;gap:24px}.bi-hero>div:first-child .bi-number{font-size:36px}.bi-metrics{grid-template-columns:1fr}.bi-metric{display:grid;grid-template-columns:1fr 1fr;align-items:center}.bi-metric .bi-sub{grid-column:1/-1}.bi-block{padding:22px 18px}.bi-number{font-size:26px}.card{padding:20px}.tabs-bar{padding:0 8px}.bi-head{align-items:start;flex-direction:column}} 
+</style>
 </head>
 <body>
 
@@ -914,12 +919,6 @@ tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
       <div class="hdr-r">
         <div class="sync-st"><div class="sync-dot loading" id="syncDot"></div><span id="syncTxt">시트 불러오는 중…</span></div>
         <div class="mpick"><span>기준월</span><input type="month" id="monthPicker" onchange="onMonthChange()"></div>
-        <button onclick="setCmp(CMP==='prev'?'none':'prev')" id="cmpBtn" class="hdr-x" title="전월 대비 증감 표시"
-          style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
-          padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">전월 대비</button>
-        <button onclick="copyWeekReport(this)" class="hdr-x" title="슬랙에 붙일 주간 리포트 복사"
-          style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);
-          padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600">주간 리포트 복사</button>
         <button onclick="doInstall()" id="installBtn" style="display:none;background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600" title="바탕화면에 설치">설치</button>
         <button onclick="toggleFullscreen()" id="fsBtn" class="hdr-x" style="background:var(--surface);border:1px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:5px 10px;cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:600;display:flex;align-items:center;gap:4px" title="전체화면">전체화면</button>
       </div>
@@ -1339,7 +1338,7 @@ const M_SCM = [];
 const SCM_STORES = ["교보","예스","알라딘","영풍","쿠팡","북센","도소매","기타"];
 const SCM_COLS   = ["kyobo","yes","aladin","youngpoong","coupang","booksun","dosomae","others"];
 // 서점 시리즈 — 액센트 선두 후 단조 명도 램프 (순서 자체가 정보가 되도록)
-const SCM_COLORS = ["#3A5BD9","#1E3A8A","#37424F","#69747F","#96A1AE","#B7C0CA","#CDD4DE","#E4E8EE"];
+const SCM_COLORS = ["#343a43","#1E3A8A","#37424F","#69747F","#96A1AE","#B7C0CA","#CDD4DE","#E4E8EE"];
 
 // 도서 데이터 — 시트(도서 목록 RAW)에서 동적으로 채워짐
 const BOOKS = [];
@@ -2111,7 +2110,7 @@ async function loadSheets() {
 
     window.__mktMissingGid = [];
     // 그로스 채널 시트 비동기 로드
-    loadChannelSheets().then(() => { if (activeTab==='channel') renderChannel(); });
+    loadChannelSheets().then(() => { if (activeTab==='channel') renderChannel(); if (activeTab==='summary') renderSummary(); });
 
     // 출판팀 시트 비동기 로드
     loadPubSheets().then(() => {
@@ -2152,6 +2151,7 @@ function pickPw(row){
    APPLY SHEET DATA → 전역 변수 반영
 ───────────────────────────────────── */
 function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales, daySalesStore, members }) {
+  SD.cost = cost || [];
   // ── 00_설정 → ANNUAL_TARGET, CFG.pw, 채널링크 갱신 ──
   const yr = new Date().getFullYear();
   if (setting && setting.length > 0) {
@@ -2281,7 +2281,7 @@ function applySheetData({ setting, monthly, cost, ship, scm, bookList, weekSales
       price:       toNum(r['정가']),
       supply:      0,
       unit:        0,
-      cover:       ['#0F1620','#2A3644','#48545F','#69747F','#2A44A8','#37424F','#8B97A6','#1B2430'][i%8],
+      cover:       ['#0F1620','#2A3644','#48545F','#69747F','#272c33','#37424F','#8B97A6','#1B2430'][i%8],
       field:       r['관리']||'',
       mkt:         '',
       edit:        '',
@@ -2712,7 +2712,7 @@ function syncCmpBtn(){
   b.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
 }
 
-function renderTabs(){
+function renderTabsLegacy(){
   document.getElementById('tabsBar').innerHTML=TABS.map(t=>{
     if(t.div) return '<div class="tab-div"></div>';
     return `<button class="tab-btn ${activeTab===t.id?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`;
@@ -2756,7 +2756,7 @@ function readHash(){
   return out;
 }
 function applyHash(){
-  { const mm=(location.hash||'').match(/cmp=(prev|none)/); if(mm) CMP=mm[1]; }
+  CMP = 'none';
   const q = readHash();
   if(q.m && /^\d{4}-\d{2}$/.test(q.m)){
     const el = document.getElementById('monthPicker');
@@ -2937,7 +2937,7 @@ const TC = {
   gridNow:   '#FFFFFF26',   // 당월 표시선
   hover:     '#FFFFFF3D',   // 호버 라인
   barTop:    '#6B8AF0',     // 달성 막대 위
-  barBot:    '#3A5BD9',     // 달성 막대 아래
+  barBot:    '#343a43',     // 달성 막대 아래
   barBadTop: '#F08098',     // 미달 막대 위
   barBadBot: '#B3243C',     // 미달 막대 아래
   target:    '#6B8AF0',     // 목표선
@@ -3066,7 +3066,7 @@ function renderTrendChart(curM) {
     <g id="tc-tooltip" opacity="0">
       <rect id="tc-tt-bg" rx="8" ry="8" fill="${TC.ttBg}" stroke="${TC.ttBorder}" stroke-width="1"/>
       <text id="tc-tt-mo"     fill="${TC.ttMuted}" font-size="10" font-weight="700" font-family="inherit"/>
-      <text id="tc-tt-ship"   fill="#3A5BD9" font-size="11" font-family="inherit"/>
+      <text id="tc-tt-ship"   fill="#343a43" font-size="11" font-family="inherit"/>
       <text id="tc-tt-target" fill="${TC.target}" font-size="11" font-family="inherit"/>
       <text id="tc-tt-cost"   fill="${TC.ttMuted}" font-size="11" font-family="inherit"/>
       <text id="tc-tt-ret"    fill="${TC.ret}" font-size="11" font-family="inherit"/>
@@ -3178,7 +3178,7 @@ function animateLine(path, finalOpacity, delay) {
   }, delay);
 }
 
-function renderSummary(){
+function renderSummaryLegacy(){
   const m=getM();
   const mShip=M_SHIP_SALES[m]||0, mRet=M_RETURN[m]||0, mNet=M_NET_SALES[m]||0;
   const mCost=M_TOTAL_COST[m]||0, mProfit=M_PROFIT[m]||0, mTarget=M_TARGET[m]||1;
@@ -3387,7 +3387,7 @@ function renderSummary(){
         }).join('');
         const bars=idx.map((i,k)=>{
           const cur=i===m, h=Math.max(2,cH-(yV(per[i])-P.t));
-          return `<rect x="${xc(k)-bw/2}" y="${yV(per[i])}" width="${bw}" height="${h}" rx="3" fill="${cur?'#3A5BD9':'#CDD4DE'}"/>`
+          return `<rect x="${xc(k)-bw/2}" y="${yV(per[i])}" width="${bw}" height="${h}" rx="3" fill="${cur?'#343a43':'#CDD4DE'}"/>`
             +`<text x="${xc(k)}" y="${yV(per[i])-9}" fill="${cur?'#0F1620':'#55606E'}" font-size="11"
                  font-weight="${cur?800:600}" text-anchor="middle" font-family="inherit">${fmtAmt(Math.round(per[i]))}</text>`;
         }).join('');
@@ -3513,7 +3513,7 @@ function renderShip(){
   const sorted=sortRows(rows,'ship',numCols);
 
   // 서점별 월별 매출 bar
-  const storeBarColors={"교보":"#3A5BD9","예스24":"#37424F","알라딘":"#55606E","네이버":"#B3243C","기타":"#96A1AE"};
+  const storeBarColors={"교보":"#343a43","예스24":"#37424F","알라딘":"#55606E","네이버":"#B3243C","기타":"#96A1AE"};
 
   const topStore = (()=>{ const tot=SCM_COLS.reduce((a,k)=>a+(M_SCM[m]?.[k]||0),0); if(!tot) return null;
     const i = SCM_COLS.map((k,i)=>[M_SCM[m]?.[k]||0,i]).sort((a,b)=>b[0]-a[0])[0][1]; return {name:SCM_STORES[i], pct:Math.round((M_SCM[m]?.[SCM_COLS[i]]||0)/tot*100)}; })();
@@ -3697,7 +3697,7 @@ function renderMkt(){
    주차별 곡선은 이미 지나간 책의 모양이라 오늘 뭘 할지가 안 나온다.
    최근 N일 일별 판매를 겹쳐 보면 광고·제휴가 언제 먹혔는지 바로 보인다. */
 const DTREND = { q:'', days:20, ma:false, ev:true, picked:[] };
-const DT_COLORS = ['#3A5BD9', '#E5484D', '#3DBE8B', '#F0A020', '#8B5CF6'];
+const DT_COLORS = ['#343a43', '#E5484D', '#3DBE8B', '#F0A020', '#8B5CF6'];
 
 // 검색어를 칠 때마다 탭 전체를 다시 그리면 입력창이 새로 만들어져 한글 조합이 끊긴다.
 // 그래서 입력창은 그대로 두고 후보 목록만 갈아끼운다.
@@ -3782,7 +3782,7 @@ function dtEvents(titles, dates){
 }
 const DT_EV = {
   ship:    {c:'#0F1620', label:'배본'},
-  tieup:   {c:'#3A5BD9', label:'제휴'},
+  tieup:   {c:'#343a43', label:'제휴'},
   ad:      {c:'#E5484D', label:'광고'},
   store:   {c:'#F0A020', label:'서점'},
   content: {c:'#8B95A5', label:'콘텐츠'},
@@ -4125,18 +4125,18 @@ function renderCost(){
       const net=M_NET_SALES[i]||0, cost=costOf(i);
       const isCur=i===m;
       return `<rect x="${xc(k)-bw/2}" y="${yA(net)}" width="${bw}" height="${Math.max(0,cH-(yA(net)-P.t))}" rx="2"
-                fill="${isCur?'#DCE3FD':'#EDF0F4'}"/>`
+                fill="${isCur?'#e8ebef':'#EDF0F4'}"/>`
            + `<rect x="${xc(k)-bw/2}" y="${yA(cost)}" width="${bw}" height="${Math.max(0,cH-(yA(cost)-P.t))}" rx="2"
-                fill="${isCur?'#3A5BD9':'#B7C0CA'}"/>`;
+                fill="${isCur?'#343a43':'#B7C0CA'}"/>`;
     }).join('');
 
     // 기준선: 누적 비용률 (총비용 합계 ÷ 순매출 합계)
     const sumC=idx.reduce((a,i)=>a+costOf(i),0), sumN=idx.reduce((a,i)=>a+(M_NET_SALES[i]||0),0);
     const avgR=sumN>0 ? sumC/sumN*100 : null;
     const avgLine = (avgR==null || avgR>maxR) ? '' :
-      `<line x1="${P.l}" x2="${P.l+cW}" y1="${yR(avgR)}" y2="${yR(avgR)}" stroke="#8AA0EE" stroke-width="1.5" stroke-dasharray="5,4"/>`
-      + `<rect x="${P.l+cW-96}" y="${yR(avgR)-17}" width="92" height="15" rx="3" fill="#EEF1FE"/>`
-      + `<text x="${P.l+cW-50}" y="${yR(avgR)-6}" fill="#2A44A8" font-size="9.5" font-weight="700" text-anchor="middle">누적 평균 ${avgR.toFixed(1)}%</text>`;
+      `<line x1="${P.l}" x2="${P.l+cW}" y1="${yR(avgR)}" y2="${yR(avgR)}" stroke="#8b929c" stroke-width="1.5" stroke-dasharray="5,4"/>`
+      + `<rect x="${P.l+cW-96}" y="${yR(avgR)-17}" width="92" height="15" rx="3" fill="#f1f3f5"/>`
+      + `<text x="${P.l+cW-50}" y="${yR(avgR)-6}" fill="#272c33" font-size="9.5" font-weight="700" text-anchor="middle">누적 평균 ${avgR.toFixed(1)}%</text>`;
 
     const pts=idx.map((i,k)=>rate(i)==null?null:`${xc(k)},${yR(rate(i))}`).filter(Boolean).join('L');
     const dots=idx.map((i,k)=>rate(i)==null?'':
@@ -4168,7 +4168,7 @@ function renderCost(){
         <div style="flex:1;min-width:0">
           <div style="display:flex;height:14px;border-radius:var(--r5);overflow:hidden;background:var(--surface3)">
             <div class="bar-grow" style="--w:${wPaid}%;--d:${i*50}ms;background:var(--accent)"></div>
-            <div class="bar-grow" style="--w:${wPlan}%;--d:${i*50}ms;background:repeating-linear-gradient(45deg,#8AA0EE,#8AA0EE 4px,#C6D2F7 4px,#C6D2F7 8px)"></div>
+            <div class="bar-grow" style="--w:${wPlan}%;--d:${i*50}ms;background:repeating-linear-gradient(45deg,#8b929c,#8b929c 4px,#C6D2F7 4px,#C6D2F7 8px)"></div>
           </div>
         </div>
         <div style="width:82px;text-align:right;font-size:12px;font-weight:800;color:var(--ink);flex-shrink:0">${won(r.total)}</div>
@@ -4190,7 +4190,7 @@ function renderCost(){
         return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0">
           <div style="font-size:10px;font-weight:${isCur?800:600};color:${isCur?'var(--ink)':'var(--ink3)'};white-space:nowrap">${won(tot)}</div>
           <div class="bar-grow" style="--w:100%;height:${h}px;width:100%;border-radius:var(--r4) var(--r4) 0 0;
-            background:${future?'repeating-linear-gradient(45deg,#8AA0EE,#8AA0EE 4px,#C6D2F7 4px,#C6D2F7 8px)':(isCur?'var(--accent)':'var(--border2)')}"></div>
+            background:${future?'repeating-linear-gradient(45deg,#8b929c,#8b929c 4px,#C6D2F7 4px,#C6D2F7 8px)':(isCur?'var(--accent)':'var(--border2)')}"></div>
           <div style="font-size:10px;font-weight:${isCur?800:400};color:${isCur?'var(--ink)':'var(--ink3)'}">${k.slice(5)}월</div>
         </div>`;
       }).join('')}
@@ -4241,7 +4241,7 @@ function renderCost(){
       <div class="card">
         <div class="card-title">비용 구성 추이 <small>팀별</small></div>
         ${stackedBarChart(costRowsFor(m), [
-          {label:"마케팅팀",color:"#3A5BD9"},{label:"출판팀",color:"#37424F"},{label:"경상비",color:"#96A1AE"}])}
+          {label:"마케팅팀",color:"#343a43"},{label:"출판팀",color:"#37424F"},{label:"경상비",color:"#96A1AE"}])}
       </div>
       <div class="card">
         <div class="card-title">지급 스케줄 <small>빗금 = 아직 안 나간 금액</small></div>
@@ -4376,7 +4376,7 @@ function renderChannel(){
     const mxN = Math.max(1, ...rowsW.map(x=>x.n));
     const yM = v => P.t + cH - v/mxM*cH, yN = v => P.t + cH - v/mxN*cH*0.4;
     const iS = rowsW.findIndex(r => !r.base);
-    const band = iS >= 0 ? `<rect x="${xc(iS)-cW/n/2}" y="${P.t-6}" width="${(n-iS)*cW/n}" height="${cH+6}" fill="#3A5BD9" opacity=".05"/>` : '';
+    const band = iS >= 0 ? `<rect x="${xc(iS)-cW/n/2}" y="${P.t-6}" width="${(n-iS)*cW/n}" height="${cH+6}" fill="#343a43" opacity=".05"/>` : '';
     const grid = [0,.5,1].map(f => { const yy = P.t+cH-f*cH; return `<line x1="${P.l}" x2="${P.l+cW}" y1="${yy}" y2="${yy}" stroke="#0F16200D"/><text x="${P.l-8}" y="${yy+4}" fill="#96A1AE" font-size="11" text-anchor="end" font-family="inherit">${chFmt(mxM*f)}</text>`; }).join('');
     const bars = rowsW.map((x,i) => x.n ? `<rect x="${xc(i)-bw/2}" y="${yN(x.n)}" width="${bw}" height="${P.t+cH-yN(x.n)}" rx="2" fill="#E3E8EE"/>` : '').join('');
     const pts = rowsW.map((x,i) => x.n && !x.cur ? [i,x.med] : null).filter(Boolean);
@@ -4386,7 +4386,7 @@ function renderChannel(){
     const curDot = rowsW.map((x,i) => x.cur && x.n ? `<circle cx="${xc(i)}" cy="${yM(x.med)}" r="5" fill="#FFF" stroke="#96A1AE" stroke-width="2" stroke-dasharray="2 2"/><text x="${xc(i)}" y="${yM(x.med)-12}" fill="#96A1AE" font-size="11" text-anchor="middle" font-family="inherit">진행 중</text>` : '').join('');
     const labels = rowsW.map((x,i) => `<text x="${xc(i)}" y="${P.t+cH+22}" fill="${x.cur?'#0F1620':(x.future?'#C6CDD5':'#7C8794')}" font-size="11" font-weight="${x.cur?800:500}" font-family="inherit" text-anchor="middle">${ymd(x.w).slice(5).replace('-','/')}</text>`).join('');
     const baseLine = baseAgg.med ? `<line x1="${P.l}" x2="${P.l+cW}" y1="${yM(baseAgg.med)}" y2="${yM(baseAgg.med)}" stroke="#96A1AE" stroke-width="1.2" stroke-dasharray="3 4"/><text x="${P.l+cW+8}" y="${yM(baseAgg.med)+4}" fill="#7C8794" font-size="11" font-family="inherit">기준 ${chFmt(baseAgg.med)}</text>` : '';
-    const mark = iS >= 0 ? `<text x="${xc(iS)-cW/n/2+6}" y="${P.t+6}" fill="#3A5BD9" font-size="11" font-weight="800" font-family="inherit">스프린트 9/17 →</text><text x="${P.l+6}" y="${P.t+6}" fill="#96A1AE" font-size="11" font-weight="800" font-family="inherit">기준기</text>` : '';
+    const mark = iS >= 0 ? `<text x="${xc(iS)-cW/n/2+6}" y="${P.t+6}" fill="#343a43" font-size="11" font-weight="800" font-family="inherit">스프린트 9/17 →</text><text x="${P.l+6}" y="${P.t+6}" fill="#96A1AE" font-size="11" font-weight="800" font-family="inherit">기준기</text>` : '';
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${band}${grid}${bars}${baseLine}${mark}${line}${dots}${curDot}${labels}</svg>`;
   })();
 
@@ -4707,9 +4707,9 @@ function renderChannelDetail(){
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:190px;display:block">
       ${[0,.25,.5,.75,1].map(f=>`<line x1="${P.l}" x2="${P.l+cW}" y1="${py(f)}" y2="${py(f)}" stroke="#0F16200D"/>
         <text x="${P.l-8}" y="${py(f)+4}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">${Math.round(f*100)}%</text>`).join('')}
-      <path d="${path}L${px(1)},${P.t+cH}Z" fill="#3A5BD9" fill-opacity=".10"/>
-      <path d="${path}" data-draw fill="none" stroke="#3A5BD9" stroke-width="2.4" stroke-linejoin="round"/>
-      ${marks.map(mk=>`<circle cx="${mk.x}" cy="${mk.y}" r="4" fill="#FFF" stroke="#2A44A8" stroke-width="2.2"/>
+      <path d="${path}L${px(1)},${P.t+cH}Z" fill="#343a43" fill-opacity=".10"/>
+      <path d="${path}" data-draw fill="none" stroke="#343a43" stroke-width="2.4" stroke-linejoin="round"/>
+      ${marks.map(mk=>`<circle cx="${mk.x}" cy="${mk.y}" r="4" fill="#FFF" stroke="#272c33" stroke-width="2.2"/>
         <text x="${mk.x}" y="${mk.y-11}" fill="var(--ink)" font-size="10" font-weight="800" text-anchor="middle" font-family="inherit">${Math.round(mk.share*100)}%</text>
         <text x="${mk.x}" y="${P.t+cH+18}" fill="#96A1AE" font-size="10" text-anchor="middle" font-family="inherit">상위 ${mk.k}건</text>`).join('')}
       <text x="${px(1)}" y="${P.t+cH+18}" fill="#96A1AE" font-size="10" text-anchor="end" font-family="inherit">전체 ${rs.length}건</text>
@@ -5395,7 +5395,7 @@ function renderCalendar() {
       const hasStores = Object.keys(storeMapC).length > 0;
       const SERIES = [
         {key:'총판매',  color:'#0F1620', w:2.4, dash:'',    area:true},
-        {key:'교보',    color:'#3A5BD9', w:1.6, dash:''},
+        {key:'교보',    color:'#343a43', w:1.6, dash:''},
         {key:'예스24',  color:'#1E3A8A', w:1.6, dash:''},
         {key:'알라딘',  color:'#7C8794', w:1.6, dash:'6,3'},
         {key:'영풍',    color:'#7C8794', w:1.6, dash:'2,2'},
@@ -5739,7 +5739,7 @@ function initDayChartHover() {
   const STORES_H = ['교보','예스24','알라딘','영풍'];
   // 차트 선과 완전히 동일한 색·선형태를 툴팁 표식에도 쓴다
   const SERIES_MARK = {
-    '교보':   {c:'#3A5BD9', d:''},
+    '교보':   {c:'#343a43', d:''},
     '예스24': {c:'#1E3A8A', d:''},
     '알라딘': {c:'#7C8794', d:'4,2'},
     '영풍':   {c:'#7C8794', d:'1.5,1.5'},
@@ -6462,7 +6462,7 @@ function renderTimeline(dates, pubDate, today, actions, sales) {
     else{while(i+span<dates.length){var dd2=Math.floor((dates[i+span]-pubDate)/86400000);if(dd2<0||Math.floor(dd2/7)!==wkId)break;span++;}}
     diff=Math.floor((d-pubDate)/86400000);
     var wc=document.createElement('div');
-    wc.style.cssText='position:absolute;left:'+(i*CELL_W)+'px;width:'+(span*CELL_W)+'px;height:13px;top:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-size:10px;color:'+(isPre?'#2A44A8':'#96A1AE')+';white-space:nowrap;overflow:hidden;background:'+wkBg(d)+';';
+    wc.style.cssText='position:absolute;left:'+(i*CELL_W)+'px;width:'+(span*CELL_W)+'px;height:13px;top:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-size:10px;color:'+(isPre?'#272c33':'#96A1AE')+';white-space:nowrap;overflow:hidden;background:'+wkBg(d)+';';
     wc.textContent=isPre?'예약판매':(Math.floor(diff/7)+1)+'주차';
     wkR.bar.appendChild(wc);i+=span;
   }
@@ -6666,7 +6666,7 @@ function renderCalendarEmpty(){
 /* ─────────────────────────────────────
    입력 가이드
 ───────────────────────────────────── */
-function renderData(){
+function renderDataLegacy(){
   const rule = (n,t) => `<tr><td style="width:22px;color:var(--ink3);font-size:11px;font-weight:800">${n}</td><td style="font-size:12px;color:var(--ink2);line-height:1.7">${t}</td></tr>`;
   const card = (title, sub, body) => `
     <div class="card gap2">
@@ -6847,7 +6847,7 @@ function openDrawer(id){
   // 마케팅비 내역 차트
   const mktEntries=Object.entries(b.mktBreak||{});
   const mktMax=Math.max(...mktEntries.map(([,v])=>v),1);
-  const mktColors={meta:'#37424F',google:'#B3243C',tiktok:'#0F1620',store:'#3A5BD9',etc:'#96A1AE'};
+  const mktColors={meta:'#37424F',google:'#B3243C',tiktok:'#0F1620',store:'#343a43',etc:'#96A1AE'};
   const mktLabels={meta:'메타',google:'구글',tiktok:'틱톡',store:'서점',etc:'기타'};
 
   document.getElementById('overlay').classList.add('open');
@@ -7582,10 +7582,10 @@ const ROY_LOAD_MSGS = [
 function royLoadArt(size){
   const S = size || 190;
   const books = [
-    {y:36, w:44, c:'#3A5BD9', d:0},
+    {y:36, w:44, c:'#343a43', d:0},
     {y:28, w:38, c:'#6B8AF0', d:.16},
-    {y:20, w:41, c:'#2A44A8', d:.32},
-    {y:12, w:34, c:'#8AA0EE', d:.48},
+    {y:20, w:41, c:'#272c33', d:.32},
+    {y:12, w:34, c:'#8b929c', d:.48},
   ];
   return `<div class="roy-load"><svg viewBox="0 0 72 56" width="${S}" height="${Math.round(S*56/72)}">
     <ellipse class="shelf" cx="34" cy="51" rx="30" ry="3" fill="#0F1620"/>
@@ -7641,10 +7641,10 @@ function royLoadHide(force){
 function royLoadCard(){
   const msg = ROY_LOAD_MSGS[Math.floor(Date.now() / 4000) % ROY_LOAD_MSGS.length];
   const books = [
-    {y:36, w:44, c:'#3A5BD9', d:0},
+    {y:36, w:44, c:'#343a43', d:0},
     {y:28, w:38, c:'#6B8AF0', d:.14},
-    {y:20, w:41, c:'#2A44A8', d:.28},
-    {y:12, w:34, c:'#8AA0EE', d:.42},
+    {y:20, w:41, c:'#272c33', d:.28},
+    {y:12, w:34, c:'#8b929c', d:.42},
   ];
   return `<div class="card gap">
     <div class="roy-load">
@@ -7810,7 +7810,7 @@ const PCAL_GRADES = ['전략','주력','일반'];
 // 등급별 정체성 — 색과 목표 체급을 함께 쥔다
 const PCAL_META = {
   '전략': {c:'#B3243C', soft:'#FCEDF0', line:'#F0C4CE', guide:'분기 1종', goal:'3개월 5만 부', goal3m:50000},
-  '주력': {c:'#3A5BD9', soft:'#EDF1FD', line:'#C3D0F5', guide:'격월 1~2종', goal:'3개월 1.5만 부', goal3m:15000},
+  '주력': {c:'#343a43', soft:'#EDF1FD', line:'#C3D0F5', guide:'격월 1~2종', goal:'3개월 1.5만 부', goal3m:15000},
   '일반': {c:'#1F8A6D', soft:'#E9F6F2', line:'#B9E2D6', guide:'월 2~3종', goal:'3개월 4천 부', goal3m:4000},
 };
 const PCAL_SPINE_DAILY = 15;   // 허리도서 — 6개월 이후 데일리 목표
@@ -9198,7 +9198,8 @@ function royPrint(){
     <style>@page{size:A4;margin:14mm}
       body{margin:0;font-family:Pretendard,sans-serif;display:flex;justify-content:center;padding:20px}
       svg{width:100%;max-width:720px;height:auto}
-      @media print{body{padding:0}}</style></head>
+      @media print{body{padding:0}}</style>
+</head>
     <body>${src}<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>`);
   w.document.close();
   setTimeout(renderRoyalty, 400);
@@ -9478,7 +9479,7 @@ function initEasterEggs(){
       '%c필름 %c콘텐츠사업본부 대시보드\n' +
       '%c여기까지 열어보셨다면 이미 우리 편입니다.\n' +
       '숫자가 이상하면 콘솔에 mktDiag() 또는 __monthlyDiag() 를 쳐보세요.',
-      'font-size:15px;font-weight:800;color:#3A5BD9',
+      'font-size:15px;font-weight:800;color:#343a43',
       'font-size:15px;font-weight:800;color:#0F1620',
       'font-size:12px;color:#55606E;line-height:1.7'
     );
@@ -9736,6 +9737,54 @@ document.addEventListener('fullscreenchange', () => {
   const btn = document.getElementById('fsBtn');
   if (btn) btn.innerHTML = document.fullscreenElement ? '전체화면 종료' : '전체화면';
 });
+</script>
+<script>
+// Executive overview: finance is selected-month, daily sales is latest 10 calendar days.
+function renderTabs(){
+ const ids=['summary','calendar','pubcal','authors','books','royalty','data'];
+ document.getElementById('tabsBar').innerHTML=TABS.filter(t=>ids.includes(t.id)).map(t=>`<button class="tab-btn ${activeTab===t.id?'active':''}" onclick="setTab('${t.id}')">${t.id==='summary'?'본부 현황':t.label}</button>`).join('');
+}
+function biTable(headers,rows){return rows.length?`<div class="bi-scroll"><table class="bi-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:'<div class="bi-empty">해당 기간에 입력된 데이터가 없습니다.</div>'}
+function biDaily(){
+ const ds=[...new Set(Object.values(DAY_SALES_STORE).flatMap(o=>Object.keys(o)))].filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+ if(!ds.length)return '<div class="bi-empty">일별 실판매 데이터가 없습니다.</div>';
+ const last=ds.at(-1),end=new Date(last+'T12:00:00');
+ const dates=Array.from({length:10},(_,i)=>{const d=new Date(end);d.setDate(d.getDate()-9+i);return ymd(d)});
+ const rows=Object.entries(DAY_SALES_STORE).map(([title,data])=>{const vals=dates.map(d=>data[d]?Object.values(data[d]).reduce((a,b)=>a+(+b||0),0):null);return {title,vals,total:vals.reduce((a,b)=>a+(b||0),0)}}).filter(x=>x.total>0).sort((a,b)=>b.total-a.total).slice(0,10);
+ return `<div class="bi-sub">${dates[0]} — ${last} · 최신 데이터일 기준 10일 · SCM 서점 합산 · 단위 부</div>`+biTable(['도서','10일 합계',...dates.map(d=>d.slice(5).replace('-','/'))],rows.map((r,i)=>`<tr><td class="bi-title"><span class="bi-muted">${i+1}.</span> ${esc(r.title)}</td><td><strong>${r.total.toLocaleString()}</strong></td>${r.vals.map(v=>`<td>${v===null?'—':v.toLocaleString()}</td>`).join('')}</tr>`))+`<div class="bi-sub">—는 해당 도서·날짜의 데이터 없음입니다. 월 선택과 무관하게 최신 10일을 표시합니다.</div>`;
+}
+function biCosts(ym){
+ const teams={};(SD.cost||[]).forEach(r=>{if(String(r['귀속월']||'').trim().slice(0,7)!==ym)return;const g=String(r['구분']||'').trim();if(!['지급','계획'].includes(g))return;const t=String(r['귀속팀']||'미분류').trim();const x=teams[t]||(teams[t]={paid:0,plan:0});x[g==='지급'?'paid':'plan']+=toNum(r['비용']);});
+ return biTable(['귀속팀','지급','계획','합계'],Object.entries(teams).sort((a,b)=>(b[1].paid+b[1].plan)-(a[1].paid+a[1].plan)).map(([t,v])=>`<tr><td>${esc(t)}</td><td>${won(v.paid)}</td><td>${won(v.plan)}</td><td><strong>${won(v.paid+v.plan)}</strong></td></tr>`));
+}
+let BI_CONTENT_SORT='reach';
+function biContentSort(v){BI_CONTENT_SORT=v;renderSummary();}
+function renderSummary(){
+ const m=getM(),ym=document.getElementById('monthPicker').value,y=Number(ym.slice(0,4));
+ const gross=M_SHIP_SALES[m]||0,net=M_NET_SALES[m]||0,ret=M_RETURN[m]||0,target=M_TARGET[m]||0,cs=costSplit(m),profit=net-cs.total,n=headcountAt(y,m),loaded=SD.loaded;
+ const money=v=>loaded?won(v):'—',ach=target>0?gross/target*100:null;
+ const contents=CH_CONTENT.filter(c=>c.up&&ymd(c.up).slice(0,7)===ym);
+ const sorted=[...contents].sort((a,b)=>(b[BI_CONTENT_SORT]||0)-(a[BI_CONTENT_SORT]||0));
+ const kpi=(label,value,sub,bad=false)=>`<div class="bi-metric"><div class="bi-label">${label}</div><div class="bi-number ${bad?'bi-bad':''}">${value}</div><div class="bi-sub">${sub}</div></div>`;
+ const chrows=CH_PERF.map(c=>{const val=k=>c.items[k]?.[m]||0;return {name:c.acct,kind:c.kind,fol:val('팔로워'),up:val('업로드'),reach:val('도달')||val('도달(조회수)'),share:val('공유'),save:val('저장')}}).filter(c=>c.fol||c.up||c.reach||c.share||c.save);
+ document.getElementById('tab-summary').innerHTML=`
+ <div class="bi-head"><div><div class="bi-muted">FEELM · CONTENT BUSINESS</div><h1>본부 현황</h1></div><div class="bi-muted">${esc(ym)} 월 기준 · 실판매는 최신 10일</div></div>
+ ${!loaded?'<div class="bi-note">월 실적 데이터를 아직 불러오지 못했습니다.</div>':''}
+ <div class="bi-hero"><div><div class="bi-label">총 매출</div><div class="bi-number">${money(gross)}</div><div class="bi-sub">월 목표 ${target?won(target):'미입력'} · 달성률 <strong>${loaded&&ach!==null?ach.toFixed(1)+'%':'—'}</strong></div><div class="bi-progress"><i style="width:${loaded&&ach!==null?Math.max(0,Math.min(100,ach)):0}%"></i></div></div><div><div class="bi-label">순 매출</div><div class="bi-number">${money(net)}</div><div class="bi-sub">월별 실적 시트 기준</div></div><div><div class="bi-label">반품률</div><div class="bi-number">${loaded&&gross>0?(ret/gross*100).toFixed(1)+'%':'—'}</div><div class="bi-sub">반품액 ${money(ret)} ÷ 총 매출</div></div></div>
+ <div class="bi-metrics">${kpi('영업이익 · 예상 손익',money(profit),'순매출 − 비용 · 계획 포함',loaded&&profit<0)}${kpi('인당 매출액',loaded&&n?won(net/n):'—',`순매출 ÷ 해당 월 재직 ${n||'—'}명`)}${kpi('월 비용',money(cs.total),`지급 ${money(cs.fixed)} · 계획 ${money(cs.plan)}`)}</div>
+ <section class="bi-block"><h2>데일리 실판매</h2><div class="bi-muted">최근 10일 판매 합계 상위 10개 도서</div>${biDaily()}</section>
+ <div class="bi-grid"><section class="bi-block"><h2>팀별 월 비용</h2><div class="bi-muted">${esc(ym)} 귀속월 · 비용원장 기준</div>${biCosts(ym)}<div class="bi-sub">시트에 입력된 귀속팀으로 집계합니다. 공통비는 원장 분류를 따릅니다.</div></section>
+ <section class="bi-block"><h2>온드미디어 채널</h2><div class="bi-muted">${esc(ym)} 채널별 월 실적</div>${biTable(['채널','팔로워','업로드','도달 / 조회','공유','저장'],chrows.map(c=>`<tr><td>${esc(c.name)} <span class="bi-muted">${esc(c.kind)}</span></td>${[c.fol,c.up,c.reach,c.share,c.save].map(v=>`<td>${v.toLocaleString()}</td>`).join('')}</tr>`))}</section></div>
+ <section class="bi-block"><div class="bi-section-title"><div><h2>콘텐츠 인게이지먼트</h2><div class="bi-muted">선택 월 업로드 ${contents.length}건 · 도달·공유·저장 기준 정렬</div></div><select class="bi-chip" aria-label="콘텐츠 정렬" onchange="biContentSort(this.value)">${[['reach','도달순'],['share','공유순'],['save','저장순']].map(([v,l])=>`<option value="${v}" ${BI_CONTENT_SORT===v?'selected':''}>${l}</option>`).join('')}</select></div>
+ ${biTable(['콘텐츠 / 채널','업로드','도달 / 조회','공유','저장','반응률'],sorted.slice(0,10).map(c=>`<tr><td class="bi-title">${esc(c.title)}<div class="bi-muted">${esc(c.ch)}</div></td><td>${ymd(c.up).slice(5)}</td><td><strong>${c.reach.toLocaleString()}</strong></td><td>${c.share.toLocaleString()}</td><td>${c.save.toLocaleString()}</td><td>${c.reach>0?((c.share+c.save)/c.reach*100).toFixed(2)+'%':'—'}</td></tr>`))}
+ <div class="bi-sub">상위 10건 · 반응률 = (공유 + 저장) ÷ 도달 · 도달/조회는 플랫폼별 원본 지표입니다.</div>${sorted.length>10?`<details><summary class="bi-sub">나머지 ${sorted.length-10}건 보기</summary>${biTable(['콘텐츠','채널','도달 / 조회','공유','저장'],sorted.slice(10).map(c=>`<tr><td>${esc(c.title)}</td><td>${esc(c.ch)}</td><td>${c.reach.toLocaleString()}</td><td>${c.share.toLocaleString()}</td><td>${c.save.toLocaleString()}</td></tr>`))}</details>`:''}</section>
+ <div class="bi-note">손익은 입력된 비용과 계획에 따른 관리용 예상값입니다. 인건비·미입력 비용 및 재직 이력의 누락 여부를 월 마감 시 확인해 주세요.</div>
+ <div class="bi-links">${[['ship','출고 상세'],['mkt','실판매 상세'],['cost','비용 상세'],['channel','채널 추이']].map(([id,l])=>`<button class="bi-chip" onclick="setTab('${id}')">${l}</button>`).join('')}</div>`;
+}
+function renderData(){
+ renderDataLegacy();const el=document.getElementById('tab-data'),old=el.innerHTML;
+ el.innerHTML=`<div class="bi-head"><h1>입력 가이드</h1><span class="bi-muted">본부 현황 개편 기준</span></div><div class="bi-block bi-guide"><h2>월 경영 성과</h2><p><strong>01_월별실적</strong>의 매출·반품·순매출·월 목표와 <strong>02_비용원장</strong>의 지급·계획을 갱신합니다. 총 매출·순매출은 기존 월별 실적 집계 기준을 유지합니다. 반품률은 반품액÷총 매출입니다.</p><p>손익은 순매출−계획 포함 비용으로 표시합니다. 인건비를 포함한 전체 비용 입력을 확인하세요. 인당 매출액은 해당 월 순매출÷해당 월 재직 인원이며, <strong>구성원</strong>의 입사일·퇴사일을 사용합니다.</p><h2>데일리 실판매</h2><p><strong>판매량_일별_서점</strong>의 최신 데이터일을 끝으로 달력 기준 10일을 집계합니다. 10일 합계 상위 10개 도서와 일자별 부수를 표시합니다. 날짜별 누락은 —로 표시하며, 월 선택과는 독립적으로 움직입니다.</p><h2>팀별 월 비용</h2><p><strong>02_비용원장</strong>의 귀속월·귀속팀·구분·비용을 입력합니다. 선택 월의 팀별 지급과 계획을 구분하여 표시하므로 귀속팀 이름을 통일하세요.</p><h2>채널과 콘텐츠</h2><p><strong>채널실적</strong>에는 월별 팔로워·업로드·도달·공유·저장을 입력합니다. <strong>콘텐츠플랜실적</strong>에는 콘텐츠명·채널·업로드일·도달/조회·공유·저장을 입력합니다. 선택 월에 업로드한 콘텐츠가 표시되며, 반응률은 (공유+저장)÷도달입니다. 기존 로더는 빈 숫자도 0으로 읽으므로, 실제 0인지 미입력인지 원본에서 확인하세요.</p><h2>업무 화면</h2><p>마케팅 캠페인·출간 캘린더·저자 컨택·도서 DB·인세 정산은 상단 메뉴에서 사용합니다. 출고·실판매·비용·채널의 상세 화면은 본부 현황 하단에서 엽니다. 전월 대비 선택과 주간 리포트 복사 기능은 제거했습니다.</p><p><strong>인세 수기값과 정산 이력은 브라우저에 저장됩니다.</strong> PC 변경이나 사이트 데이터 삭제 전에 반드시 CSV로 백업하세요.</p></div><details class="bi-block"><summary>시트별 상세 입력 규칙</summary>${old}</details>`;
+}
 </script>
 </body>
 </html>
